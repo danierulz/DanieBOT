@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+pywa
+python-dotenv # Útil para pruebas locales, no para Cloud Run
