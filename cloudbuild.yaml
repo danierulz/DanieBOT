@@ -1,0 +1,25 @@
+steps:
+  # Paso 1: Construir la imagen Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/tu-bot-whatsapp', '.']
+
+  # Paso 2: Empujar la imagen al Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/tu-bot-whatsapp']
+
+  # Paso 3: Desplegar la imagen en Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'tu-bot-whatsapp'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/tu-bot-whatsapp'
+      - '--region'
+      - 'us-central1'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'PYWA_VERIFY_TOKEN=${_PYWA_VERIFY_TOKEN},PYWA_AUTH_TOKEN=${_PYWA_AUTH_TOKEN},PYWA_PHONE_ID=${_PYWA_PHONE_ID}' # Usar variables de entorno de Cloud Build
+images:
+  - 'gcr.io/$PROJECT_ID/tu-bot-whatsapp'
