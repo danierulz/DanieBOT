@@ -14,7 +14,6 @@ steps:
       - 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
       - '--region'
       - 'us-central1'
-      - '--platform managed'
       - '--allow-unauthenticated'
 
 # Opciones de Logging para evitar el error de Service Account
