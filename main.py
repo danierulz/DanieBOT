@@ -82,10 +82,13 @@ async def handle_webhook_events(request: Request):
 def handle_message(client: WhatsApp, message: Message):
     logging.info(f"Escuché: {message.text}. Intentando responder...")
     # Usá el método más simple posible
-    client.send_message(
-        to=message.from_user.wa_id,
-        content=f"Te escuché fuerte y claro: {message.text}"
-    )
+    try:
+        logging.info(f"Intentando responder a: {message.from_user.wa_id}")
+        # Intentá la respuesta más simple posible para probar
+        message.reply_text(text="¡Te escucho!")
+    except Exception:
+        # Esto imprimirá el error real (Traceback) en tus logs
+        logging.error(f"ERROR DETALLADO EN HANDLE_MESSAGE: \n{traceback.format_exc()}")
     try:
         logging.info(f"PAYLOAD CRUDO DE META: {message}")
         """Cuando recibes un mensaje de texto"""
