@@ -8,6 +8,31 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA', '.']
 
+  # ... pasos anteriores de docker build ...
+
+  # Nuevo paso: Desplegar en Cloud Run
+  - name: 'gcr.io/://google.com'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'deploy-whatsapp-cloudbuild' # Poné el nombre que quieras
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/las-locas-whatsapp:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1' # O la región que prefieras
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated' # Para que sea pública (opcional)
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+#serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/tu-cuenta@$PROJECT_ID.iam.gserviceaccount.com'
+
+
+
+
 # --- CONFIGURACIÓN CRÍTICA PARA EVITAR EL ERROR ---
 options:
   logging: CLOUD_LOGGING_ONLY # Opción más sencilla (a)
