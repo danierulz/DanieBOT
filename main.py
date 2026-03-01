@@ -84,7 +84,7 @@ def handle_message(client: WhatsApp, message: Message):
         to=message.from_user.wa_id,
         text=f"¡Hola {message.from_user.name}! Recibí tu mensaje: '{message.text}'. ¿Cómo puedo ayudarte con tu pedido de ropa?",
         # Puedes añadir botones aquí, por ejemplo:
-        buttons=[Button(title="Ver Catálogo", payload="CATALOGO"), Button(title="Hablar con un asesor", payload="ASESOR")]
+        buttons=[Button(title="Ver Catálogo", callback_data="CATALOGO"), Button(title="Hablar con un asesor", callback_data="ASESOR")]
     )
 
 @wa.on_callback_button()
