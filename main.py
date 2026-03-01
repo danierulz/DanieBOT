@@ -20,6 +20,8 @@ if PYWA_PHONE_ID and PYWA_AUTH_TOKEN and PYWA_VERIFY_TOKEN:
         wa = WhatsApp(
             phone_id=PYWA_PHONE_ID,
             token=PYWA_AUTH_TOKEN,
+            app_secret=APP_SECRET,
+            app_id=APP_ID,
             server=app,
             verify_token=PYWA_VERIFY_TOKEN,
             callback_url="/webhook" # Esta es la ruta donde WhatsApp enviará los mensajes
