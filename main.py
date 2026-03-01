@@ -2,6 +2,12 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
+import logging
+
+# Configura el logging para ver todo en Cloud Run
+logging.basicConfig(level=logging.INFO)
+
+
 
 app = FastAPI()
 
@@ -95,3 +101,8 @@ def handle_button_callback(client: WhatsApp, cb: CallbackButton):
         )
 
 # Agrega más handlers según necesites (on_list_response, on_reaction, etc.)
+@wa.on_message()
+def handle_all_messages(client, msg):
+    # Esto aparecerá en los logs de Google Cloud
+    logging.info(f"¡Llegó algo! De: {msg.from_user.wa_id} - Texto: {msg.text}")
+    msg.reply_text(f"Hola {msg.from_user.name}, recibí tu mensaje: {msg.text}")
