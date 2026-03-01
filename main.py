@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
+import json
+from dataclasses import asdicts
 import logging
 
 # Configura el logging para ver todo en Cloud Run
@@ -79,7 +81,14 @@ async def handle_webhook_events(request: Request):
 @wa.on_message()
 def handle_message(client: WhatsApp, message: Message):
     try:
+        logging.info(f"PAYLOAD CRUDO DE META: {message}")
         """Cuando recibes un mensaje de texto"""
+        try:
+            logging.info(f"DETALLES DEL MENSAJE: {json.dumps(asdict(message), indent=2, default=str)}")
+        except:
+            logging.info(f"DICCIONARIO DEL MENSAJE: {message.__dict__}")
+
+
         print(f"Mensaje recibido de {message.from_user.name}: {message.text}")
         client.send_message(
             to=message.from_user.wa_id,
