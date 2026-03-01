@@ -80,6 +80,12 @@ async def handle_webhook_events(request: Request):
 
 @wa.on_message()
 def handle_message(client: WhatsApp, message: Message):
+    logging.info(f"Escuché: {message.text}. Intentando responder...")
+    # Usá el método más simple posible
+    client.send_message(
+        to=message.from_user.wa_id,
+        content=f"Te escuché fuerte y claro: {message.text}"
+    )
     try:
         logging.info(f"PAYLOAD CRUDO DE META: {message}")
         """Cuando recibes un mensaje de texto"""
