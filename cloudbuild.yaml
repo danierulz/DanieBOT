@@ -1,45 +1,28 @@
 steps:
-  # Paso 1: Instalar dependencias para testing (opcional)
-  - name: 'python:3.10'
-    entrypoint: 'pip'
-    args: ['install', '-r', 'requirements.txt', '--user']
-
-  # Paso 2: Construir la imagen Docker
+  # Paso 1: Construir la imagen Docker (Usamos todo en minúsculas y sin guiones para ser consistentes)
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA', '.']
 
-  # ... pasos anteriores de docker build ...
-
-  # Nuevo paso: Desplegar en Cloud Run
+  # Paso 2: Desplegar en Cloud Run
   - name: 'gcr.io/://google.com'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'deploy-whatsapp-cloudbuild' # Poné el nombre que quieras
+      - 'deploy-whatsapp-cloudbuild'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/las-locas-whatsapp:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
       - '--region'
-      - 'us-central1' # O la región que prefieras
+      - 'us-central1'
       - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated' # Para que sea pública (opcional)
+      - '--allow-unauthenticated'
 
+# Opciones de Logging para evitar el error de Service Account
 options:
   logging: CLOUD_LOGGING_ONLY
 
+# Reemplazá 'tu-cuenta@tu-proyecto' con los datos reales de tu Service Account
 #serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/tu-cuenta@$PROJECT_ID.iam.gserviceaccount.com'
-
-
-
-
-# --- CONFIGURACIÓN CRÍTICA PARA EVITAR EL ERROR ---
-options:
-  logging: CLOUD_LOGGING_ONLY # Opción más sencilla (a)
-  # defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET # Alternativa (b)
-
-# Define la cuenta de servicio que usará el Trigger
-#serviceAccount: 'projects/TU-PROYECTO/serviceAccounts/tu-cuenta@tu-proyecto.iam.gserviceaccount.com'
 
 images:
   - 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
