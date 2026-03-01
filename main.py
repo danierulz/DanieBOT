@@ -3,6 +3,7 @@ from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
 import json
+import traceback
 from dataclasses import asdict
 import logging
 
