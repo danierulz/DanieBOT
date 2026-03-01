@@ -23,8 +23,8 @@ if PYWA_PHONE_ID and PYWA_AUTH_TOKEN and PYWA_VERIFY_TOKEN:
             app_secret=APP_SECRET,
             app_id=APP_ID,
             server=app,
-            verify_token=PYWA_VERIFY_TOKEN,
-            callback_url="/webhook" # Esta es la ruta donde WhatsApp enviará los mensajes
+            verify_token=PYWA_VERIFY_TOKEN
+#            callback_url="/webhook" # Esta es la ruta donde WhatsApp enviará los mensajes
         )
         print("PyWa configurado correctamente")
     except Exception as e:
