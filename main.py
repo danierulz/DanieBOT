@@ -68,6 +68,8 @@ async def handle_webhook_events(request: Request):
     Ruta donde WhatsApp enviará los eventos de mensajes.
     PyWa se encargará de procesarlos.
     """
+    body = await request.json()
+    logging.info(f"PAYLOAD RECIBIDO: {body}")
     # PyWa se encarga de procesar el JSON y disparar los handlers
     wa.handle_update(await request.json())
     return {"status": "success"}
