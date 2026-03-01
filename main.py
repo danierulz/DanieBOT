@@ -13,12 +13,20 @@ PYWA_AUTH_TOKEN = os.getenv("PYWA_AUTH_TOKEN", "TU_TOKEN_DE_AUTENTICACION_DE_MET
 # El ID del número de teléfono de WhatsApp Business
 PYWA_PHONE_ID = os.getenv("PYWA_PHONE_ID", "TU_ID_DE_NUMERO_DE_TELEFONO")
 
-wa = WhatsApp(
-    phone_id=PYWA_PHONE_ID,
-    token=PYWA_AUTH_TOKEN,
-    verify_token=PYWA_VERIFY_TOKEN,
-    callback_url="/webhook" # Esta es la ruta donde WhatsApp enviará los mensajes
-)
+if PYWA_PHONE_ID and PYWA_AUTH_TOKEN and PYWA_VERIFY_TOKEN:
+    try:
+        wa = WhatsApp(
+            phone_id=PYWA_PHONE_ID,
+            token=PYWA_AUTH_TOKEN,
+            server=app,
+            verify_token=PYWA_VERIFY_TOKEN,
+            callback_url="/webhook" # Esta es la ruta donde WhatsApp enviará los mensajes
+        )
+        print("PyWa configurado correctamente")
+    except Exception as e:
+        print(f"Error al configurar PyWa: {e}")
+else:
+    print("Error: Asegúrate de definir las variables de entorno PYWA_VERIFY_TOKEN, PYWA_AUTH_TOKEN y PYWA_PHONE_ID")
 
 # --- Rutas de FastAPI ---
 
