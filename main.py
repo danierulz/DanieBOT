@@ -3,7 +3,7 @@ from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
 import json
-from dataclasses import asdicts
+from dataclasses import asdict
 import logging
 
 # Configura el logging para ver todo en Cloud Run
