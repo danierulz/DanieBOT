@@ -2,3 +2,4 @@ fastapi
 uvicorn
 pywa
 python-dotenv # Útil para pruebas locales, no para Cloud Run
+psycopg2-binary

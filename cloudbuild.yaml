@@ -19,6 +19,17 @@ steps:
       - '--region'
       - 'us-central1'
       - '--no-allow-unauthenticated'
+      - '--vpc-connector'
+      - 'whatsapp-bot-vpc-connector' # <--- REEMPLAZA con el nombre de tu conector VPC Serverless Access
+      - '--set-secrets'
+      - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,\
+         PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,\
+         PYWA_PHONE_ID=PYWA_PHONE_ID:latest,\
+         DB_USER=DB_USER:latest,\
+         DB_PASSWORD=DB_PASSWORD:latest,\
+         DB_NAME=DB_NAME:latest,\
+         DB_HOST=DB_HOST:latest,\
+         DB_PORT=DB_PORT:latest'
 
 # Opciones de Logging para evitar el error de Service Account
 options:
