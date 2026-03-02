@@ -14,6 +14,21 @@ DB_NAME = os.getenv("DB_NAME")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "5432") # Default PostgreSQL port
 
+db_vars = {
+    "USER": os.environ.get("DB_USER"),
+    "PASS_LEN": len(os.environ.get("DB_PASSWORD", "")),
+    "NAME": os.environ.get("DB_NAME"),
+    "HOST": os.environ.get("DB_HOST")
+}
+
+for var, value in db_vars.items():
+    if not value or value == 0:
+        print(f"❌ DEBUG: {var} está VACÍA o no cargó del Secret Manager")
+    else:
+        # Imprime solo el inicio para validar
+        display = str(value)[:3] + "..." if isinstance(value, str) else value
+        print(f"✅ DEBUG: {var} cargada correctamente (Empieza con: {display})")
+
 # Validar que las variables de entorno están presentes
 if not all([DB_USER, DB_PASSWORD, DB_NAME, DB_HOST]):
     print("ERROR: Faltan una o más variables de entorno de la base de datos (DB_USER, DB_PASSWORD, DB_NAME, DB_HOST).")
