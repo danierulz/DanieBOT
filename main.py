@@ -1,11 +1,43 @@
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Request, Response, HTTPException
 from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
 import json
 import traceback
 from dataclasses import asdict
+from fastapi.templating import Jinja2Templates  
+from fastapi.responses import HTMLResponse  
+from fastapi.staticfiles import StaticFiles      
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy import create_engine
+from scraper_locas.scraper_core import scraper_code_main
 import logging
+import uvicorn
+
+from database import Products
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", "5432") # Default PostgreSQL port
+
+
+
+# 1. Configuración de la URL de conexión (vía el Proxy local)
+# Formato: postgresql+pg8000://USUARIO:PASSWORD@localhost:5433/NOMBRE_DB
+DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# 2. Crear el motor de conexión
+# pool_pre_ping=True ayuda a que no se caiga la conexión si el proxy se reinicia
+engine = create_engine(DB_URL, pool_pre_ping=True)
+
+# 3. Crear la fábrica de sesiones
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 4. Base para tus modelos (si vas a definirlos acá)
+Base = declarative_base()
+
 
 # Configura el logging para ver todo en Cloud Run
 logging.basicConfig(level=logging.INFO)
@@ -13,6 +45,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 # --- Configuración de PyWa (¡IMPORTANTE! Usa variables de entorno) ---
 # Estas variables se inyectarán en Cloud Run, NO las hardcodees aquí en producción.
@@ -21,8 +54,8 @@ PYWA_VERIFY_TOKEN = os.getenv("PYWA_VERIFY_TOKEN", "TU_TOKEN_DE_VERIFICACION_SEC
 PYWA_AUTH_TOKEN = os.getenv("PYWA_AUTH_TOKEN", "TU_TOKEN_DE_AUTENTICACION_DE_META")
 # El ID del número de teléfono de WhatsApp Business
 PYWA_PHONE_ID = os.getenv("PYWA_PHONE_ID", "TU_ID_DE_NUMERO_DE_TELEFONO")
-APP_SECRET = os.getenv("APP_SECRET", "TU_APP_SECRET_DE_META")
-APP_ID = os.getenv("APP_ID", "TU_APP_ID_DE_META")
+APP_SECRET = os.getenv("APP_SECRET", "f173398d2e1be14ff8fbbb8b29fe16a0")
+APP_ID = os.getenv("APP_ID", "26438378279080977")
 
 if PYWA_PHONE_ID and PYWA_AUTH_TOKEN and PYWA_VERIFY_TOKEN:
     try:
@@ -44,7 +77,7 @@ else:
 
 # --- Rutas de FastAPI ---
 
-@app.get("/")
+@app.get("/healt")
 def health_check():
     return {"status": "ok", "message": "Bot de WhatsApp funcionando en Cloud Run"}
 
@@ -131,3 +164,46 @@ def handle_all_messages(client, msg):
     # Esto aparecerá en los logs de Google Cloud
     logging.info(f"¡Llegó algo! De: {msg.from_user.wa_id} - Texto: {msg.text}")
     msg.reply_text(f"Hola {msg.from_user.name}, recibí tu mensaje: {msg.text}")
+
+
+# Ruta para ver la página web
+@app.get("/", response_class=HTMLResponse)
+async def read_item(request: Request):
+    # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
+    return templates.TemplateResponse("index.html", {"request": request})
+
+    
+# 5. Función de ayuda (Dependency) para usar en las rutas de FastAPI
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# Tu API de productos (la que consume el HTML)
+@app.get("/api/productos")
+async def get_productos(db: Session = Depends(get_db)):
+    try:
+        # Reemplaza 'Product' por el nombre de tu clase de modelo
+        productos = db.query(Products).all()
+        
+        return [{
+            "titulo": p.description,
+            "precio": p.price,
+            "imagen": f"https://storage.googleapis.com{p.cod_product}.jpg"
+        } for p in productos]
+    except Exception as e:
+        return {"error": str(e)}
+
+#  EL SCRAPER (Lo disparás cuando quieras)
+@app.get("/ejecutar-scraper")
+async def trigger_scraper(background_tasks: BackgroundTasks):
+    # Esto le dice a Python: "Corré el scraper de fondo y no trabes la web"
+    background_tasks.add_task(scraper_code_main)
+    return {"status": "Scraper iniciado en segundo plano"}
+
+# 4. Esto permite correrlo dándole al "Play" en VS Code
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)

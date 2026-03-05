@@ -1,5 +1,27 @@
+# Web Framework
 fastapi
 uvicorn
+
+# WhatsApp API
 pywa
-python-dotenv # Útil para pruebas locales, no para Cloud Run
+
+# Database
+sqlalchemy
+pg8000
 psycopg2-binary
+
+# Environment
+python-dotenv
+
+beautifulsoup4
+
+selenium
+webdriver_manager
+google-cloud-storage
+Jinja2
+
+# Web scraping & HTTP
+requests
+
+# Utilities
+typing-extensions

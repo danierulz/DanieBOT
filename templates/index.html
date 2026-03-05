@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Las Locas - Catálogo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow-sm p-4 mb-8">
+        <h1 class="text-2xl font-bold text-center text-pink-600">LAS LOCAS</h1>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4">
+        <!-- Grilla de productos -->
+        <div id="contenedor-productos" class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <!-- Aquí se cargarán los productos automáticamente -->
+        </div>
+    </div>
+
+    <script>
+        // Este script le pide los datos a tu Python
+        fetch('/api/productos')
+            .then(res => res.json())
+            .then(data => {
+                const contenedor = document.getElementById('contenedor-productos');
+                data.forEach(p => {
+                    contenedor.innerHTML += `
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
+                            <img src="${p.imagen}" class="w-full h-64 object-cover">
+                            <div class="p-4">
+                                <h2 class="text-sm font-semibold text-gray-800 uppercase">${p.titulo}</h2>
+                                <p class="text-lg font-bold text-pink-600 mt-2">$${p.precio}</p>
+                                <button class="w-full mt-4 bg-green-500 text-white py-2 rounded-full font-bold hover:bg-green-600 transition">
+                                    Pedir por WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+    </script>
+</body>
+</html>

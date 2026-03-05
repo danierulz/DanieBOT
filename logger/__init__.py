@@ -1,0 +1,1 @@
+print("Logger __init__.py iniciado")

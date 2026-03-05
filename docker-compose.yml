@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    container_name: daniebot_app
+    ports:
+      - "5000:8080"
+    restart: always
+    env_file:
+      - .env
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: daniebot_ngrok
+    depends_on:
+      - app
+    command: http app:8080
+    ports:
+      - "4040:4040"   # interfaz web de ngrok para ver las requests
+    env_file:
+      - .env
