@@ -21,7 +21,7 @@ load_dotenv()
 
 # Database connection parameters
 DB_USER = os.getenv("DB_USER", "bot_laslocas")
-DB_PASSWORD = os.getenv("PG_PASSWORD", "Neverl0l")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "Neverl0l")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_DATABASE", "laslocas_db")
