@@ -31,7 +31,7 @@ DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_N
 os.environ['WDM_SSL_VERIFY'] = '0'
 load_dotenv()
 print("Create_engine scraper_core.py")
-engine = create_engine(DB_URL)
+engine = create_engine(DB_URL,  echo=True, pool_pre_ping=True)
 Base.metadata.create_all(engine)
 log = Logger.Logger(__name__, level='debug', fmt='%(asctime)s - %(levelname)s - %(message)s')
 
