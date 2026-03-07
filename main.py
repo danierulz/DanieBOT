@@ -34,7 +34,7 @@ DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_N
 # 2. Crear el motor de conexión
 # pool_pre_ping=True ayuda a que no se caiga la conexión si el proxy se reinicia
 print("creatE_engine main.py")
-
+print("DB_URL: ", DB_URL)
 engine = create_engine(DB_URL,  echo=True, pool_pre_ping=True)
 # Create all tables based on the models
 Base.metadata.create_all(engine)
