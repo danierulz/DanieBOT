@@ -28,7 +28,7 @@ DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
 DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER", "host.docker.internal")  # For Docker connectivity
 
 # Create the database URL
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST_DOCKER}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 def initialize_database():
     print(f"DEBUG: Conectando con usuario: {DB_USER} a la base {DB_NAME}")

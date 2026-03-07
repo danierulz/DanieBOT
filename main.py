@@ -29,7 +29,7 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER", "host.docker.internal")  # For Dock
 
 # 1. Configuración de la URL de conexión (vía el Proxy local)
 # Formato: postgresql+pg8000://USUARIO:PASSWORD@localhost:5433/NOMBRE_DB
-DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST_DOCKER}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # 2. Crear el motor de conexión
 # pool_pre_ping=True ayuda a que no se caiga la conexión si el proxy se reinicia
