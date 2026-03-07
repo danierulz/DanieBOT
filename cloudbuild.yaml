@@ -29,8 +29,12 @@ steps:
          DB_PASSWORD=DB_PASSWORD:latest,\
          DB_NAME=DB_NAME:latest,\
          DB_HOST=DB_HOST:latest,\
-         DB_PORT=DB_PORT:latest'
-
+         DB_PORT=DB_PORT:latest,\
+         PG_PORT=PG_PORT:latest,\
+         PG_USER=PG_USER:latest,\
+         PG_PASSWORD=PG_PASSWORD:latest,\
+         PG_DATABASE=PG_DATABASE:latest'
+            
 # Opciones de Logging para evitar el error de Service Account
 options:
   logging: CLOUD_LOGGING_ONLY
