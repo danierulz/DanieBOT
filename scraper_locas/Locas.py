@@ -59,9 +59,9 @@ DB_PASSWORD = os.getenv("PG_PASSWORD", "Neverl0l")
 DB_HOST = os.getenv("PG_HOST", "127.0.0.1")
 DB_PORT = os.getenv("PG_PORT", "5433")
 DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
-
+DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER", "host.docker.internal")  # For Docker connectivity
 # Create the database URL
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST_DOCKER}:{DB_PORT}/{DB_NAME}"
 
 print("create_engine Locas.py" )
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=True)
@@ -257,10 +257,10 @@ class Locas(webdriver.Chrome):
     #    blob = bucket.blob(f"images/{self.product.page_ficha}/{nombre_archivo}")
      #   blob.upload_from_filename(f"{newfolder_and_photoname}/{nombre_archivo}", content_type='image/jpeg')
         print("os.path.join(path_full_ficha, nombre_archivo): ", os.path.join(path_full_ficha, nombre_archivo)  )
-        blob = bucket.blob(f"images/{url_ficha_path}/{nombre_archivo}")
+        blob = bucket.blob(f"images/{self.product.page_ficha}/{nombre_archivo}")
         blob.upload_from_filename(os.path.join(path_full_ficha, nombre_archivo), content_type="image/jpeg")
     
-#        blob.make_public()  # Opcional: hacer que el archivo sea público para obtener una URL accesible públicamente
+        blob.make_public()  # Opcional: hacer que el archivo sea público para obtener una URL accesible públicamente
         return blob.public_url        
 
 #*****************************************************************************************************
@@ -290,27 +290,27 @@ class Locas(webdriver.Chrome):
 #*****************************************************************************************************
 #***    CONNECT DB               *********************************************************************
 #*****************************************************************************************************
-    @contextmanager
-    def connect_db(self):
-        with SessionLocal() as session:
-            try:
-                # Verificamos si el producto ya existe por su código
-                stmt = select(Products).where(Products.cod_product == product_data['cod_product'])
-                existing_product = session.execute(stmt).scalar_one_or_none()
+    # @contextmanager
+    # def connect_db(self):
+    #     with SessionLocal() as session:
+    #         try:
+    #             # Verificamos si el producto ya existe por su código
+    #             stmt = select(Products).where(Products.cod_product == product_data['cod_product'])
+    #             existing_product = session.execute(stmt).scalar_one_or_none()
 
-                if existing_product:
-                    self.logs.logger.debug(f"Actualizando producto: {product_data['cod_product']}")
-                    for key, value in product_data.items():
-                        setattr(existing_product, key, value)
-                else:
-                    self.logs.logger.debug(f"Insertando nuevo producto: {product_data['cod_product']}")
-                    nuevo = Products(**product_data)
-                    session.add(nuevo)
+    #             if existing_product:
+    #                 self.logs.logger.debug(f"Actualizando producto: {product_data['cod_product']}")
+    #                 for key, value in product_data.items():
+    #                     setattr(existing_product, key, value)
+    #             else:
+    #                 self.logs.logger.debug(f"Insertando nuevo producto: {product_data['cod_product']}")
+    #                 nuevo = Products(**product_data)
+    #                 session.add(nuevo)
                 
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                self.logs.logger.error(f"Error guardando en DB: {e}")
+    #             session.commit()
+    #         except Exception as e:
+    #             session.rollback()
+    #             self.logs.logger.error(f"Error guardando en DB: {e}")
 
 #
  #       try:

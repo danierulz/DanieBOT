@@ -500,3 +500,180 @@
         "itemCondition": "http://schema.org/NewCondition"
     }
 }
+2026-03-07 16:04:27,263 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 16:04:27,263 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 16:04:29,463 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 16:04:33,404 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 16:04:35,179 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 16:04:42,097 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:05:14,853 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 16:05:14,853 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 16:05:17,536 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 16:05:20,247 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 16:05:22,127 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 16:05:28,037 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:13:37,445 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 16:13:37,445 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 16:13:40,377 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 16:13:43,497 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 16:13:51,911 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 16:13:59,010 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:14:57,906 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark already exists
+2026-03-07 16:15:05,394 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:33:55,441 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 16:33:55,442 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 16:33:58,486 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 16:34:01,180 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 16:34:06,055 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 16:34:12,891 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:34:16,590 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark already exists
+2026-03-07 16:34:23,746 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:39:22,627 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 16:39:22,627 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 16:39:25,326 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 16:39:28,573 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 16:39:30,803 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 16:39:36,732 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:48:24,379 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 16:48:24,379 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 16:48:27,363 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 16:48:29,994 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 16:48:32,141 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 16:48:38,957 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 16:49:38,232 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark already exists
+2026-03-07 16:49:45,415 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
