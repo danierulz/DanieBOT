@@ -31,6 +31,7 @@ steps:
          DB_HOST=DB_HOST:latest,\
          DB_PORT=DB_PORT:latest,\
          PG_PORT=PG_PORT:latest,\
+         PG_HOST=PG_HOST:latest,\
          PG_USER=PG_USER:latest,\
          PG_PASSWORD=PG_PASSWORD:latest,\
          PG_DATABASE=PG_DATABASE:latest'
