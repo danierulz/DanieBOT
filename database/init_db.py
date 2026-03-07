@@ -23,7 +23,7 @@ load_dotenv()
 DB_USER = os.getenv("PG_USER", "bot_laslocas")
 DB_PASSWORD = os.getenv("PG_PASSWORD", "Neverl0l")
 DB_HOST = os.getenv("PG_HOST", "127.0.0.1")
-DB_PORT = os.getenv("PG_PORT", "5433")
+DB_PORT = os.getenv("PG_PORT", "5432")
 DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
 DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 
