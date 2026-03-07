@@ -54,11 +54,11 @@ options = {
         'no_proxy': 'localhost,127.0.0.1,19.0.0.0/8,10.0.0.0/8,172.16.0.0/12,.ford.com'
     }
 }
-DB_USER = os.getenv("PG_USER", "bot_laslocas")
-DB_PASSWORD = os.getenv("PG_PASSWORD", "Neverl0l")
-DB_HOST = os.getenv("PG_HOST")
-DB_PORT = os.getenv("PG_PORT", "5432")
-DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
+DB_USER = os.getenv("DB_USER", "bot_laslocas")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "Neverl0l")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_DATABASE", "laslocas_db")
 DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 # Create the database URL
 DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
