@@ -8,7 +8,8 @@ from sqlalchemy import Column, Engine, String, create_engine, select, text
 from typing_extensions import deprecated
 import time
 import os
-from database import Products
+from database.models.Products import Products
+from database.models.ProductImages import ProductImages
 from fastapi import FastAPI, BackgroundTasks
 from scraper_locas import Locas
 from pywa import WhatsApp
@@ -17,7 +18,8 @@ from logger import Logger
 
 os.environ['WDM_SSL_VERIFY'] = '0'
 load_dotenv()
-engine = create_engine("postgresql+psycopg2://postgres:neverl0l@localhost:5432/laslocas")
+print("Create_engine scraper_core.py")
+engine = create_engine("postgresql+pg8000://postgres:neverl0l@localhost:5432/laslocas")
 log = Logger.Logger(__name__, level='debug', fmt='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -131,7 +133,7 @@ def test_select_sqlalchemy():
 
 
 if __name__ == '__main__':
-    main()
+    scraper_code_main()
 
 #@deprecated
 def  configure_logging():

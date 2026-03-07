@@ -15,7 +15,8 @@ from sqlalchemy import DateTime, Null, create_engine
 import urllib3
 from webdriver_manager.chrome import ChromeDriverManager
 #import src.logger.Logger as Logger
-from database import Products
+from database.models.Products import Products
+from database.models.ProductImages import ProductImages
 from logger import Logger
 from database.dto.ProductDto import ProductDto
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -24,6 +25,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from google.cloud import storage
+import scraper_locas.constants as const
 
 import logging
 import re
@@ -59,10 +61,10 @@ DB_PORT = os.getenv("PG_PORT", "5433")
 DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
 
 # Create the database URL
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:{DB_PORT}/{DB_NAME}"
 
-
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+print("create_engine Locas.py" )
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Locas(webdriver.Chrome):
@@ -118,7 +120,7 @@ class Locas(webdriver.Chrome):
         
         self.pages = max(qty_pages)
         #print("hardcodeando pages a 2 para testear: ", self.pages)
-        # self.pages = 2
+        self.pages = 2
         print("Máximo valor de número de paginas en demim es:  ", self.pages)
 
     def take_jeans_denim_per_page(self, i):

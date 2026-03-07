@@ -9,29 +9,36 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse  
 from fastapi.staticfiles import StaticFiles      
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
+from database.base import Base
 from scraper_locas.scraper_core import scraper_code_main
 import logging
 import uvicorn
 
-from database import Products
+from database.models.Products import Products
+from database.models.ProductImages import ProductImages
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
 DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", "5432") # Default PostgreSQL port
+DB_PORT = os.getenv("DB_PORT", "5433") # Default PostgreSQL port
 
 
 
 # 1. Configuración de la URL de conexión (vía el Proxy local)
 # Formato: postgresql+pg8000://USUARIO:PASSWORD@localhost:5433/NOMBRE_DB
-DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@host.docker.internal:{DB_PORT}/{DB_NAME}"
 
 # 2. Crear el motor de conexión
 # pool_pre_ping=True ayuda a que no se caiga la conexión si el proxy se reinicia
-engine = create_engine(DB_URL, pool_pre_ping=True)
+print("creatE_engine main.py")
 
+engine = create_engine(DB_URL,  echo=True, pool_pre_ping=True)
+# Create all tables based on the models
+Base.metadata.create_all(engine)
+inspector = inspect(engine)
+print(inspector.get_table_names())
 # 3. Crear la fábrica de sesiones
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -114,10 +121,13 @@ async def handle_webhook_events(request: Request):
 
 @wa.on_message()
 def handle_message(client: WhatsApp, message: Message):
-    logging.info(f"Escuché: {message.text}. Intentando responder...")
+    #logging.info(f"Escuché: {message.text}. Intentando responder...")
+    print("Escuche: ", message.text)
+    print("Mensaje completo: ", message)
     # Usá el método más simple posible
     try:
-        logging.info(f"Intentando responder a: {message.from_user.wa_id}")
+        print("Intentando responder a: ", message.from_user.wa_id)
+#        logging.info(f"Intentando responder a: {message.from_user.wa_id}")
         # Intentá la respuesta más simple posible para probar
         message.reply_text(text="¡Te escucho!")
     except Exception:
@@ -161,9 +171,15 @@ def handle_button_callback(client: WhatsApp, cb: CallbackButton):
 # Agrega más handlers según necesites (on_list_response, on_reaction, etc.)
 @wa.on_message()
 def handle_all_messages(client, msg):
-    # Esto aparecerá en los logs de Google Cloud
-    logging.info(f"¡Llegó algo! De: {msg.from_user.wa_id} - Texto: {msg.text}")
-    msg.reply_text(f"Hola {msg.from_user.name}, recibí tu mensaje: {msg.text}")
+    try:
+        print(f"¡Llegó algo! De: {msg.from_user.wa_id} - Texto: {msg.text}",flush=True)
+        msg.reply_text(f"Hola {msg.from_user.name}, recibí tu mensaje: {msg.text}")
+        print("Respuesta enviada correctamente")
+#        logging.info("Respuesta enviada correctamente")
+    except Exception as e:
+        print(f"Error al manejar mensaje de {msg.from_user.wa_id}: {e}", flush=True)
+#        logging.error(f"Error al manejar mensaje de {msg.from_user.wa_id}: {e}", exc_info=True)
+
 
 
 # Ruta para ver la página web
@@ -184,18 +200,26 @@ def get_db():
 
 # Tu API de productos (la que consume el HTML)
 @app.get("/api/productos")
-async def get_productos(db: Session = Depends(get_db)):
-    try:
-        # Reemplaza 'Product' por el nombre de tu clase de modelo
-        productos = db.query(Products).all()
-        
-        return [{
-            "titulo": p.description,
+def listar_productos(db: Session = Depends(get_db)):
+    productos = db.query(Products).all()
+    resultado = []
+    for p in productos:
+        # Buscar la imagen principal (si existe)
+        imagen_principal = None
+        if  p.images:
+            main = next((img for img in p.images if img.is_main), None)
+            if main:
+                imagen_principal = main.url or f"https://storage.googleapis.com/bucket_laslocas_prodt/images/{main.filename}"
+
+        resultado.append({
+            "id": p.product_id,
+            "titulo": p.item_title,
             "precio": p.price,
-            "imagen": f"https://storage.googleapis.com{p.cod_product}.jpg"
-        } for p in productos]
-    except Exception as e:
-        return {"error": str(e)}
+            "descripcion": p.description,
+            "imagen": imagen_principal
+        })
+    return resultado
+
 
 #  EL SCRAPER (Lo disparás cuando quieras)
 @app.get("/ejecutar-scraper")

@@ -2,7 +2,10 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from src.db.models.Products import Base, Products
+from database.models.Products import Base, Products
+from database.models.ProductImages import ProductImages 
+
+
 import sys
 import os
 
@@ -24,14 +27,15 @@ DB_PORT = os.getenv("PG_PORT", "5433")
 DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
 
 # Create the database URL
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@host.docker.internal:{DB_PORT}/{DB_NAME}"
 
 def initialize_database():
     print(f"DEBUG: Conectando con usuario: {DB_USER} a la base {DB_NAME}")
     try:
         # Create the database engine
         print(f"DEBUG: Conectando con usuario: {DB_USER} a la base {DB_NAME} ")
-        engine = create_engine(DATABASE_URL, echo=True)
+        print("Create_engine init_db.py")
+        engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
 
         # Create all tables based on the models
         Base.metadata.create_all(engine)
