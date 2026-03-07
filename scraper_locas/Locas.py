@@ -69,7 +69,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Locas(webdriver.Chrome):
     pages = 0
-
+    list_denim = []
     def __init__(self, driver_path = ChromeDriverManager().install(), tearDown=False):
         self.logs = Logger.Logger(self.__class__.__name__, level='debug', fmt='%(asctime)s - %(levelname)s - %(message)s')
         self.logs.logger.debug("Class Locas __init__ __name__: %s" , self.__class__.__name__) 
@@ -105,7 +105,7 @@ class Locas(webdriver.Chrome):
         
         webelement_pages = WebDriverWait(self, 30).until(EC.presence_of_element_located((By.ID, 'pag')))
         #webelement_pages.find_elements(By.CSS_SELECTOR, "a[href*='page']")
-        self.logs.logger.debug("Presence of element By.ID, pag %s ", webelement_pages.get_attribute('innerHTML'))
+        #self.logs.logger.debug("Presence of element By.ID, pag %s ", webelement_pages.get_attribute('innerHTML'))
 
         web_pages_hrefs = webelement_pages.find_elements(By.CSS_SELECTOR,"a[href*='page']")
 
@@ -115,7 +115,7 @@ class Locas(webdriver.Chrome):
         for urls in web_pages_hrefs:
 
             mo = extract_pages.search(urls.get_attribute("href"))
-            self.logs.logger.debug(urls.get_attribute("href"))
+        #    self.logs.logger.debug(urls.get_attribute("href"))
             qty_pages.append(int(mo.group()))
         
         self.pages = max(qty_pages)
@@ -124,7 +124,7 @@ class Locas(webdriver.Chrome):
         print("Máximo valor de número de paginas en demim es:  ", self.pages)
 
     def take_jeans_denim_per_page(self, i):
-        self.logs.logger.debug("Tomando la lista de jeans de denim per page")
+        #self.logs.logger.debug("Tomando la lista de jeans de denim per page")
         self.set_script_timeout(5)
         self.get(f'https://laslocas.com/productos/denim?page={i}')
 
@@ -144,18 +144,14 @@ class Locas(webdriver.Chrome):
             if(i>4):
                 break
                 
-        [self.product.list_denim.append(list) for list in new_list if list not in self.product.list_denim]
-        print("total de elementos en lista denim: ", len(self.product.list_denim))
+        [self.list_denim.append(list) for list in new_list if list not in self.list_denim]
+        print("total de elementos en lista denim: ", len(self.list_denim))
 
-    def d2_ficha_take_gallery(self, page_ficha): 
+    def d2_ficha_take_gallery(self, page_ficha,path_full_ficha): 
         #self.logs.logger.debug('URL ficha:  %s', page_ficha)
         #self.logs.logger.debug("page source: %s", self.page_source )
                 
         self.get(page_ficha)
-
-        #Create folder to store one model of jean
-        #   EXAMPLE =>  C:\Projects\LasLocas\images/denim/ficha-710-oxford-sech 
-        path_full_ficha = self.create_folder_ficha(page_ficha)
 
         #***********************************************************************************************
         #Get gallery of photos defined how <div class="d2">
@@ -176,11 +172,11 @@ class Locas(webdriver.Chrome):
         #***********************************************************************************************
         #Get self.codProd          EXAMPLE =>      <span id="codProd">BSPOR</span>
         span_codProd = WebDriverWait(self, 30).until(EC.presence_of_element_located((By.ID, "codProd")))
-        self.logs.logger.debug("span_codProd: %s" , span_codProd)
+        #self.logs.logger.debug("span_codProd: %s" , span_codProd)
         self.product.cod_product = span_codProd.get_attribute('innerHTML')
-        self.logs.logger.debug("span_codProd: %s" , self.product.cod_product)
+        #self.logs.logger.debug("span_codProd: %s" , self.product.cod_product)
         #print("codProd_element length: ", len(self.product.cod_product))
-        self.logs.logger.debug("codProd_element %s", self.product.cod_product)
+        #self.logs.logger.debug("codProd_element %s", self.product.cod_product)
         #***********************************************************************************************
 
         #***********************************************************************************************
@@ -199,6 +195,11 @@ class Locas(webdriver.Chrome):
         #***********************************************************************************************
 
         
+# GET_SCRIPT_AND_EXTRACT_JSON() => This method fill the following attributes of self.product:
+#         self.product.sku = int(d["sku"])
+#         self.product.name = d["name"]
+#         self.product.description = d["description"]
+#         self.product.price = float(d["offers"]["price"])
         self.get_script_and_extract_json()
         
         
@@ -217,7 +218,8 @@ class Locas(webdriver.Chrome):
             name_of_photo = url.rsplit('/', 1)[-1]
             name_of_photo_only = url.split('/')[-1]
 
-            self.upload_to_gcs(page_ficha,name_of_photo_only, response.data)
+#            self.upload_to_gcs(page_ficha,name_of_photo_only, response.data)
+#            self.product.page_ficha = page_ficha
             self.product.gallery_photos.append(name_of_photo_only);
             with open(os.path.join(path_full_ficha,name_of_photo),"wb") as temp_file:
                 temp_file.write(response.data)
@@ -225,7 +227,7 @@ class Locas(webdriver.Chrome):
 #*****************************************************************************************************
 #***    UPLOAD IMAGE TO GCS      *********************************************************************
 #*****************************************************************************************************        
-    def upload_to_gcs(self,page_ficha, nombre_archivo, datos_binarios, bucket_name="bucket_laslocas_prod"):
+    def upload_to_gcs_binary(self,page_ficha, nombre_archivo, datos_binarios, bucket_name="bucket_laslocas_prod"):
         url2parse = urlparse(page_ficha)
         name_folder = url2parse.path.replace('/', '')
     # Al no pasarle argumentos, busca el login de tu terminal automáticamente
@@ -233,34 +235,58 @@ class Locas(webdriver.Chrome):
         bucket = client.get_bucket(bucket_name)
         blob = bucket.blob(f"images/{name_folder}/{nombre_archivo}")
         blob.upload_from_string(datos_binarios, content_type='image/jpeg')
+        blob.make_public()  # Opcional: hacer que el archivo sea público para obtener una URL accesible públicamente
+        return blob.public_url        
+
+#*****************************************************************************************************
+#***    UPLOAD IMAGE TO GCS      *********************************************************************
+#*****************************************************************************************************        
+    def upload_to_gcs_from_filename(self,bucket_name, path_full_ficha, nombre_archivo):
+        url2parse = urlparse(path_full_ficha)
+        url_ficha_path = url2parse.path.replace('/', '')     
+        #/images/denim/ficha-710-oxford-sech   
+        newfolder_and_photoname = const.PATH_IMAGE_DENIM +  url_ficha_path
+
+#        name_folder = url2parse.path.replace('/', '')
+        print("url2parse: ", url2parse)
+    # Al no pasarle argumentos, busca el login de tu terminal automáticamente
+        
+        client = storage.Client() 
+        print("bucket_name: ", bucket_name  )
+        bucket = client.get_bucket(bucket_name)
+    #    blob = bucket.blob(f"images/{self.product.page_ficha}/{nombre_archivo}")
+     #   blob.upload_from_filename(f"{newfolder_and_photoname}/{nombre_archivo}", content_type='image/jpeg')
+        print("os.path.join(path_full_ficha, nombre_archivo): ", os.path.join(path_full_ficha, nombre_archivo)  )
+        blob = bucket.blob(f"images/{url_ficha_path}/{nombre_archivo}")
+        blob.upload_from_filename(os.path.join(path_full_ficha, nombre_archivo), content_type="image/jpeg")
+    
+#        blob.make_public()  # Opcional: hacer que el archivo sea público para obtener una URL accesible públicamente
         return blob.public_url        
 
 #*****************************************************************************************************
 #***    INSERT PRODUCT           *********************************************************************
 #*****************************************************************************************************
-    def insert_product(self):
-        cur, con = self.connect_db()
-        dt = datetime.datetime.now()
-        dt_obj_w_tz = datetime.datetime.now()
-        dt_obj_wo_tz = dt_obj_w_tz.replace(tzinfo=None)
-
-        
-        try:
-            #cur.execute("INSERT INTO products (product_id,description, unit_price, status, gallery_photos)" +
-            #            "VALUES (default, 'test 3333' , 111, false, NULL);")
-            cur.execute("INSERT INTO products (description, price, status, gallery_photos, cod_product, item_title, " +
-                        "name, sku, extract_date, create_date ) " +
-                        "VALUES (%s , %s, %s, %s, %s, %s, %s, %s, %s, %s);",
-                         (self.product.description, self.product.price, 'true', self.product.gallery_photos,
-                           self.product.cod_product, self.product.item_title, self.product.name, self.product.sku, 
-                           dt, dt_obj_wo_tz))
-            self.logs.logger.debug("RowCount: %s" , cur.rowcount)
-        except(Exception,psycopg2.Error) as e:
-            print("Exception in INSERT INTO products " , e)
-            sys.exit(1)
-        finally:
-            con.commit()
-            con.close()
+    # def insert_product(self):
+    #     cur, con = self.connect_db()
+    #     dt = datetime.datetime.now()
+    #     dt_obj_w_tz = datetime.datetime.now()
+    #     dt_obj_wo_tz = dt_obj_w_tz.replace(tzinfo=None)
+    #     try:
+    #         #cur.execute("INSERT INTO products (product_id,description, unit_price, status, gallery_photos)" +
+    #         #            "VALUES (default, 'test 3333' , 111, false, NULL);")
+    #         cur.execute("INSERT INTO products (description, price, status, gallery_photos, cod_product, item_title, " +
+    #                     "name, sku, extract_date, create_date ) " +
+    #                     "VALUES (%s , %s, %s, %s, %s, %s, %s, %s, %s, %s);",
+    #                      (self.product.description, self.product.price, 'true', self.product.gallery_photos,
+    #                        self.product.cod_product, self.product.item_title, self.product.name, self.product.sku, 
+    #                        dt, dt_obj_wo_tz))
+    #         self.logs.logger.debug("RowCount: %s" , cur.rowcount)
+    #     except(Exception,psycopg2.Error) as e:
+    #         print("Exception in INSERT INTO products " , e)
+    #         sys.exit(1)
+    #     finally:
+    #         con.commit()
+    #         con.close()
 #*****************************************************************************************************
 #***    CONNECT DB               *********************************************************************
 #*****************************************************************************************************
@@ -332,15 +358,18 @@ class Locas(webdriver.Chrome):
             session.close() # Siempre cierra la conexión
 
 
-    def create_folder_ficha(self, page_ficha):
-        url2parse = urlparse(page_ficha)
-        url_ficha_path = url2parse.path.replace('/', '')        
+    def create_folder_ficha(self, url_ficha):
+        url2parse = urlparse(url_ficha)
+        url_ficha_path = url2parse.path.replace('/', '')    
+        print("url_ficha_path: ", url_ficha_path)
+        #/images/denim/ficha-710-oxford-sech   
         newfolder_and_photoname = const.PATH_IMAGE_DENIM +  url_ficha_path
+        self.product.page_ficha = url_ficha_path
 
         # get current directory
         path = os.getcwd()
         path_full_ficha =  os.path.join(path, newfolder_and_photoname)
-        self.logs.logger.debug("Carpeta ficha: %s" , path_full_ficha)
+        #self.logs.logger.debug("Carpeta ficha: %s" , path_full_ficha)
         if not os.path.exists(path_full_ficha):
             os.makedirs(path_full_ficha)
             self.logs.logger.debug("Folder %s created!" % path_full_ficha)

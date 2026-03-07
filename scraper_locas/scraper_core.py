@@ -8,6 +8,7 @@ from sqlalchemy import Column, Engine, String, create_engine, select, text
 from typing_extensions import deprecated
 import time
 import os
+from database.dto.ProductDto import ProductDto
 from database.models.Products import Products
 from database.models.ProductImages import ProductImages
 from fastapi import FastAPI, BackgroundTasks
@@ -15,11 +16,22 @@ from scraper_locas import Locas
 from pywa import WhatsApp
 from dotenv import load_dotenv
 from logger import Logger
+from database.base import Base
+from scraper_locas.constants import BUCKET_NAME
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", "5433") # Default PostgreSQL port
+DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
 
 os.environ['WDM_SSL_VERIFY'] = '0'
 load_dotenv()
 print("Create_engine scraper_core.py")
-engine = create_engine("postgresql+pg8000://postgres:neverl0l@localhost:5432/laslocas")
+engine = create_engine(DB_URL)
+Base.metadata.create_all(engine)
 log = Logger.Logger(__name__, level='debug', fmt='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -46,21 +58,21 @@ def scraper_code_main():
     i = 1
     while( i < inst.pages):
         i+=1
+        #TODO: REVISAR QUE TIENE UN CORTE DE 4 PAGINAS 
         inst.take_jeans_denim_per_page(i)
  
     #Con la lista de links de cada denim voy a scrapear su contenido y guardarlo en PostgreSQL
-    for url_ficha in inst.product.list_denim:
-        inst.d2_ficha_take_gallery(url_ficha)
+    for url_ficha in inst.list_denim:
+        inst.product = ProductDto()
+                #Create folder to store one model of jean
+        #   EXAMPLE =>  C:\Projects\LasLocas\images/denim/ficha-710-oxford-sech 
+        path_full_ficha = inst.create_folder_ficha(url_ficha)
+    
+        #Save in product object the content of each denim
+        #Save images in local folder
+        inst.d2_ficha_take_gallery(url_ficha, path_full_ficha)
 
-
-        print("logueando antes del SELECT en main.py")
-#        stmt2 = 'SELECT products.product_id, products.description, products.price, products.status, products.gallery_photos, products.cod_product, products.item_title, products.name, products.sku, products.extract_date, products.create_date FROM products WHERE products.sku = 314'
-        stmt2 = 'SELECT products.product_id FROM products '
-
-
-#       stmt = select(Products).where(Products.sku == "314")
-        print(stmt2)
-        print("logueando antes del connect_db en main.py")
+        print("logueando antes del get_db_session scraper_core.py")
 
         with inst.get_db_session() as db:
             print("🔎 Verificando productos existentes...")
@@ -71,18 +83,35 @@ def scraper_code_main():
         
             # Create Products object from scraped data
             if inst.product.cod_product not in codigos_en_db:
+            
                 nuevo = Products(
                     description=inst.product.description,
                     price=int(inst.product.price),
                     status=False,
-                    gallery_photos=inst.product.gallery_photos,
+                   # gallery_photos=inst.product.gallery_photos,
                     cod_product=inst.product.cod_product,
                     item_title=inst.product.item_title,
                     name=inst.product.name,
+                    sku=inst.product.sku,
                     extract_date=datetime.datetime.now()
                 )
-                nuevo.sku = inst.product.sku
                 db.add(nuevo)
+
+   #             nuevo.sku = inst.product.sku
+                for idx, foto in enumerate(inst.product.gallery_photos):
+                    image_url = inst.upload_to_gcs_from_filename(BUCKET_NAME, path_full_ficha, foto)
+                    # Crear objeto ProductImages enlazado
+                    product_image = ProductImages(
+                    product=nuevo,
+                    filename=inst.product.gallery_photos[0],
+                    url=image_url,
+                    is_main=(idx == 0)
+                    )
+                    db.add(product_image)
+                
+
+
+               
                 print(f"✅ Se insertó 1 denim nuevo en la nube.")
             else:
                 print("ℹ️ No hay novedades para cargar.")
@@ -120,13 +149,13 @@ def scraper_code_main():
 
 def test_select_sqlalchemy():
     with engine.connect() as connection:
-        results = connection.execute(text("select description, price, status, gallery_photos, cod_product, item_title from products"))
+        results = connection.execute(text("select description, price, status, cod_product, item_title from products"))
         #print(results.fetchall())
         for row in results:
             print("description:", row.description)
             print("price:", row.price)
             print("status:", row.status)
-            print("gallery_photos:", row.gallery_photos)
+        #    print("gallery_photos:", row.gallery_photos)
             print("cod_product:", row.cod_product)
             print("item_title:", row.item_title)
         print("termino el commit")

@@ -48,7 +48,7 @@ def initialize_database():
                 description="denim jean",
                 price=999,
                 status=True,
-                gallery_photos=None,
+            #    gallery_photos=None,
                 cod_product="D123",
                 item_title="Denim Jeans",
                 name="Denim",

@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy import create_engine, inspect
 from database.base import Base
+from scraper_locas.constants import BUCKET_NAME
 from scraper_locas.scraper_core import scraper_code_main
 import logging
 import uvicorn
@@ -209,7 +210,7 @@ def listar_productos(db: Session = Depends(get_db)):
         if  p.images:
             main = next((img for img in p.images if img.is_main), None)
             if main:
-                imagen_principal = main.url or f"https://storage.googleapis.com/bucket_laslocas_prodt/images/{main.filename}"
+                imagen_principal = main.url or f"https://storage.googleapis.com/{BUCKET_NAME}/images/{p.page_ficha}/{main.filename}"
 
         resultado.append({
             "id": p.product_id,

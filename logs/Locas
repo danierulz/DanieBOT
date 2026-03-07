@@ -1,196 +1,501 @@
-2026-03-07 10:22:10,547 - DEBUG - Logger __init__ iniciado en: logger.Logger
-2026-03-07 10:22:10,547 - DEBUG - Class Locas __init__ __name__: Locas
-2026-03-07 10:25:04,768 - DEBUG - Logger __init__ iniciado en: logger.Logger
-2026-03-07 10:25:04,768 - DEBUG - Class Locas __init__ __name__: Locas
-2026-03-07 10:25:07,487 - DEBUG - verify_quantity_of_pages_denim() init_login
-2026-03-07 10:26:24,409 - DEBUG - Logger __init__ iniciado en: logger.Logger
-2026-03-07 10:26:24,409 - DEBUG - Class Locas __init__ __name__: Locas
-2026-03-07 10:26:26,839 - DEBUG - verify_quantity_of_pages_denim() init_login
-2026-03-07 10:26:30,111 - DEBUG - verify_quantity_of_pages_denim()
-2026-03-07 10:26:34,424 - DEBUG - Presence of element By.ID, pag 
-
-						
-			
-			
-									<span class="numero">1</span>
-				
-			
-									
-						<a href="/productos/denim?page=2">2</a>
-									
-			
-									
-						<a href="/productos/denim?page=3">3</a>
-									
-			
-									
-						<a href="/productos/denim?page=4">4</a>
-									
-			
-									
-						<a href="/productos/denim?page=5">5</a>
-									
-			
-									
-						<a href="/productos/denim?page=6">6</a>
-									
-			
-									
-						<a href="/productos/denim?page=7">7</a>
-									
-			
-									
-						<a href="/productos/denim?page=8">8</a>
-									
-			
-									
-						<a href="/productos/denim?page=9">9</a>
-									
-			
-			
-							<a href="/productos/denim?page=2"><i class="fa fa-angle-right"></i></a>
-			
-		
-
-
-	 
-2026-03-07 10:26:34,564 - DEBUG - https://laslocas.com/productos/denim?page=2
-2026-03-07 10:26:34,580 - DEBUG - https://laslocas.com/productos/denim?page=3
-2026-03-07 10:26:34,590 - DEBUG - https://laslocas.com/productos/denim?page=4
-2026-03-07 10:26:34,600 - DEBUG - https://laslocas.com/productos/denim?page=5
-2026-03-07 10:26:34,610 - DEBUG - https://laslocas.com/productos/denim?page=6
-2026-03-07 10:26:34,620 - DEBUG - https://laslocas.com/productos/denim?page=7
-2026-03-07 10:26:34,630 - DEBUG - https://laslocas.com/productos/denim?page=8
-2026-03-07 10:26:34,637 - DEBUG - https://laslocas.com/productos/denim?page=9
-2026-03-07 10:26:34,647 - DEBUG - https://laslocas.com/productos/denim?page=2
-2026-03-07 10:26:34,647 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:26:38,774 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:26:42,859 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:26:46,743 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:26:50,158 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:26:53,977 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:26:57,827 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:27:02,242 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:27:07,095 - DEBUG - Carpeta ficha: C:\Projects\DanieBOT\images\denim\ficha-2944-short-rolex
-2026-03-07 10:27:07,100 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2944-short-rolex created!
-2026-03-07 10:27:12,168 - DEBUG - span_codProd: <selenium.webdriver.remote.webelement.WebElement (session="ec39e49539955cf989a78b284d9908f9", element="f.B4AB627F0F1B58E8B93033B19E6A5CDA.d.74DCA4C9C578FD45DD05B4107AEE6FC9.e.2234")>
-2026-03-07 10:27:12,178 - DEBUG - span_codProd: SROLEXX-1
-2026-03-07 10:27:12,178 - DEBUG - codProd_element SROLEXX-1
-2026-03-07 10:27:12,292 - DEBUG - test_get_script() {
+2026-03-07 13:00:22,903 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 13:00:22,903 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 13:00:26,238 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 13:00:36,895 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 13:00:43,084 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 13:00:54,196 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky created!
+2026-03-07 13:00:59,362 - DEBUG - test_get_script() {
     "@context": "http://schema.org/",
     "@type": "Product",
-    "sku": "2944",
-    "name": "SHORT ROLEX",
-    "description": "\ud83c\udf38 SHORT ROLEX \ud83c\udf38DISE\u00d1O DE TACHAS EN LATERALBOLSILLO TRASERO CON TAPADENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
     "brand": "",
-    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/5208902c-83b4-3e09-39a3-5400b528a586/WhatsApp-Image-2026-01-06-at-3-19-05-PM-10-695d5753299b8-O.jpg",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
     "offers": {
         "@type": "Offer",
         "priceCurrency": "ARS",
-        "price": "24800.00",
+        "price": "22900.00",
         "availability": "http://schema.org/InStock",
         "itemCondition": "http://schema.org/NewCondition"
     }
 }
-2026-03-07 10:29:55,233 - DEBUG - Logger __init__ iniciado en: logger.Logger
-2026-03-07 10:29:55,234 - DEBUG - Class Locas __init__ __name__: Locas
-2026-03-07 10:29:57,896 - DEBUG - verify_quantity_of_pages_denim() init_login
-2026-03-07 10:30:01,919 - DEBUG - verify_quantity_of_pages_denim()
-2026-03-07 10:30:02,748 - DEBUG - Presence of element By.ID, pag 
-
-						
-			
-			
-									<span class="numero">1</span>
-				
-			
-									
-						<a href="/productos/denim?page=2">2</a>
-									
-			
-									
-						<a href="/productos/denim?page=3">3</a>
-									
-			
-									
-						<a href="/productos/denim?page=4">4</a>
-									
-			
-									
-						<a href="/productos/denim?page=5">5</a>
-									
-			
-									
-						<a href="/productos/denim?page=6">6</a>
-									
-			
-									
-						<a href="/productos/denim?page=7">7</a>
-									
-			
-									
-						<a href="/productos/denim?page=8">8</a>
-									
-			
-									
-						<a href="/productos/denim?page=9">9</a>
-									
-			
-			
-							<a href="/productos/denim?page=2"><i class="fa fa-angle-right"></i></a>
-			
-		
-
-
-	 
-2026-03-07 10:30:02,774 - DEBUG - https://laslocas.com/productos/denim?page=2
-2026-03-07 10:30:02,786 - DEBUG - https://laslocas.com/productos/denim?page=3
-2026-03-07 10:30:02,797 - DEBUG - https://laslocas.com/productos/denim?page=4
-2026-03-07 10:30:02,806 - DEBUG - https://laslocas.com/productos/denim?page=5
-2026-03-07 10:30:02,820 - DEBUG - https://laslocas.com/productos/denim?page=6
-2026-03-07 10:30:02,833 - DEBUG - https://laslocas.com/productos/denim?page=7
-2026-03-07 10:30:02,844 - DEBUG - https://laslocas.com/productos/denim?page=8
-2026-03-07 10:30:02,852 - DEBUG - https://laslocas.com/productos/denim?page=9
-2026-03-07 10:30:02,861 - DEBUG - https://laslocas.com/productos/denim?page=2
-2026-03-07 10:30:02,863 - DEBUG - Tomando la lista de jeans de denim per page
-2026-03-07 10:30:04,186 - DEBUG - Carpeta ficha: C:\Projects\DanieBOT\images\denim\ficha-2944-short-rolex
-2026-03-07 10:30:04,186 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2944-short-rolex already exists
-2026-03-07 10:30:09,283 - DEBUG - span_codProd: <selenium.webdriver.remote.webelement.WebElement (session="67d23d9cd7c11177c7a0b1c3af4f016b", element="f.D04AEF7CE454F8D56C11AF765C242077.d.2096324842E91C173D66308196A365EC.e.555")>
-2026-03-07 10:30:09,288 - DEBUG - span_codProd: SROLEXX-1
-2026-03-07 10:30:09,288 - DEBUG - codProd_element SROLEXX-1
-2026-03-07 10:30:09,424 - DEBUG - test_get_script() {
+2026-03-07 13:18:25,984 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 13:18:25,984 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 13:18:28,517 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 13:18:31,123 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 13:18:32,113 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 13:18:33,391 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 13:18:38,554 - DEBUG - test_get_script() {
     "@context": "http://schema.org/",
     "@type": "Product",
-    "sku": "2944",
-    "name": "SHORT ROLEX",
-    "description": "\ud83c\udf38 SHORT ROLEX \ud83c\udf38DISE\u00d1O DE TACHAS EN LATERALBOLSILLO TRASERO CON TAPADENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
     "brand": "",
-    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/5208902c-83b4-3e09-39a3-5400b528a586/WhatsApp-Image-2026-01-06-at-3-19-05-PM-10-695d5753299b8-O.jpg",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
     "offers": {
         "@type": "Offer",
         "priceCurrency": "ARS",
-        "price": "24800.00",
+        "price": "22900.00",
         "availability": "http://schema.org/InStock",
         "itemCondition": "http://schema.org/NewCondition"
     }
 }
-2026-03-07 10:30:58,387 - DEBUG - Carpeta ficha: C:\Projects\DanieBOT\images\denim\ficha-2943-bermuda-peyton
-2026-03-07 10:30:58,387 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2943-bermuda-peyton created!
-2026-03-07 10:31:03,426 - DEBUG - span_codProd: <selenium.webdriver.remote.webelement.WebElement (session="67d23d9cd7c11177c7a0b1c3af4f016b", element="f.D04AEF7CE454F8D56C11AF765C242077.d.CA0BB8DFD2B707F5B868F23B4F2D5D81.e.625")>
-2026-03-07 10:31:03,435 - DEBUG - span_codProd: BPEYTON-0
-2026-03-07 10:31:03,435 - DEBUG - codProd_element BPEYTON-0
-2026-03-07 10:31:03,556 - DEBUG - test_get_script() {
+2026-03-07 13:24:10,873 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 13:24:10,873 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 13:24:13,553 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 13:24:18,066 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 13:24:21,665 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 13:24:24,293 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 13:24:29,475 - DEBUG - test_get_script() {
     "@context": "http://schema.org/",
     "@type": "Product",
-    "sku": "2943",
-    "name": "BERMUDA PEYTON",
-    "description": "\ud83c\udf38 BERMUDA PEYTON \ud83c\udf38DISE\u00d1O RASGADO EN BOTAMANGALAVADO TONO GRISCOSTURAS EN HILO NEGROTALLES: 34 AL 44",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
     "brand": "",
-    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/b1591713-f40a-f25f-de49-d90232b779a3/WhatsApp-Image-2026-01-06-at-3-19-05-PM-695d549830fee-O.jpg",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
     "offers": {
         "@type": "Offer",
         "priceCurrency": "ARS",
-        "price": "22800.00",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 13:26:06,324 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 13:26:06,324 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 13:26:08,800 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 13:26:11,686 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 13:26:12,854 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 13:26:14,742 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 13:26:19,908 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 13:31:05,500 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 13:31:05,500 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 13:31:08,562 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 13:31:11,767 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 13:31:15,726 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 13:31:21,533 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 13:31:26,723 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 13:55:16,017 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 13:55:16,017 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 13:55:18,514 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 13:55:21,047 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 13:55:21,949 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 13:55:22,635 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 13:55:29,430 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:29:04,173 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:29:04,173 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:29:07,418 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:29:11,205 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:29:11,882 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:29:17,264 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:29:24,055 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:30:31,763 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:30:31,763 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:30:34,084 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:30:41,327 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:30:45,142 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:30:48,923 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:30:55,704 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:33:18,486 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:33:18,486 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:33:20,948 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:33:25,178 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:33:26,427 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:33:27,784 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:33:33,845 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:36:44,505 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:36:44,505 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:36:46,886 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:36:50,526 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:36:51,376 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:36:52,519 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:36:58,467 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:40:32,215 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:40:32,219 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:40:34,826 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:40:42,013 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:40:46,887 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:40:51,579 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:40:58,718 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:47:28,893 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:47:28,893 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:47:31,556 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:47:34,692 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:47:35,615 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:47:36,339 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:47:42,226 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:51:10,947 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:51:10,947 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:51:13,913 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:51:17,838 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:51:18,867 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:51:23,520 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:51:30,667 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:55:16,959 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:55:16,959 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:55:19,487 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:55:23,144 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:55:24,358 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:55:25,670 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:55:31,516 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 14:57:24,322 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 14:57:24,322 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 14:57:27,134 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 14:57:29,933 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 14:57:30,886 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 14:57:32,061 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 14:57:38,119 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:01:01,344 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:01:01,344 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:01:04,200 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:01:07,676 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:01:11,721 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 15:01:18,353 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 15:01:26,341 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:02:20,031 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark created!
+2026-03-07 15:02:27,503 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:05:16,857 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:05:16,857 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:05:19,869 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:05:24,962 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:05:26,012 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 15:05:27,406 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky created!
+2026-03-07 15:05:33,478 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:05:37,287 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark created!
+2026-03-07 15:05:43,142 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:07:14,385 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:07:14,385 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:07:16,349 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:07:21,262 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:07:22,689 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 15:07:24,219 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky already exists
+2026-03-07 15:07:30,595 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:07:34,328 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark already exists
+2026-03-07 15:07:40,559 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:11:05,974 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:11:05,974 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:11:08,687 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:11:16,442 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:11:19,974 - DEBUG - Tomando la lista de jeans de denim per page
+2026-03-07 15:13:49,855 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:13:49,855 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:13:52,598 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:13:55,636 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:18:25,802 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:18:25,802 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:18:28,627 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:18:33,639 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:21:18,530 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:21:18,530 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:21:20,870 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:21:23,981 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:24:26,534 - DEBUG - Logger __init__ iniciado en: logger.Logger
+2026-03-07 15:24:26,534 - DEBUG - Class Locas __init__ __name__: Locas
+2026-03-07 15:24:29,189 - DEBUG - verify_quantity_of_pages_denim() init_login
+2026-03-07 15:24:32,874 - DEBUG - verify_quantity_of_pages_denim()
+2026-03-07 15:24:34,898 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2966-short-ringo-sky created!
+2026-03-07 15:24:41,657 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2966",
+    "name": "SHORT RINGO SKY",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT RINGO SKY \ud83c\udf38DISE\u00d1O CON TAPA EN BOLSILLOS TRASEROSDENIM ELASTIZADO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2966/WhatsApp-Image-2026-01-14-at-3-24-07-PM-6-6967f378f03be-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "22900.00",
+        "availability": "http://schema.org/InStock",
+        "itemCondition": "http://schema.org/NewCondition"
+    }
+}
+2026-03-07 15:24:45,259 - DEBUG - Folder C:\Projects\DanieBOT\images\denim\ficha-2962-short-blade-dark created!
+2026-03-07 15:24:52,011 - DEBUG - test_get_script() {
+    "@context": "http://schema.org/",
+    "@type": "Product",
+    "sku": "2962",
+    "name": "SHORT BLADE DARK",
+    "description": "&amp;nbsp;\ud83c\udf38 SHORT BLADE DARK \ud83c\udf38DISE\u00d1O CON TACHAS EN LA PARTE TRASERALAVADO TONO GRISDENIM RIGIDO - TIRO ALTOTALLES: 34 AL 50",
+    "brand": "",
+    "image": "https://cdn.billowshop.com/b192d499-ac6a-4fd4/img/Producto/2962/WhatsApp-Image-2026-01-13-at-3-11-48-PM-11-696694dd26d3e-O.jpg",
+    "offers": {
+        "@type": "Offer",
+        "priceCurrency": "ARS",
+        "price": "24900.00",
         "availability": "http://schema.org/InStock",
         "itemCondition": "http://schema.org/NewCondition"
     }

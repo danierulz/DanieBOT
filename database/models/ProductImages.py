@@ -4,7 +4,7 @@ from database.base import Base
 
 class ProductImages(Base):
     __tablename__ = 'product_images'
-
+ 
     image_id = Column(Integer, primary_key=True)
     # La llave foránea que apunta al ID del producto
     product_id = Column(Integer, ForeignKey('products.product_id'))
