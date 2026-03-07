@@ -24,7 +24,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "5433") # Default PostgreSQL port
-DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER", "host.docker.internal")  # For Docker connectivity
+DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 
 
 # 1. Configuración de la URL de conexión (vía el Proxy local)

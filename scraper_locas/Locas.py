@@ -59,7 +59,7 @@ DB_PASSWORD = os.getenv("PG_PASSWORD", "Neverl0l")
 DB_HOST = os.getenv("PG_HOST", "127.0.0.1")
 DB_PORT = os.getenv("PG_PORT", "5433")
 DB_NAME = os.getenv("PG_DATABASE", "laslocas_db")
-DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER", "host.docker.internal")  # For Docker connectivity
+DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 # Create the database URL
 DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
