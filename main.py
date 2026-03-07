@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy import create_engine, inspect
 from database.base import Base
 from scraper_locas.constants import BUCKET_NAME
-from scraper_locas.scraper_core import scraper_code_main
+#from scraper_locas.scraper_core import scraper_code_main
 import logging
 import uvicorn
 
@@ -223,11 +223,11 @@ def listar_productos(db: Session = Depends(get_db)):
 
 
 #  EL SCRAPER (Lo disparás cuando quieras)
-@app.get("/ejecutar-scraper")
-async def trigger_scraper(background_tasks: BackgroundTasks):
-    # Esto le dice a Python: "Corré el scraper de fondo y no trabes la web"
-    background_tasks.add_task(scraper_code_main)
-    return {"status": "Scraper iniciado en segundo plano"}
+#@app.get("/ejecutar-scraper")
+#async def trigger_scraper(background_tasks: BackgroundTasks):
+#    # Esto le dice a Python: "Corré el scraper de fondo y no trabes la web"
+#    background_tasks.add_task(scraper_code_main)
+#    return {"status": "Scraper iniciado en segundo plano"}
 
 # 4. Esto permite correrlo dándole al "Play" en VS Code
 if __name__ == "__main__":

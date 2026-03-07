@@ -314,7 +314,7 @@ class Locas(webdriver.Chrome):
 
 #
  #       try:
-  #          self.connection = pg8000.connect(                                                  
+#          self.connection = pg8000.connect(                                                  
   #              user = os.getenv("PG_USER"),                                      
   ####              password = os.getenv("PG_PASSWORD"),                                  
    #             host = os.getenv("PG_HOST"),                                            
