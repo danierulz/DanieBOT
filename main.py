@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles      
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy import create_engine, inspect
-from database.base import Base
+from database.init_db import Base
 from scraper_locas.constants import BUCKET_NAME
 #from scraper_locas.scraper_core import scraper_code_main
 import logging

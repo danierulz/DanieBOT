@@ -16,8 +16,10 @@ from scraper_locas import Locas
 from pywa import WhatsApp
 from dotenv import load_dotenv
 from logger import Logger
-from database.base import Base
+from database.init_db import Base
 from scraper_locas.constants import BUCKET_NAME
+from database.init_db import SessionLocal
+from database.init_db import get_db_session
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -25,15 +27,15 @@ DB_NAME = os.getenv("DB_NAME")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT") # Default PostgreSQL port
 DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
-DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:5433/{DB_NAME}"
 
 
 os.environ['WDM_SSL_VERIFY'] = '0'
 load_dotenv()
 print("Create_engine scraper_core.py" )
 print("DB_URL: ", DB_URL)
-engine = create_engine(DB_URL,  echo=True, pool_pre_ping=True)
-Base.metadata.create_all(engine)
+#engine = create_engine(DB_URL,  echo=True, pool_pre_ping=True)
+# Base.metadata.create_all(engine)
 log = Logger.Logger(__name__, level='debug', fmt='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -76,7 +78,7 @@ def scraper_code_main():
 
         print("logueando antes del get_db_session scraper_core.py")
 
-        with inst.get_db_session() as db:
+        with get_db_session() as db:
             print("🔎 Verificando productos existentes...")
         
             # SELECT moderno (No devuelve None, devuelve lista vacía si no hay nada)
@@ -163,8 +165,6 @@ def test_select_sqlalchemy():
         print("termino el commit")
 
 
-if __name__ == '__main__':
-    scraper_code_main()
 
 #@deprecated
 def  configure_logging():
@@ -191,3 +191,9 @@ def  configure_logging():
     print("3",os.getcwd())
     print("4",completeName)
     """
+
+if __name__ == '__main__':
+    print("scraper_core.py is being run directly: ", __name__)
+    scraper_code_main()
+else:
+    print("scraper_core.py is being imported, not run directly: ", __name__)

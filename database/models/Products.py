@@ -4,7 +4,7 @@ from sqlalchemy import ARRAY, Boolean, Column, DateTime, ForeignKey, Integer, fu
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase, relationship
 from database.models.ProductImages import ProductImages
-from database.base import Base
+from database.init_db import Base
 
 
 class Products(Base):

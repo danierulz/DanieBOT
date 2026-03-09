@@ -61,11 +61,10 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_DATABASE", "laslocas_db")
 DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 # Create the database URL
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:5433/{DB_NAME}"
 
 print("create_engine Locas.py" )
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+#engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=True)
 
 class Locas(webdriver.Chrome):
     pages = 0
@@ -343,19 +342,6 @@ class Locas(webdriver.Chrome):
     # newfolder_and_photoname   => images/denim/ficha-710-oxford-sech
     # os.getcwd()               => C:\Projects\LasLocas
 
-    @contextmanager
-    def get_db_session(self):
-        """Generador de sesiones que se cierran solas."""
-        session = SessionLocal()
-        try:
-            yield session
-            session.commit() # Si todo sale bien, guarda
-        except Exception as e:
-            session.rollback() # Si hay error, deshace
-            print(f"❌ Error en la DB: {e}")
-            raise
-        finally:
-            session.close() # Siempre cierra la conexión
 
 
     def create_folder_ficha(self, url_ficha):
@@ -413,10 +399,10 @@ class Locas(webdriver.Chrome):
             
     #def insert_products(self):
     
-    if __name__ == "__main__":  
-        print ("Locas.py is being run directly: ", __name__) 
-    else:  
-        print ("Locas.py is being imported", __name__) 
+if __name__ == "__main__":  
+    print ("Locas.py is being run directly: ", __name__) 
+else:  
+    print ("Locas.py is being imported", __name__) 
 
                   
 

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from database.base import Base
+from database.init_db import Base
 
 class ProductImages(Base):
     __tablename__ = 'product_images'
