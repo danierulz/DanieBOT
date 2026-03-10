@@ -37,7 +37,11 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 # ya que esa configuracion es para conectarse al proxy local, no a la base directamente.
 ###############################################################################################
 # Create the database URL
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+#   Para pruebas con scraper_core.py el HOST debe ser
+# #DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:5433/{DB_NAME}"
+#  Para pruebas con main.py y docker-compose, el HOST debe ser el definido en DB_HOST_DOCKER
+# y lanzar docker compose up --build en terminal
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST_DOCKER}:5433/{DB_NAME}"
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -85,6 +89,14 @@ def get_db_session():
             raise
         finally:
             session.close() # Siempre cierra la conexión
+
+# 5. Función de ayuda (Dependency) para usar en las rutas de FastAPI
+def get_db_fastApi():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 if __name__ == "__main__":
     initialize_database()

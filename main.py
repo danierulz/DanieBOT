@@ -18,6 +18,9 @@ import uvicorn
 
 from database.models.Products import Products
 from database.models.ProductImages import ProductImages
+from database.init_db import SessionLocal
+from database.init_db import get_db_session, get_db_fastApi
+
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -29,22 +32,19 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 
 # 1. Configuración de la URL de conexión (vía el Proxy local)
 # Formato: postgresql+pg8000://USUARIO:PASSWORD@localhost:5433/NOMBRE_DB
-DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST_DOCKER}:5433/{DB_NAME}"
 
 # 2. Crear el motor de conexión
 # pool_pre_ping=True ayuda a que no se caiga la conexión si el proxy se reinicia
 print("creatE_engine main.py")
 print("DB_URL: ", DB_URL)
-engine = create_engine(DB_URL,  echo=True, pool_pre_ping=True)
-# Create all tables based on the models
-Base.metadata.create_all(engine)
-inspector = inspect(engine)
-print(inspector.get_table_names())
+#inspector = inspect(engine)
+#print(inspector.get_table_names())
 # 3. Crear la fábrica de sesiones
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+#SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 4. Base para tus modelos (si vas a definirlos acá)
-Base = declarative_base()
+#Base = declarative_base()
 
 
 # Configura el logging para ver todo en Cloud Run
@@ -190,18 +190,11 @@ async def read_item(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
     
-# 5. Función de ayuda (Dependency) para usar en las rutas de FastAPI
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Tu API de productos (la que consume el HTML)
 @app.get("/api/productos")
-def listar_productos(db: Session = Depends(get_db)):
+def listar_productos(db: Session = Depends(get_db_fastApi)):
     productos = db.query(Products).all()
     resultado = []
     for p in productos:

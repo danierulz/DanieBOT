@@ -1,9 +1,6 @@
-import datetime
-from typing import List
-from sqlalchemy import ARRAY, Boolean, Column, DateTime, ForeignKey, Integer, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, func
 from sqlalchemy import String
-from sqlalchemy.orm import DeclarativeBase, relationship
-from database.models.ProductImages import ProductImages
+from sqlalchemy.orm import relationship
 from database.init_db import Base
 
 
