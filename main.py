@@ -189,6 +189,44 @@ async def read_item(request: Request):
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
     return templates.TemplateResponse("index.html", {"request": request})
 
+# Utilizado en tireadimages.html para mostrar el detalle del producto. Recibe el ID por URL y lo pasa a la plantilla
+@app.get("/api/detalle/{product_id}", response_class=HTMLResponse)
+async def read_item(request: Request, product_id: int):
+    print("ID recibido en detalle: ", product_id)
+    print("Request recibido en detalle: ", request)
+    # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
+    return templates.TemplateResponse("tiredimages.html", 
+                                      {"request": request,
+                                        "product_id": product_id})
+
+#Utilizado en tiredimages.html para mostrar el detalle del producto
+@app.get("/api/producto/{id}")
+def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
+    #logging
+    print(f"Obteniendo producto con ID: {id}")
+    producto = db.query(Products).filter(Products.product_id == id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    # Armar lista de imágenes
+    imagenes = []
+    if producto.images:
+        for img in producto.images:
+            url = img.url or f"https://storage.googleapis.com/{BUCKET_NAME}/images/{producto.page_ficha}/{img.filename}"
+            imagenes.append({
+                "url": url,
+                "is_main": img.is_main
+            })
+
+    return {
+        "id": producto.product_id,
+        "titulo": producto.item_title,
+        "precio": producto.price,
+        "descripcion": producto.description,
+        "stock": getattr(producto, "stock", None),
+        "imagenes": imagenes
+    }
+
     
 
 

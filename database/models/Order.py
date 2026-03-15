@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, Text
 from sqlalchemy import String

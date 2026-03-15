@@ -102,3 +102,88 @@ def crear_pedido(pedido: PedidoIn, db: Session = Depends(get_db)):
     print("DEBUG: Mensaje a enviar:", mensaje)
 
     return {"status": "ok", "order_id": new_order.order_id, "mensaje": mensaje}
+################################################################################################
+# 
+###############################################################################################
+@router.post("/api/whatsapp/pedido")
+def crear_pedido(pedido: PedidoIn, db: Session = Depends(get_db)):
+    if not pedido.items:
+        raise HTTPException(status_code=400, detail="El carrito está vacío")
+
+    total = 0.0
+    order_items = []
+    for it in pedido.items:
+        product = db.query(Products).filter(Products.product_id == it.id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Producto {it.id} no encontrado")
+        stock_int = int(getattr(product, "stock", 0) or 0)
+        if stock_int < it.cantidad:
+            raise HTTPException(status_code=400, detail=f"Stock insuficiente para {it.titulo}")
+        unit_price = float(it.precio)
+        subtotal = round(unit_price * it.cantidad, 2)
+        total += subtotal
+        order_items.append({
+            "product_id": it.id,
+            "title": it.titulo,
+            "quantity": it.cantidad,
+            "unit_price": unit_price,
+            "subtotal": subtotal
+        })
+
+    new_order = Order(
+        customer_name=pedido.customer_name,
+        customer_phone=pedido.customer_phone,
+        total=round(total, 2),
+        note=pedido.note,
+        status="pendiente"
+    )
+    db.add(new_order)
+    db.flush()
+
+    for oi in order_items:
+        db_item = OrderItem(
+            order_id=new_order.order_id,
+            product_id=oi["product_id"],
+            title=oi["title"],
+            quantity=oi["quantity"],
+            unit_price=oi["unit_price"],
+            subtotal=oi["subtotal"]
+        )
+        db.add(db_item)
+        product = db.query(Products).filter(Products.product_id == oi["product_id"]).first()
+        if product and hasattr(product, "stock"):
+            try:
+                product.stock = max(0, int(product.stock) - oi["quantity"])
+            except Exception:
+                pass
+
+    db.commit()
+    db.refresh(new_order)
+
+    # Armar mensaje legible para WhatsApp
+    lines = []
+    lines.append("🛒 *Nuevo pedido*")
+    lines.append(f"Pedido ID: {new_order.order_id}")
+    if new_order.customer_name:
+        lines.append(f"Cliente: {new_order.customer_name}")
+    if new_order.customer_phone:
+        lines.append(f"Tel: {new_order.customer_phone}")
+    lines.append("")
+    lines.append("Detalle:")
+    for it in order_items:
+        lines.append(f"- {it['title']} x{it['quantity']} (${it['subtotal']})")
+    lines.append("")
+    lines.append(f"*Total:* ${round(total,2)}")
+    if new_order.note:
+        lines.append("")
+        lines.append(f"Nota: {new_order.note}")
+
+    mensaje = "\n".join(lines)
+
+    # Devolver mensaje y número para que el frontend abra WhatsApp
+    return {
+        "status": "ok",
+        "order_id": new_order.order_id,
+        "mensaje": mensaje,
+        "whatsapp_number": BUSINESS_WHATSAPP_NUMBER
+    }
