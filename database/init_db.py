@@ -41,7 +41,7 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 # #DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:5433/{DB_NAME}"
 #  Para pruebas con main.py y docker-compose, el HOST debe ser el definido en DB_HOST_DOCKER
 # y lanzar docker compose up --build en terminal
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST_DOCKER}:5433/{DB_NAME}"
+DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
