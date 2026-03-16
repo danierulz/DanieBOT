@@ -8,15 +8,9 @@
 </head>
 <body class="bg-gray-50">
 
-  <!-- Navbar -->
-  <nav class="bg-pink-600 shadow-md">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-white">LAS LOCAS</h1>
-      <a href="/catalogo.html" class="text-white font-semibold hover:text-gray-100">Volver al catálogo</a>
-    </div>
-  </nav>
-
+{% include "partials/header.html" %}
   <!-- Contenedor principal -->
+
   <div class="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 gap-10">
     
     <!-- Galería tiered images -->
@@ -34,7 +28,7 @@
       <p id="stock" class="mt-2 text-sm text-gray-500">Stock disponible: 5 unidades</p>
 
       <div class="mt-6 flex gap-4">
-        <button onclick="agregarAlCarrito()" class="flex-1 bg-green-500 text-white py-3 rounded-full font-bold hover:bg-green-600 transition">
+        <button onclick="agregarAlCarrito(productActual)" class="flex-1 bg-green-500 text-white py-3 rounded-full font-bold hover:bg-green-600 transition">
           Agregar al carrito
         </button>
         <button onclick="comprarAhora()" class="flex-1 bg-pink-600 text-white py-3 rounded-full font-bold hover:bg-pink-700 transition">
@@ -44,13 +38,17 @@
     </div>
   </div>
 
+
   <script>
+    let productActual = null; // Variable global para almacenar el producto actual
+    console.log("Script tiredimages de producto cargado");
     const product_id_from_template = "{{ product_id }}"; // Si usás Jinja2 para pasar el ID desde FastAPI
     console.log("ID del producto:", product_id_from_template);
     
     fetch(`/api/producto/${product_id_from_template}`)
       .then(res => res.json())
       .then(p => {
+        productActual = p; // Guardamos el producto completo para usarlo en el carrito
         console.log("JSON  recibido: en /api/producto/product_id_from_templeate", p);
         document.getElementById("titulo").textContent = p.titulo;
         document.getElementById("descripcion").textContent = p.descripcion || "Sin descripción";
@@ -66,15 +64,8 @@
         }
       });
 
-    function agregarAlCarrito() {
-      alert("Producto agregado al carrito");
-      // Aquí podés reutilizar tu lógica de carrito
-    }
-
-    function comprarAhora() {
-      alert("Redirigir a WhatsApp con este producto");
-      // Aquí podés armar el mensaje directo para WhatsApp
-    }
   </script>
+  
+  <script src="/static/js/shoppingCart.js"></script>
 </body>
 </html>

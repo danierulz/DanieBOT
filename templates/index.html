@@ -8,21 +8,9 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
 
-  <!-- Navbar -->
-  <header class="bg-gradient-to-r from-pink-600 to-pink-500 text-white shadow">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <div class="text-2xl font-extrabold">LAS LOCAS</div>
-        <div class="text-sm opacity-90">Catálogo</div>
-      </div>
-      <div class="flex items-center gap-3">
-        <input id="search" type="search" placeholder="Buscar productos..." class="px-3 py-2 rounded-md text-sm text-gray-700" />
-        <button onclick="toggleCarrito()" class="relative bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow">
-          🛒 <span id="carrito-count" class="ml-2">0</span>
-        </button>
-      </div>
-    </div>
-  </header>
+  {% include "partials/header.html" %}
+
+
 <!-- Hero -->
 <section class="bg-pink-50 py-10">
   <div class="max-w-7xl mx-auto px-4 text-center">
@@ -38,41 +26,14 @@
   </div>
   </main>
 
-  <!-- Carrito lateral -->
-  <aside id="carrito-panel" class="fixed top-0 right-[-100%] w-full sm:w-96 h-full bg-white shadow-2xl transition-all duration-300 z-50 flex flex-col">
-    <div class="p-4 border-b flex items-center justify-between">
-      <h2 class="text-lg font-bold">Tu carrito</h2>
-      <button onclick="toggleCarrito()" class="text-gray-600">✖</button>
-    </div>
-    <div id="carrito-items" class="p-4 flex-1 overflow-y-auto"></div>
-    <div class="p-4 border-t">
-      <div class="flex justify-between items-center mb-3">
-        <span class="font-semibold">Total</span>
-        <span class="text-xl font-bold text-pink-600">$<span id="carrito-total">0</span></span>
-      </div>
-      <div class="space-y-2">
-        <input id="customer_name" type="text" placeholder="Tu nombre (opcional)" class="w-full px-3 py-2 border rounded" />
-        <input id="customer_phone" type="tel" placeholder="Teléfono (ej. 54911...)" class="w-full px-3 py-2 border rounded" />
-        <textarea id="order_note" rows="2" placeholder="Nota para el pedido (opcional)" class="w-full px-3 py-2 border rounded"></textarea>
-        <button onclick="confirmarPedido()" class="w-full bg-green-600 text-white py-2 rounded-full font-bold hover:bg-green-700 transition">
-          Confirmar y enviar por WhatsApp
-        </button>
-      </div>
-    </div>
-  </aside>
-
+  
   <footer class="bg-gray-100 py-6 text-center text-gray-600">
     © 2026 Las Locas
   </footer>
 
+
   <script>
-    let carrito = [];
-
-    function toggleCarrito() {
-      const panel = document.getElementById('carrito-panel');
-      panel.style.right = panel.style.right === '0px' ? '-100%' : '0px';
-    }
-
+    console.log("Página cargada, inicializando script index.html...");
     function renderProductos(productos) {
       console.log('Productos cargados:', productos);
       const cont = document.getElementById('contenedor-productos');
@@ -99,76 +60,12 @@
     }
 
 
-    function agregarAlCarrito(producto) {
-      const idx = carrito.findIndex(x => x.id === producto.id);
-      if (idx >= 0) carrito[idx].cantidad += 1;
-      else carrito.push({...producto, cantidad: 1});
-      renderCarrito();
-    }
-
-    function renderCarrito() {
-      const cont = document.getElementById('carrito-items');
-      if (carrito.length === 0) {
-        cont.innerHTML = '<p class="text-gray-500 p-4">Tu carrito está vacío</p>';
-      } else {
-        cont.innerHTML = carrito.map(p => `
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <div class="font-semibold">${p.titulo}</div>
-              <div class="text-xs text-gray-500">Unit: $${p.precio}</div>
-              <div class="text-xs text-gray-500">Stock: ${p.stock ?? 'N/D'}</div>
-            </div>
-            <div class="text-right">
-              <div class="flex items-center gap-2">
-                <button onclick="cambiarCantidad(${p.id}, -1)" class="px-2 py-1 bg-gray-100 rounded">-</button>
-                <span>${p.cantidad}</span>
-                <button onclick="cambiarCantidad(${p.id}, 1)" class="px-2 py-1 bg-gray-100 rounded">+</button>
-              </div>
-              <div class="mt-2 font-semibold">$${p.precio * p.cantidad}</div>
-            </div>
-          </div>
-        `).join('');
-      }
-      const total = carrito.reduce((s, i) => s + (i.precio * i.cantidad), 0);
-      document.getElementById('carrito-total').textContent = total.toFixed(2);
-      document.getElementById('carrito-count').textContent = carrito.reduce((s, i) => s + i.cantidad, 0);
-    }
-
-    function cambiarCantidad(id, delta) {
-      const idx = carrito.findIndex(x => x.id === id);
-      if (idx < 0) return;
-      carrito[idx].cantidad = Math.max(1, carrito[idx].cantidad + delta);
-      renderCarrito();
-    }
-
     function verDetalle(id) {
       // placeholder: podés abrir modal con más info
       alert('Ver detalle: ' + id);
     }
 
-    async function confirmarPedido() {
-      if (carrito.length === 0) { alert('El carrito está vacío'); return; }
-      const payload = {
-        items: carrito.map(i => ({ id: i.id, titulo: i.titulo, precio: i.precio, cantidad: i.cantidad })),
-        customer_name: document.getElementById('customer_name').value || null,
-        customer_phone: document.getElementById('customer_phone').value || null,
-        note: document.getElementById('order_note').value || null
-      };
-      const res = await fetch('/api/whatsapp/pedido', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert('Pedido enviado. ID: ' + data.order_id);
-        carrito = [];
-        renderCarrito();
-        toggleCarrito();
-      } else {
-        alert('Error: ' + (data.detail || JSON.stringify(data)));
-      }
-    }
+
 
     // Cargar productos desde API al iniciar
     fetch('/api/productos')
@@ -176,17 +73,8 @@
       .then(data => renderProductos(data))
       .catch(e => console.error(e));
 
-    // Inicializar carrito desde localStorage (opcional)
-    window.addEventListener('load', () => {
-      const saved = localStorage.getItem('carrito_v1');
-      if (saved) {
-        try { carrito = JSON.parse(saved); renderCarrito(); } catch(e){ carrito = []; }
-      }
-    });
-    window.addEventListener('beforeunload', () => {
-      localStorage.setItem('carrito_v1', JSON.stringify(carrito));
-    });
   </script>
   
+  <script src="/static/js/shoppingCart.js"></script>
 </body>
 </html>

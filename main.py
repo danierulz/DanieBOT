@@ -1,4 +1,5 @@
 from fastapi import BackgroundTasks, Depends, FastAPI, Request, Response, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
@@ -53,7 +54,10 @@ logging.basicConfig(level=logging.INFO)
 
 
 app = FastAPI()
+# Montar la carpeta static
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
 
 # --- Configuración de PyWa (¡IMPORTANTE! Usa variables de entorno) ---
 # Estas variables se inyectarán en Cloud Run, NO las hardcodees aquí en producción.
