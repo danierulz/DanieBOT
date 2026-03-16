@@ -2,7 +2,13 @@ let carrito = [];
 console.log("shoppingCart.js cargado, carrito inicial:", carrito);
 function toggleCarrito() {
   const panel = document.getElementById('carrito-panel');
-  panel.style.right = panel.style.right === '0px' ? '-100%' : '0px';
+  if (panel.classList.contains('translate-x-full')) {
+    panel.classList.remove('translate-x-full');
+    panel.classList.add('translate-x-0');
+  } else {
+    panel.classList.remove('translate-x-0');
+    panel.classList.add('translate-x-full');
+  }
 }
 
 function agregarAlCarrito(producto) {
@@ -59,19 +65,19 @@ function confirmarPedido() {
   mensaje += `\nTotal: $${total}\n`;
 
   // Datos del cliente
-  const nombre = document.getElementById("customer_name").value;
-  const telefono = document.getElementById("customer_phone").value;
-  const nota = document.getElementById("order_note").value;
+//  const nombre = document.getElementById("customer_name").value;
+ // const telefono = document.getElementById("customer_phone").value;
+  //const nota = document.getElementById("order_note").value;
 
-  if (nombre) mensaje += `\nCliente: ${nombre}`;
-  if (telefono) mensaje += `\nTel: ${telefono}`;
-  if (nota) mensaje += `\nNota: ${nota}`;
+//  if (nombre) mensaje += `\nCliente: ${nombre}`;
+ // if (telefono) mensaje += `\nTel: ${telefono}`;
+  //if (nota) mensaje += `\nNota: ${nota}`;
 
   // Codificar mensaje para URL
   const mensajeCodificado = encodeURIComponent(mensaje);
 
   // Número de destino (ejemplo: tu número de WhatsApp)
-  const numeroDestino = "5491160267215"; // <-- reemplazá con tu número real
+  const numeroDestino = "5491125298412"; // <-- reemplazá con tu número real
 
   // Abrir WhatsApp Web
   window.open(`https://wa.me/${numeroDestino}?text=${mensajeCodificado}`, "_blank");
