@@ -193,6 +193,7 @@ def handle_all_messages(client, msg):
 # Ruta para ver la página web
 @app.get("/", response_class=HTMLResponse)
 async def read_item(request: Request):
+    print("Contexto:", {"request": request})
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
     return templates.TemplateResponse("index.html", {"request": request})
 
