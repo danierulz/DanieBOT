@@ -20,10 +20,13 @@ function agregarAlCarrito(producto) {
 
 function renderCarrito() {
   const cont = document.getElementById('carrito-items');
+  const btnConfirmar = document.getElementById('btn-confirmar');
+
+
   if (carrito.length === 0) {
     cont.innerHTML = '<p class="text-gray-500 p-4">Tu carrito está vacío</p>';
   } else {
-    cont.innerHTML = carrito.map(p => `
+    cont.innerHTML = carrito.map((p, i) => `
           <div class="flex items-center justify-between mb-3">
             <div>
               <div class="font-semibold">${p.titulo}</div>
@@ -38,12 +41,26 @@ function renderCarrito() {
               </div>
               <div class="mt-2 font-semibold">$${p.precio * p.cantidad}</div>
             </div>
-          </div>
+   <button onclick="eliminarDelCarrito(${i})" 
+        class="p-2 bg-red-100 rounded hover:bg-red-200">
+  <svg xmlns="http://www.w3.org/2000/svg" 
+       class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-4 0a1 1 0 00-1 1v1h6V4a1 1 0 00-1-1m-4 0h4" />
+  </svg>
+</button>       </div>
         `).join('');
+            if (btnConfirmar) btnConfirmar.disabled = false;
+
   }
-  const total = carrito.reduce((s, i) => s + (i.precio * i.cantidad), 0);
-  document.getElementById('carrito-total').textContent = total.toFixed(2);
-  document.getElementById('carrito-count').textContent = carrito.reduce((s, i) => s + i.cantidad, 0);
+ 
+  // Actualizar contador y total
+  const count = document.getElementById('carrito-count');
+  if (count) count.textContent = carrito.length;
+
+  const total = carrito.reduce((acc, p) => acc + p.precio * p.cantidad, 0);
+  const totalEl = document.getElementById('carrito-total');
+  if (totalEl) totalEl.textContent = total;
 }
 
 function cambiarCantidad(id, delta) {
@@ -53,11 +70,17 @@ function cambiarCantidad(id, delta) {
   renderCarrito();
 }
 
+function eliminarDelCarrito(index) {
+  carrito.splice(index, 1); // elimina el producto en esa posición
+  localStorage.setItem('carrito_v1', JSON.stringify(carrito));
+  renderCarrito();
+}
+
 function confirmarPedido() {
   // Tomar datos del carrito
   let mensaje = "🛒 Pedido:\n";
   carrito.forEach((p, i) => {
-    mensaje += `${i+1}. ${p.titulo} - $${p.precio}\n`;
+    mensaje += `${i + 1}. ${p.titulo} - $${p.precio}\n`;
   });
 
   // Total
@@ -65,12 +88,12 @@ function confirmarPedido() {
   mensaje += `\nTotal: $${total}\n`;
 
   // Datos del cliente
-//  const nombre = document.getElementById("customer_name").value;
- // const telefono = document.getElementById("customer_phone").value;
+  //  const nombre = document.getElementById("customer_name").value;
+  // const telefono = document.getElementById("customer_phone").value;
   //const nota = document.getElementById("order_note").value;
 
-//  if (nombre) mensaje += `\nCliente: ${nombre}`;
- // if (telefono) mensaje += `\nTel: ${telefono}`;
+  //  if (nombre) mensaje += `\nCliente: ${nombre}`;
+  // if (telefono) mensaje += `\nTel: ${telefono}`;
   //if (nota) mensaje += `\nNota: ${nota}`;
 
   // Codificar mensaje para URL

@@ -9,6 +9,18 @@
         --><button onclick="toggleCarrito()"
         class="relative bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow">
         🛒 <span id="carrito-count" class="ml-2">0</span>
+        <!-- Botón login/logout -->
+        <button id="btn-login"
+          class="bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow hover:bg-pink-100">
+          Login
+        </button>
+        <!-- Botón admin-panel (oculto por defecto) -->
+        <button id="btn-admin"
+          class="hidden bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow hover:bg-pink-100">
+          Admin Panel
+        </button>
+
+
       </button>
     </div>
   </div>
@@ -16,7 +28,7 @@
 
 <!-- Carrito lateral -->
 <aside id="carrito-panel"
- class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
+  class="fixed top-0 right-0 w-full sm:w-96 h-full bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
   <div class="p-4 border-b flex items-center justify-between">
     <h2 class="text-lg font-bold">Tu carrito</h2>
     <button onclick="toggleCarrito()" class="text-gray-600">✖</button>
@@ -29,17 +41,54 @@
       <span class="text-xl font-bold text-pink-600">$<span id="carrito-total">0</span></span>
     </div>
     <div class="space-y-2">
-<!--
+      <!--
             <input id="customer_name" type="text" placeholder="Tu nombre (opcional)"
         class="w-full px-3 py-2 border rounded" />
       <input id="customer_phone" type="tel" placeholder="Teléfono (ej. 54911...)"
         class="w-full px-3 py-2 border rounded" />
       <textarea id="order_note" rows="2" placeholder="Nota para el pedido (opcional)"
         class="w-full px-3 py-2 border rounded"></textarea>-->
-      <button onclick="confirmarPedido()"
-        class="w-full bg-green-600 text-white py-2 rounded-full font-bold hover:bg-green-700 transition">
+      <button id="btn-confirmar" onclick="confirmarPedido()" class="w-full bg-green-600 text-white py-2 rounded-full 
+        font-bold hover:bg-green-700 transition disabled">
         Confirmar y enviar por WhatsApp
       </button>
     </div>
   </div>
 </aside>
+<!-- Script de login/logout -->
+<script>
+  const btnLogin = document.getElementById("btn-login");
+  const btnAdmin = document.getElementById("btn-admin");
+
+    function checkAuth() {
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Mostrar botón Admin Panel
+      btnAdmin.classList.remove("hidden");
+      btnAdmin.onclick = () => {
+        window.location.href = "/admin-panel";
+      };
+
+      // Cambiar botón Login a Logout
+      btnLogin.textContent = "Logout";
+      btnLogin.onclick = () => {
+        localStorage.removeItem("token");
+        checkAuth();
+        window.location.href = "/";
+      };
+    } else {
+      // Ocultar botón Admin Panel
+      btnAdmin.classList.add("hidden");
+
+      // Botón Login
+      btnLogin.textContent = "Login";
+      btnLogin.onclick = () => {
+        window.location.href = "/login";
+      };
+    }
+  }
+
+
+  // Ejecutar al cargar
+  checkAuth();
+</script>

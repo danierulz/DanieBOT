@@ -20,20 +20,8 @@ class Products(Base):
 
     images = relationship("ProductImages", back_populates="product")
 
-    def __init__(self, description, price, status, #gallery_photos, 
-                 cod_product,
-                item_title, name, sku, extract_date):
-           #self.product_id = product_id
-        self.description = description
-        self.price = price
-        self.status = status
-#        self.gallery_photos = gallery_photos
-        self.cod_product = cod_product
-        self.item_title = item_title
-        self.name = name
-        self.sku = sku
-        self.extract_date = extract_date
 
+ 
     def __repr__(self) -> str:
         return f"User(product_id={self.product_id!r}, description={self.description!r}, unit_price={self.price!r})"
 

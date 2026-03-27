@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen ">
+  {% include "partials/header.html" %}
+
+  <main class="flex flex-col items-center py-10">
+    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-3xl">
+    <h2 class="text-2xl font-bold mb-6 text-center text-pink-600">Panel de Administración</h2>
+
+    <form id="producto-form" class="space-y-4">
+      <div>
+        <label for="item_title" class="block text-sm font-medium text-gray-700">Título</label>
+        <input id="item_title" name="item_title" type="text" required
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+      </div>
+      <div>
+        <label for="price" class="block text-sm font-medium text-gray-700">Precio</label>
+        <input id="price" name="price" type="number" required
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+      </div>
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-700">Descripción</label>
+        <textarea id="description" name="description" rows="3"
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500"></textarea>
+      </div>
+      <div>
+        <label for="imagen" class="block text-sm font-medium text-gray-700">URL de Imagen</label>
+        <input id="imagen" name="imagen" type="text"
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+      </div>
+      <button type="submit"
+        class="w-full bg-green-600 text-white py-2 rounded-md font-bold hover:bg-green-700 transition">
+        Guardar producto
+      </button>
+    </form>
+
+    <p id="msg" class="mt-4 text-center text-sm text-gray-600"></p>
+</div>
+  </main>
+
+  <script>
+    // Check al cargar la página
+    window.addEventListener("DOMContentLoaded", () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        // Si no hay token, redirigir al login
+        window.location.href = "/login";
+      }
+    });
+
+
+    document.getElementById("producto-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        document.getElementById("msg").textContent = "No estás logueado como admin.";
+        return;
+      }
+
+      const formData = new FormData(document.getElementById("producto-form"));
+      const producto = Object.fromEntries(formData.entries());
+      producto.price = parseFloat(producto.price); // convertir a número
+
+      try {
+        const resp = await fetch("/api/productos", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(producto)
+        });
+
+        if (!resp.ok) {
+          document.getElementById("msg").textContent = "Error al guardar producto (¿token inválido?).";
+          return;
+        }
+
+        const data = await resp.json();
+        document.getElementById("msg").textContent = "Producto guardado ✔️";
+        console.log("Producto creado:", data);
+      } catch (err) {
+        document.getElementById("msg").textContent = "Error de conexión.";
+      }
+    });
+  </script>
+
+</body>
+
+</html>

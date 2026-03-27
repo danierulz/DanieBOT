@@ -1,5 +1,7 @@
-from fastapi import BackgroundTasks, Depends, FastAPI, Request, Response, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Request, Response, HTTPException, Form, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordRequestForm
+from auth.auth import create_access_token, get_current_user, ADMIN_USER
 from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
@@ -12,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy import create_engine, inspect
 from database.init_db import Base
+from database.schemas.ProductCreate import ProductCreate, ProductOut
 from scraper_locas.constants import BUCKET_NAME
 #from scraper_locas.scraper_core import scraper_code_main
 import logging
@@ -193,6 +196,32 @@ async def read_item(request: Request):
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
     return templates.TemplateResponse("index.html", {"request": request})
 
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.username == ADMIN_USER["username"] and form_data.password == ADMIN_USER["password"]:
+        token = create_access_token({"sub": ADMIN_USER["username"], "rol": ADMIN_USER["rol"]})
+        return {"access_token": token, "token_type": "bearer"}
+    raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page():
+    with open("templates/login.html") as f:
+        return f.read()
+    '''
+    Opcion de endpoint sin jinja2 (si no querés usar plantillas para el login)
+@app.get("/admin-panel", response_class=HTMLResponse)
+def admin_panel():
+    with open("templates/admin-panel.html") as f:
+        return f.read()
+    
+    '''
+    
+@app.get("/admin-panel", response_class=HTMLResponse)
+def admin_panel(request: Request):
+    return templates.TemplateResponse("admin-panel.html", {"request": request})
+
+
+
 # Utilizado en tireadimages.html para mostrar el detalle del producto. Recibe el ID por URL y lo pasa a la plantilla
 @app.get("/api/detalle/{product_id}", response_class=HTMLResponse)
 async def read_item(request: Request, product_id: int):
@@ -255,6 +284,29 @@ def listar_productos(db: Session = Depends(get_db_fastApi)):
             "imagen": imagen_principal
         })
     return resultado
+
+@app.post("/api/productos", response_model=ProductOut)
+def crear_producto(producto: ProductCreate, db: Session = Depends(get_db_fastApi)):
+    nuevo = Products(
+        item_title=producto.item_title,
+        price=producto.price,
+        description=producto.description
+        #,        images=producto.images[0].url if producto.images and len(producto.images) > 0 else None,
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+
+    # Insertar imágenes si vienen en la lista
+    for img in producto.images:
+        nueva_img = ProductImages(url=img.url, product_id=nuevo.product_id)
+        db.add(nueva_img)
+    db.commit()
+    db.refresh(nuevo)
+
+    return nuevo
+
+
 
 
 #  EL SCRAPER (Lo disparás cuando quieras)

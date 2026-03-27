@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+  <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-sm">
+    <h2 class="text-2xl font-bold mb-6 text-center text-pink-600">Login Admin</h2>
+    
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label for="username" class="block text-sm font-medium text-gray-700">Usuario</label>
+        <input id="username" name="username" type="text" required
+               class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+        <input id="password" name="password" type="password" required
+               class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+      </div>
+      <button type="submit"
+              class="w-full bg-pink-600 text-white py-2 rounded-md font-bold hover:bg-pink-700 transition">
+        Ingresar
+      </button>
+    </form>
+
+    <p id="login-msg" class="mt-4 text-center text-sm text-gray-600"></p>
+  </div>
+
+  <script>
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        const resp = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ username, password })
+        });
+
+        if (!resp.ok) {
+          document.getElementById("login-msg").textContent = "Credenciales inválidas";
+          return;
+        }
+
+        const data = await resp.json();
+        localStorage.setItem("token", data.access_token);
+        document.getElementById("login-msg").textContent = "Login exitoso ✔️";
+
+        // Redirigir al panel admin
+        window.location.href = "/admin-panel";
+      } catch (err) {
+        document.getElementById("login-msg").textContent = "Error de conexión";
+      }
+    });
+  </script>
+
+</body>
+</html>

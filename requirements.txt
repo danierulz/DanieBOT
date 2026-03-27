@@ -19,6 +19,9 @@ selenium
 webdriver_manager
 google-cloud-storage
 Jinja2
+python-jose
+python-multipart
+
 
 # Web scraping & HTTP
 requests
