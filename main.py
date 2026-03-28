@@ -61,6 +61,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+print("BASE_DIR:", BASE_DIR)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 #templates = Jinja2Templates(directory="/app/templates")
 
