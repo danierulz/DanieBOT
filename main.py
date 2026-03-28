@@ -190,6 +190,15 @@ def handle_all_messages(client, msg):
 
 
 
+@app.get("/debug")
+async def debug_dir():
+    # Lista todo el contenido de /app
+    files = []
+    for root, dirs, filenames in os.walk("/app"):
+        for name in filenames:
+            files.append(os.path.join(root, name))
+    return {"archivos": files}
+
 # Ruta para ver la página web
 @app.get("/", response_class=HTMLResponse)
 async def read_item(request: Request):
