@@ -197,7 +197,7 @@ def handle_all_messages(client, msg):
 async def debug_dir():
     # Lista todo el contenido de /app
     files = []
-    for root, dirs, filenames in os.walk("/app"):
+    for root, dirs, filenames in os.walk("/DANIEBOT"):
         for name in filenames:
             files.append(os.path.join(root, name))
     return {"archivos": files}
@@ -208,7 +208,7 @@ async def read_item(request: Request):
 #    print("Archivos en /app/templates:", os.listdir("/templates"))
     print("Contexto:", {"request": request})
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
-    return templates.TemplateResponse("template/index.html", {"request": request})
+    return templates.TemplateResponse("templates/index.html", {"request": request})
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
