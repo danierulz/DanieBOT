@@ -210,6 +210,8 @@ async def read_item(request: Request):
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
     return templates.TemplateResponse("index.html", {"request": request})
 
+
+
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if form_data.username == ADMIN_USER["username"] and form_data.password == ADMIN_USER["password"]:

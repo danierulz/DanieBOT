@@ -18,7 +18,7 @@ beautifulsoup4
 selenium
 webdriver_manager
 google-cloud-storage
-Jinja2
+jinja2
 python-jose
 python-multipart
 
