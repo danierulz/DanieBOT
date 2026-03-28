@@ -2,7 +2,7 @@
 FROM python:3.10-slim
 
 # Establece el directorio de trabajo dentro del contenedor
-WORKDIR /app
+WORKDIR /DANIEBOT
 
 # Copia el archivo de requisitos e instala las dependencias
 COPY requirements.txt .
