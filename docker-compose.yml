@@ -4,6 +4,11 @@ services:
     container_name: daniebot_app
     ports:
       - "5000:8080"
+    volumes:
+    # Montamos la carpeta de configuración de gcloud dentro del contenedor
+      - C:\Users\danie\AppData\Roaming\gcloud:/root/.config/gcloud:ro
+    environment:
+      - GOOGLE_CLOUD_PROJECT=784310446531
     restart: always
     env_file:
       - .env

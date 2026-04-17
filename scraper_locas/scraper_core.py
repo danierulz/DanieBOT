@@ -80,45 +80,46 @@ def scraper_code_main():
 
         with get_db_session() as db:
             print("🔎 Verificando productos existentes...")
-        
-            # SELECT moderno (No devuelve None, devuelve lista vacía si no hay nada)
-            stmt = select(Products.cod_product)
-            codigos_en_db = db.execute(stmt).scalars().all()
-        
-            # Create Products object from scraped data
-            if inst.product.cod_product not in codigos_en_db:
+            try:
+                # SELECT moderno (No devuelve None, devuelve lista vacía si no hay nada)
+                stmt = select(Products.cod_product)
+                codigos_en_db = db.execute(stmt).scalars().all()
             
-                nuevo = Products(
-                    description=inst.product.description,
-                    price=int(inst.product.price),
-                    status=False,
-                   # gallery_photos=inst.product.gallery_photos,
-                    cod_product=inst.product.cod_product,
-                    item_title=inst.product.item_title,
-                    name=inst.product.name,
-                    sku=inst.product.sku,
-                    extract_date=datetime.datetime.now()
-                )
-                db.add(nuevo)
-
-   #             nuevo.sku = inst.product.sku
-                for idx, foto in enumerate(inst.product.gallery_photos):
-                    image_url = inst.upload_to_gcs_from_filename(BUCKET_NAME, path_full_ficha, foto)
-                    # Crear objeto ProductImages enlazado
-                    product_image = ProductImages(
-                    product=nuevo,
-                    filename=inst.product.gallery_photos[0],
-                    url=image_url,
-                    is_main=(idx == 0)
+                # Create Products object from scraped data
+                if inst.product.cod_product not in codigos_en_db:
+                    print(inst.product.__dict__)
+                    nuevo = Products(
+                        description=inst.product.description,
+                        price=int(inst.product.price),
+                        status=False,
+                    # gallery_photos=inst.product.gallery_photos,
+                        cod_product=inst.product.cod_product,
+                        item_title=inst.product.item_title,
+                        name=inst.product.name,
+                        sku=inst.product.sku,
+                        extract_date=datetime.datetime.now()
                     )
-                    db.add(product_image)
-                
-
-
-               
-                print(f"✅ Se insertó 1 denim nuevo en la nube.")
-            else:
-                print("ℹ️ No hay novedades para cargar.")
+                    db.add(nuevo)
+    #             nuevo.sku = inst.product.sku
+                    for idx, foto in enumerate(inst.product.gallery_photos):
+                        image_url = inst.upload_to_gcs_from_filename(BUCKET_NAME, path_full_ficha, foto)
+                        # Crear objeto ProductImages enlazado
+                        product_image = ProductImages(
+                        product=nuevo,
+                        filename=inst.product.gallery_photos[0],
+                        url=image_url,
+                        is_main=(idx == 0)
+                        )
+                        db.add(product_image)
+                    print(f"✅ Se insertó 1 denim nuevo en la nube.")
+                else:
+                    print("ℹ️ No hay novedades para cargar.")
+            except Exception as e:
+                    # Si algo falla en el bloque, se captura y se muestra
+                    print(f"❌ Error al insertar producto: {e}")
+                    import traceback
+                    traceback.print_exc()
+        # El rollback lo hace automáticamente tu get_db_session()
 
     print("PROGRAMA FINALIZA CON ÉXITO, SE CIERRA CONEXIÓN A DB Y SE CIERRA PROGRAMA.")
 

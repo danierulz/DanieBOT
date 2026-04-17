@@ -1,4 +1,6 @@
-from fastapi import BackgroundTasks, Depends, FastAPI, Request, Response, HTTPException, Form, Depends
+from typing import List
+
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Request, Response, HTTPException, Form, Depends, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from auth.auth import create_access_token, get_current_user, ADMIN_USER
@@ -15,9 +17,11 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy import create_engine, inspect
 from database.init_db import Base
 from database.schemas.ProductCreate import ProductCreate, ProductOut
+from gcs.GCSUploader import GCSUploader
 from scraper_locas.constants import BUCKET_NAME
 #from scraper_locas.scraper_core import scraper_code_main
 import logging
+
 import uvicorn
 
 from database.models.Products import Products
@@ -36,12 +40,12 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 
 # 1. Configuración de la URL de conexión (vía el Proxy local)
 # Formato: postgresql+pg8000://USUARIO:PASSWORD@localhost:5433/NOMBRE_DB
-DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+#DB_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # 2. Crear el motor de conexión
 # pool_pre_ping=True ayuda a que no se caiga la conexión si el proxy se reinicia
-print("creatE_engine main.py")
-print("DB_URL: ", DB_URL)
+#print("creatE_engine main.py")
+#print("DB_URL: ", DB_URL)
 #inspector = inspect(engine)
 #print(inspector.get_table_names())
 # 3. Crear la fábrica de sesiones
@@ -53,7 +57,7 @@ print("DB_URL: ", DB_URL)
 
 # Configura el logging para ver todo en Cloud Run
 logging.basicConfig(level=logging.INFO)
-
+uploader = GCSUploader(bucket_name="tu-bucket")
 
 
 app = FastAPI()
@@ -303,26 +307,57 @@ def listar_productos(db: Session = Depends(get_db_fastApi)):
     return resultado
 
 @app.post("/api/productos", response_model=ProductOut)
-def crear_producto(producto: ProductCreate, db: Session = Depends(get_db_fastApi)):
-    nuevo = Products(
-        item_title=producto.item_title,
-        price=producto.price,
-        description=producto.description
-        #,        images=producto.images[0].url if producto.images and len(producto.images) > 0 else None,
-    )
-    db.add(nuevo)
-    db.commit()
-    db.refresh(nuevo)
+def crear_producto(item_title: str = Form(...),
+    price: int = Form(...),
+    description: str = Form(...),
+    images: List[UploadFile] = File(None),
+    db: Session = Depends(get_db_fastApi)):
+    try:
+        nuevo = Products(
+            item_title=item_title,
+            price=price,
+            cod_product='cod',
+            name='test',
+            sku=123,
+            description=description
+            #,        images=producto.images[0].url if producto.images and len(producto.images) > 0 else None,
+        )
+        db.add(nuevo)
+        db.commit()
+        db.refresh(nuevo)
 
-    # Insertar imágenes si vienen en la lista
-    for img in producto.images:
-        nueva_img = ProductImages(url=img.url, product_id=nuevo.product_id)
-        db.add(nueva_img)
-    db.commit()
-    db.refresh(nuevo)
+        # Insertar imágenes si vienen en la lista
+        # Subir imágenes a GCS y guardar URLs
+        if images:
+            for img in images:
+                url = uploader.upload_file(img.file, img.filename)  # tu clase GCSUploader
+                nueva_img = ProductImages(url=url, product_id=nuevo.product_id)
+                db.add(nueva_img)
 
-    return nuevo
+            db.commit()
+            db.refresh(nuevo)
+            return nuevo
 
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error al crear producto: {e}", exc_info=True)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error al crear producto")
+
+@app.post("/upload-photos")
+async def upload_photos(files: List[UploadFile] = File(...)):
+    urls = uploader.upload_multiple(files)
+
+    # Guardar en PostgreSQL
+    #conn = psycopg2.connect("dbname=... user=... password=... host=...")
+    #cur = conn.cursor()
+    #for url in urls:
+    #    cur.execute("INSERT INTO fotos (url) VALUES (%s)", (url,))
+    #conn.commit()
+    #cur.close()
+    #conn.close()
+
+    return {"uploaded_urls": urls}
 
 
 

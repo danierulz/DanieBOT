@@ -55,16 +55,16 @@ options = {
     }
 }
 DB_USER = os.getenv("DB_USER", "bot_laslocas")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Neverl0l")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "Neverl0l$")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_DATABASE", "laslocas_db")
+DB_NAME = os.getenv("DB_DATABASE", "laslocas_dbng")
 DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 # Create the database URL
 DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:5433/{DB_NAME}"
 
 print("create_engine Locas.py" )
-#engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=True)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=True)
 
 class Locas(webdriver.Chrome):
     pages = 0
@@ -261,87 +261,6 @@ class Locas(webdriver.Chrome):
     
         blob.make_public()  # Opcional: hacer que el archivo sea público para obtener una URL accesible públicamente
         return blob.public_url        
-
-#*****************************************************************************************************
-#***    INSERT PRODUCT           *********************************************************************
-#*****************************************************************************************************
-    # def insert_product(self):
-    #     cur, con = self.connect_db()
-    #     dt = datetime.datetime.now()
-    #     dt_obj_w_tz = datetime.datetime.now()
-    #     dt_obj_wo_tz = dt_obj_w_tz.replace(tzinfo=None)
-    #     try:
-    #         #cur.execute("INSERT INTO products (product_id,description, unit_price, status, gallery_photos)" +
-    #         #            "VALUES (default, 'test 3333' , 111, false, NULL);")
-    #         cur.execute("INSERT INTO products (description, price, status, gallery_photos, cod_product, item_title, " +
-    #                     "name, sku, extract_date, create_date ) " +
-    #                     "VALUES (%s , %s, %s, %s, %s, %s, %s, %s, %s, %s);",
-    #                      (self.product.description, self.product.price, 'true', self.product.gallery_photos,
-    #                        self.product.cod_product, self.product.item_title, self.product.name, self.product.sku, 
-    #                        dt, dt_obj_wo_tz))
-    #         self.logs.logger.debug("RowCount: %s" , cur.rowcount)
-    #     except(Exception,psycopg2.Error) as e:
-    #         print("Exception in INSERT INTO products " , e)
-    #         sys.exit(1)
-    #     finally:
-    #         con.commit()
-    #         con.close()
-#*****************************************************************************************************
-#***    CONNECT DB               *********************************************************************
-#*****************************************************************************************************
-    # @contextmanager
-    # def connect_db(self):
-    #     with SessionLocal() as session:
-    #         try:
-    #             # Verificamos si el producto ya existe por su código
-    #             stmt = select(Products).where(Products.cod_product == product_data['cod_product'])
-    #             existing_product = session.execute(stmt).scalar_one_or_none()
-
-    #             if existing_product:
-    #                 self.logs.logger.debug(f"Actualizando producto: {product_data['cod_product']}")
-    #                 for key, value in product_data.items():
-    #                     setattr(existing_product, key, value)
-    #             else:
-    #                 self.logs.logger.debug(f"Insertando nuevo producto: {product_data['cod_product']}")
-    #                 nuevo = Products(**product_data)
-    #                 session.add(nuevo)
-                
-    #             session.commit()
-    #         except Exception as e:
-    #             session.rollback()
-    #             self.logs.logger.error(f"Error guardando en DB: {e}")
-
-#
- #       try:
-#          self.connection = pg8000.connect(                                                  
-  #              user = os.getenv("PG_USER"),                                      
-  ####              password = os.getenv("PG_PASSWORD"),                                  
-   #             host = os.getenv("PG_HOST"),                                            
-   ##             port = os.getenv("PG_PORT"),                                          
-   #             database = os.getenv("PG_DATABASE"))##
-
-#            self.connection.autocommit = True  # Ensure data is added to the database immediately after write commands
-#            self.cursor = self.connection.cursor()
-#            
- #       except psycopg2.DatabaseError:
-  #          if self.connection:
-   #             self.connection.rollback()
-    #            print("PostgreSQL DatabaseError ")
-     #           sys.exit(1)
-        #finally:
-        #    if self.connection:
-        #        self.cursor.close()
-        #        self.connection.close()
-        #        print("PostgreSQL connection is closed")
-  #      return self.cursor, self.connection
-
-
-    #Paragraph that contains validation of folders to save images of denims
-    # page_ficha        => https://laslocas.com/ficha-710-oxford-sech
-    # url_ficha_path    => ficha-710-oxford-sech
-    # newfolder_and_photoname   => images/denim/ficha-710-oxford-sech
-    # os.getcwd()               => C:\Projects\LasLocas
-
 
 
     def create_folder_ficha(self, url_ficha):
