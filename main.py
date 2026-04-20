@@ -57,7 +57,7 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 
 # Configura el logging para ver todo en Cloud Run
 logging.basicConfig(level=logging.INFO)
-uploader = GCSUploader(bucket_name="tu-bucket")
+uploader = GCSUploader(bucket_name="bucket_laslocas_prod")
 
 
 app = FastAPI()
