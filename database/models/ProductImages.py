@@ -5,7 +5,7 @@ from database.init_db import Base
 class ProductImages(Base):
     __tablename__ = 'product_images'
  
-    image_id = Column(Integer, primary_key=True)
+    image_id = Column(Integer, primary_key=True, autoincrement=True)
     # La llave foránea que apunta al ID del producto
     product_id = Column(Integer, ForeignKey('products.product_id'))
     filename = Column(String(255), nullable=False) # Solo el nombre: "foto1.webp"

@@ -295,7 +295,8 @@ def listar_productos(db: Session = Depends(get_db_fastApi)):
         if  p.images:
             main = next((img for img in p.images if img.is_main), None)
             if main:
-                imagen_principal = main.url or f"https://storage.googleapis.com/{BUCKET_NAME}/images/{p.page_ficha}/{main.filename}"
+                imagen_principal = main.url
+                #or f"https://storage.googleapis.com/{BUCKET_NAME}/images/{p.page_ficha}/{main.filename}"
 
         resultado.append({
             "id": p.product_id,
@@ -328,12 +329,25 @@ def crear_producto(item_title: str = Form(...),
 
         # Insertar imágenes si vienen en la lista
         # Subir imágenes a GCS y guardar URLs
+        isMainSet = False
         if images:
             for img in images:
                 url = uploader.upload_file(img.file, img.filename)  # tu clase GCSUploader
-                nueva_img = ProductImages(url=url, product_id=nuevo.product_id)
-                db.add(nueva_img)
-
+                if not isMainSet:
+                    isMainSet = True
+                    main = ProductImages(product_id=nuevo.product_id,
+                                          filename=img.filename,
+                                          url=url,
+                                          is_main=True
+                
+                )
+                    db.add(main)
+                else:
+                    nueva_img = ProductImages(product_id=nuevo.product_id,
+                                              filename=img.filename,
+                                              url=url,
+                                              is_main=False)
+                    db.add(nueva_img)
             db.commit()
             db.refresh(nuevo)
             return nuevo
