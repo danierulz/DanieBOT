@@ -15,7 +15,7 @@ from dataclasses import asdict
 from fastapi.templating import Jinja2Templates  
 from fastapi.responses import HTMLResponse  
 from fastapi.staticfiles import StaticFiles      
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.orm import sessionmaker, declarative_base, Session, joinedload
 from sqlalchemy import create_engine, inspect
 from database.init_db import Base
 from database.schemas.ProductCreate import ProductCreate, ProductOut
@@ -28,6 +28,8 @@ import uvicorn
 
 from database.models.Products import Products
 from database.models.ProductImages import ProductImages
+from database.models.Size import Size
+from database.models.ProductVariant import ProductVariant
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context
@@ -78,6 +80,95 @@ def page_context(request: Request, **extra: dict) -> dict:
     ctx = {"request": request, **get_template_context()}
     ctx.update(extra)
     return ctx
+
+
+def _parse_variants_json(raw: Optional[str]) -> List[dict]:
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            return []
+        return [x for x in data if isinstance(x, dict)]
+    except json.JSONDecodeError:
+        return []
+
+
+def _sync_product_variants(db: Session, product_id: int, items: List[dict]) -> None:
+    db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete(
+        synchronize_session=False
+    )
+    for it in items:
+        code = (it.get("size_code") or "").strip().upper()
+        if not code:
+            continue
+        size = db.query(Size).filter(Size.code == code).first()
+        if not size:
+            continue
+        qty = int(it.get("qty_stock_local", 0) or 0)
+        enc = bool(it.get("encargo_habilitado", False))
+        dias_raw = it.get("dias_encargo_estimados")
+        dias_i = int(dias_raw) if dias_raw not in (None, "") else None
+        if qty < 0:
+            qty = 0
+        if qty == 0 and not enc:
+            continue
+        db.add(
+            ProductVariant(
+                product_id=product_id,
+                size_id=size.size_id,
+                qty_stock_local=qty,
+                encargo_habilitado=enc,
+                dias_encargo_estimados=dias_i,
+                activo=True,
+            )
+        )
+
+
+def _list_variant_summary(variants: List[ProductVariant]) -> dict:
+    inmediato = []
+    encargo = []
+    for v in variants:
+        if not v.activo or not v.size:
+            continue
+        lbl = v.size.label
+        if v.qty_stock_local > 0:
+            inmediato.append(lbl)
+        if v.encargo_habilitado:
+            encargo.append(lbl)
+    return {
+        "talles_retiro_inmediato": inmediato,
+        "talles_encargo": encargo,
+        "badge_inmediato": len(inmediato) > 0,
+        "badge_encargo": len(encargo) > 0,
+    }
+
+
+def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
+    out = []
+    for v in variants:
+        if not v.activo or not v.size:
+            continue
+        disp = []
+        if v.qty_stock_local > 0:
+            disp.append("inmediato")
+        if v.encargo_habilitado:
+            disp.append("encargo")
+        if not disp:
+            continue
+        out.append(
+            {
+                "variant_id": v.variant_id,
+                "size_code": v.size.code,
+                "size_label": v.size.label,
+                "qty_stock_local": v.qty_stock_local,
+                "encargo_habilitado": v.encargo_habilitado,
+                "dias_encargo_estimados": v.dias_encargo_estimados,
+                "disponibilidad": disp,
+            }
+        )
+    out.sort(key=lambda x: (x["size_label"], x["size_code"]))
+    return out
 
 
 # --- Configuración de PyWa (¡IMPORTANTE! Usa variables de entorno) ---
@@ -251,6 +342,13 @@ def admin_panel(request: Request):
     return templates.TemplateResponse("admin-panel.html", page_context(request))
 
 
+@app.get("/admin-panel/edit/{product_id}", response_class=HTMLResponse)
+def admin_edit_product(request: Request, product_id: int):
+    return templates.TemplateResponse(
+        "admin-edit-product.html",
+        page_context(request, edit_product_id=product_id),
+    )
+
 
 # Utilizado en tireadimages.html para mostrar el detalle del producto. Recibe el ID por URL y lo pasa a la plantilla
 @app.get("/api/detalle/{product_id}", response_class=HTMLResponse)
@@ -266,21 +364,36 @@ async def read_item(request: Request, product_id: int):
 #Utilizado en tiredimages.html para mostrar el detalle del producto
 @app.get("/api/producto/{id}")
 def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
-    #logging
     print(f"Obteniendo producto con ID: {id}")
-    producto = db.query(Products).filter(Products.product_id == id).first()
+    producto = (
+        db.query(Products)
+        .options(
+            joinedload(Products.variants).joinedload(ProductVariant.size),
+            joinedload(Products.images),
+        )
+        .filter(Products.product_id == id)
+        .first()
+    )
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    # Armar lista de imágenes
     imagenes = []
+    page_ficha = getattr(producto, "page_ficha", None)
     if producto.images:
         for img in producto.images:
-            url = img.url or f"https://storage.googleapis.com/{BUCKET_NAME}/images/{producto.page_ficha}/{img.filename}"
-            imagenes.append({
-                "url": url,
-                "is_main": img.is_main
-            })
+            if img.url:
+                url = img.url
+            elif page_ficha:
+                url = f"https://storage.googleapis.com/{BUCKET_NAME}/images/{page_ficha}/{img.filename}"
+            else:
+                url = ""
+            if url:
+                imagenes.append({"url": url, "is_main": img.is_main})
+
+    vars_sorted = sorted(
+        producto.variants or [],
+        key=lambda v: (v.size.sort_order if v.size else 0, v.size.code if v.size else ""),
+    )
 
     return {
         "id": producto.product_id,
@@ -288,10 +401,15 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
         "precio": producto.price,
         "descripcion": producto.description,
         "stock": getattr(producto, "stock", None),
-        "imagenes": imagenes
+        "imagenes": imagenes,
+        "variantes": _variants_public_list(vars_sorted),
     }
 
-    
+
+@app.get("/api/sizes")
+def listar_talles(db: Session = Depends(get_db_fastApi)):
+    rows = db.query(Size).order_by(Size.sort_order.asc(), Size.code.asc()).all()
+    return [{"size_id": s.size_id, "code": s.code, "label": s.label} for s in rows]
 
 
 # Tu API de productos (la que consume el HTML)
@@ -300,16 +418,45 @@ def listar_productos(
     page: int = Query(1, ge=1),
     per_page: int = Query(12, ge=1, le=48),
     q: Optional[str] = Query(None, max_length=200),
+    size_code: Optional[str] = Query(None, max_length=32),
+    disponibilidad: Optional[str] = Query(None, pattern="^(inmediata|encargo)$"),
     db: Session = Depends(get_db_fastApi),
 ):
     consulta = db.query(Products)
     if q and q.strip():
         consulta = consulta.filter(Products.item_title.ilike(f"%{q.strip()}%"))
+
+    if size_code or disponibilidad:
+        pv_q = db.query(ProductVariant.product_id).join(Size)
+        if size_code and size_code.strip():
+            pv_q = pv_q.filter(Size.code == size_code.strip().upper())
+        if disponibilidad == "inmediata":
+            pv_q = pv_q.filter(
+                ProductVariant.qty_stock_local > 0,
+                ProductVariant.activo.is_(True),
+            )
+        elif disponibilidad == "encargo":
+            pv_q = pv_q.filter(
+                ProductVariant.encargo_habilitado.is_(True),
+                ProductVariant.activo.is_(True),
+            )
+        ids_match = [r[0] for r in pv_q.distinct().all()]
+        if not ids_match:
+            return {
+                "items": [],
+                "total": 0,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": 0,
+            }
+        consulta = consulta.filter(Products.product_id.in_(ids_match))
+
     total = consulta.count()
     productos = (
         consulta.order_by(Products.product_id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
+        .options(joinedload(Products.variants).joinedload(ProductVariant.size))
         .all()
     )
     resultado = []
@@ -320,13 +467,16 @@ def listar_productos(
             if main:
                 imagen_principal = main.url
 
-        resultado.append({
-            "id": p.product_id,
-            "titulo": p.item_title,
-            "precio": p.price,
-            "descripcion": p.description,
-            "imagen": imagen_principal,
-        })
+        resultado.append(
+            {
+                "id": p.product_id,
+                "titulo": p.item_title,
+                "precio": p.price,
+                "descripcion": p.description,
+                "imagen": imagen_principal,
+                "variantes_resumen": _list_variant_summary(list(p.variants or [])),
+            }
+        )
     total_pages = ceil(total / per_page) if total else 0
     return {
         "items": resultado,
@@ -374,6 +524,7 @@ def crear_producto(
     item_title: str = Form(...),
     price: int = Form(...),
     description: str = Form(...),
+    variants_json: str = Form("[]"),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
@@ -392,6 +543,7 @@ def crear_producto(
         db.refresh(nuevo)
 
         _guardar_imagenes_producto(db, nuevo.product_id, images)
+        _sync_product_variants(db, nuevo.product_id, _parse_variants_json(variants_json))
         db.commit()
         db.refresh(nuevo)
         return nuevo
@@ -409,6 +561,7 @@ def actualizar_producto(
     item_title: str = Form(...),
     price: int = Form(...),
     description: str = Form(...),
+    variants_json: str = Form("[]"),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
@@ -428,6 +581,7 @@ def actualizar_producto(
                 synchronize_session=False
             )
             _guardar_imagenes_producto(db, product_id, images)
+        _sync_product_variants(db, product_id, _parse_variants_json(variants_json))
         db.commit()
         db.refresh(producto)
         return producto
@@ -449,6 +603,9 @@ def eliminar_producto(
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     try:
         db.query(ProductImages).filter(ProductImages.product_id == product_id).delete(
+            synchronize_session=False
+        )
+        db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete(
             synchronize_session=False
         )
         db.delete(producto)

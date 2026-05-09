@@ -60,12 +60,45 @@ def initialize_database():
         print(f"DEBUG: Conectando con usuario: {DB_USER} a la base {DB_NAME} ")
         print("Create_engine init_db.py")
 
+        # Registrar modelos (sizes, product_variants, …)
+        import database.models  # noqa: F401
+
         # Create all tables based on the models
         Base.metadata.create_all(engine)
         print("Database and tables created successfully.")
 
+        _seed_sizes_if_empty()
+
     except Exception as e:
          print(f"Error initializing database: {e}")
+
+
+def _seed_sizes_if_empty() -> None:
+    """Talles base para variantes (ropa). Idempotente."""
+    from database.models.Size import Size
+
+    session = SessionLocal()
+    try:
+        if session.query(Size).count() > 0:
+            return
+        defaults = [
+            ("XS", "XS", 10),
+            ("S", "S", 20),
+            ("M", "M", 30),
+            ("L", "L", 40),
+            ("XL", "XL", 50),
+            ("XXL", "XXL", 60),
+            ("UNICO", "Único", 70),
+        ]
+        for code, label, order in defaults:
+            session.add(Size(code=code, label=label, sort_order=order))
+        session.commit()
+        print("Talles base insertados (sizes).")
+    except Exception as e:
+        session.rollback()
+        print(f"No se pudieron insertar talles base: {e}")
+    finally:
+        session.close()
 
 @contextmanager
 def get_db_session():

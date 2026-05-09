@@ -25,11 +25,8 @@
       </button>
     </div>
 
-    <!-- Panel: Nuevo / Editar -->
+    <!-- Panel: Nuevo producto -->
     <div id="panel-new" class="bg-white shadow-lg rounded-lg p-6 md:p-8">
-      <p id="edit-hint" class="hidden mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-        {{ admin_edit_mode_hint }}
-      </p>
       <form id="producto-form" class="space-y-4">
         <div>
           <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
@@ -46,6 +43,25 @@
           <textarea id="description" name="description" rows="3"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
         </div>
+
+        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
+          <p class="text-xs text-gray-600 mb-3">{{ admin_variants_help }}</p>
+          <div class="overflow-x-auto rounded-md border border-gray-200 bg-white">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-100 text-left">
+                <tr>
+                  <th class="px-2 py-2 font-semibold text-gray-700">{{ admin_variants_col_size }}</th>
+                  <th class="px-2 py-2 font-semibold text-gray-700 whitespace-nowrap">{{ admin_variants_col_stock }}</th>
+                  <th class="px-2 py-2 font-semibold text-gray-700 text-center">{{ admin_variants_col_encargo }}</th>
+                  <th class="px-2 py-2 font-semibold text-gray-700 whitespace-nowrap">{{ admin_variants_col_days }}</th>
+                </tr>
+              </thead>
+              <tbody id="variants-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div>
           <label for="images" class="block text-sm font-medium text-gray-700">{{ label_images_optional }}</label>
           <input id="images" name="images" type="file" multiple accept="image/*"
@@ -55,9 +71,6 @@
           <button type="submit" id="submit-btn"
             class="flex-1 min-w-[160px] bg-black text-white py-2.5 rounded-md font-bold hover:bg-gray-900 transition">
             {{ admin_btn_save }}
-          </button>
-          <button type="button" id="btn-cancel-edit" class="hidden px-4 py-2.5 border border-gray-300 rounded-md font-semibold text-gray-700 hover:bg-gray-50">
-            {{ admin_btn_cancel_edit }}
           </button>
         </div>
       </form>
@@ -147,15 +160,12 @@
     };
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
-    let editingId = null;
     let deleteTargetId = null;
 
     const panelNew = document.getElementById('panel-new');
     const panelList = document.getElementById('panel-list');
     const tabBtnNew = document.getElementById('tab-btn-new');
     const tabBtnList = document.getElementById('tab-btn-list');
-    const editHint = document.getElementById('edit-hint');
-    const btnCancelEdit = document.getElementById('btn-cancel-edit');
     const submitBtn = document.getElementById('submit-btn');
 
     function showTab(which) {
@@ -179,25 +189,65 @@
     tabBtnNew.addEventListener('click', () => showTab('new'));
     tabBtnList.addEventListener('click', () => showTab('list'));
 
+    function resetVariantRows() {
+      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
+        const q = row.querySelector('.pv-qty');
+        const e = row.querySelector('.pv-encargo');
+        const d = row.querySelector('.pv-dias');
+        if (q) q.value = '0';
+        if (e) e.checked = false;
+        if (d) d.value = '';
+      });
+    }
+
+    function collectVariants() {
+      const out = [];
+      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
+        const code = row.getAttribute('data-size-code');
+        const qty = parseInt(row.querySelector('.pv-qty').value, 10) || 0;
+        const enc = row.querySelector('.pv-encargo').checked;
+        const diasRaw = (row.querySelector('.pv-dias').value || '').trim();
+        if (qty === 0 && !enc) return;
+        const o = { size_code: code, qty_stock_local: qty, encargo_habilitado: enc };
+        if (diasRaw) o.dias_encargo_estimados = parseInt(diasRaw, 10);
+        out.push(o);
+      });
+      return JSON.stringify(out);
+    }
+
+    async function initVariantsTable() {
+      const tbody = document.getElementById('variants-table-body');
+      tbody.innerHTML = '<tr><td colspan="4" class="px-2 py-3 text-gray-500 text-sm">Cargando talles…</td></tr>';
+      try {
+        const r = await fetch('/api/sizes');
+        if (!r.ok) throw new Error('fail');
+        const sizes = await r.json();
+        tbody.innerHTML = sizes.map(s => `
+          <tr data-size-code="${escapeHtml(s.code)}" class="border-t border-gray-100">
+            <td class="px-2 py-2 font-medium">${escapeHtml(s.label)} <span class="text-gray-400 text-xs">(${escapeHtml(s.code)})</span></td>
+            <td class="px-2 py-2"><input type="number" min="0" step="1" value="0" class="pv-qty w-20 px-2 py-1 border rounded-md" aria-label="Stock ${escapeHtml(s.code)}"></td>
+            <td class="px-2 py-2 text-center"><input type="checkbox" class="pv-encargo w-4 h-4 accent-black" aria-label="Encargo ${escapeHtml(s.code)}"></td>
+            <td class="px-2 py-2"><input type="number" min="1" step="1" placeholder="—" class="pv-dias w-16 px-2 py-1 border rounded-md"></td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-red-600 px-2 py-2 text-sm">No se pudieron cargar los talles. Recargá la página.</td></tr>';
+      }
+    }
+
     function resetForm() {
-      editingId = null;
       document.getElementById('producto-form').reset();
+      resetVariantRows();
       document.getElementById('msg').textContent = '';
-      editHint.classList.add('hidden');
-      btnCancelEdit.classList.add('hidden');
       submitBtn.textContent = LABELS.save;
     }
 
-    /** Tras alta o edición exitosa: vacía el formulario y deja la pestaña “Nuevo producto”; no borra el mensaje (#msg). */
+    /** Tras alta exitosa: vacía el formulario; no borra el mensaje (#msg). */
     function clearFormAfterSuccess() {
-      editingId = null;
       document.getElementById('producto-form').reset();
-      editHint.classList.add('hidden');
-      btnCancelEdit.classList.add('hidden');
+      resetVariantRows();
       submitBtn.textContent = LABELS.save;
     }
-
-    btnCancelEdit.addEventListener('click', resetForm);
 
     let listPage = 1;
     let listSearch = '';
@@ -212,9 +262,6 @@
     }
 
     function bindListRowActions(tbody) {
-      tbody.querySelectorAll('[data-edit]').forEach(btn => {
-        btn.addEventListener('click', () => startEdit(Number(btn.getAttribute('data-edit'))));
-      });
       tbody.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', () => openDeleteModal(Number(btn.getAttribute('data-del'))));
       });
@@ -258,12 +305,17 @@
         tbody.innerHTML = items.map(p => `
           <tr class="hover:bg-gray-50">
             <td class="px-3 py-2 align-middle">
-              <img src="${p.imagen || 'https://via.placeholder.com/64?text=—'}" alt="" class="w-14 h-14 rounded object-cover bg-gray-100">
+              <a href="/api/detalle/${p.id}" target="_blank" rel="noopener noreferrer" title="{{ admin_detail_open_hint }}"
+                class="inline-block rounded-lg overflow-hidden ring-1 ring-transparent hover:ring-black/25 transition">
+                <img src="${p.imagen || 'https://via.placeholder.com/64?text=—'}" alt="" class="w-14 h-14 object-cover bg-gray-100">
+              </a>
             </td>
-            <td class="px-3 py-2 align-middle font-medium text-gray-900">${escapeHtml(p.titulo)}</td>
+            <td class="px-3 py-2 align-middle">
+              <a href="/api/detalle/${p.id}" target="_blank" rel="noopener noreferrer" class="font-medium text-gray-900 hover:underline">${escapeHtml(p.titulo)}</a>
+            </td>
             <td class="px-3 py-2 align-middle text-right whitespace-nowrap">$${moneyFmt.format(Number(p.precio) || 0)}</td>
-            <td class="px-3 py-2 align-middle text-right whitespace-nowrap space-x-2">
-              <button type="button" data-edit="${p.id}" class="text-black font-semibold hover:underline">${LABELS.edit}</button>
+            <td class="px-3 py-2 align-middle text-right whitespace-nowrap space-x-3">
+              <a href="/admin-panel/edit/${p.id}" class="text-black font-semibold hover:underline">${LABELS.edit}</a>
               <button type="button" data-del="${p.id}" class="text-red-600 font-semibold hover:underline">${LABELS.del}</button>
             </td>
           </tr>
@@ -311,29 +363,6 @@
       d.textContent = s;
       return d.innerHTML;
     }
-    async function startEdit(id) {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      try {
-        const r = await fetch('/api/producto/' + id);
-        if (!r.ok) throw new Error('fail');
-        const p = await r.json();
-        editingId = id;
-        document.getElementById('item_title').value = p.titulo || '';
-        document.getElementById('price').value = p.precio ?? '';
-        document.getElementById('description').value = p.descripcion || '';
-        document.getElementById('images').value = '';
-        editHint.classList.remove('hidden');
-        btnCancelEdit.classList.remove('hidden');
-        submitBtn.textContent = LABELS.update;
-        document.getElementById('msg').textContent = '';
-        showTab('new');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } catch (e) {
-        document.getElementById('msg').textContent = LABELS.msgError;
-      }
-    }
-
     const modal = document.getElementById('modal-delete');
 
     function openDeleteModal(id) {
@@ -363,7 +392,6 @@
           return;
         }
         document.getElementById('msg').textContent = LABELS.msgDeleted;
-        if (editingId === deleteTargetId) resetForm();
         loadList();
       } catch (e) {
         closeDeleteModal();
@@ -381,12 +409,11 @@
       }
       const form = document.getElementById('producto-form');
       const formData = new FormData(form);
-      const url = editingId ? ('/api/productos/' + editingId) : '/api/productos';
-      const method = editingId ? 'PUT' : 'POST';
+      formData.append('variants_json', collectVariants());
 
       try {
-        const resp = await fetch(url, {
-          method,
+        const resp = await fetch('/api/productos', {
+          method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token },
           body: formData,
         });
@@ -394,8 +421,7 @@
           msg.textContent = LABELS.msgError;
           return;
         }
-        const wasEditing = Boolean(editingId);
-        msg.textContent = wasEditing ? LABELS.msgUpdated : LABELS.msgSaved;
+        msg.textContent = LABELS.msgSaved;
         clearFormAfterSuccess();
       } catch (err) {
         msg.textContent = LABELS.msgError;
@@ -407,6 +433,17 @@
       if (!token) {
         window.location.href = '/login';
         return;
+      }
+      initVariantsTable();
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'list') {
+        showTab('list');
+      }
+      if (params.get('updated') === '1') {
+        document.getElementById('msg').textContent = LABELS.msgUpdated;
+        const u = new URL(window.location.href);
+        u.searchParams.delete('updated');
+        window.history.replaceState({}, '', u.pathname + u.search);
       }
     });
   </script>

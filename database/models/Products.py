@@ -19,6 +19,11 @@ class Products(Base):
     create_date = Column(DateTime(timezone=True), server_default=func.now())
 
     images = relationship("ProductImages", back_populates="product")
+    variants = relationship(
+        "ProductVariant",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
 
 
  

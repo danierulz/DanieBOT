@@ -2,72 +2,177 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover">
   <title>{{ page_title_product }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 min-h-screen flex flex-col antialiased">
 
 {% include "partials/header.html" %}
-  <!-- Contenedor principal -->
 
-  <div class="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 gap-10">
-    
-    <!-- Galería tiered images -->
-    <div class="grid grid-cols-2 gap-2">
-      <img id="img1" src="https://via.placeholder.com/600x800?text=Foto+1" class="w-full h-80 object-cover rounded-lg shadow">
-      <img id="img2" src="https://via.placeholder.com/600x800?text=Foto+2" class="w-full h-80 object-cover rounded-lg shadow">
-      <img id="img3" src="https://via.placeholder.com/600x800?text=Foto+3" class="w-full h-80 object-cover rounded-lg shadow col-span-2">
-    </div>
+  <main class="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-10 w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+      <!-- Galería -->
+      <div class="space-y-3">
+        <div class="rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden aspect-[3/4] flex items-center justify-center">
+          <img id="img-main" src="https://via.placeholder.com/600x800?text=Foto" alt="" class="max-w-full max-h-full w-auto h-auto object-contain">
+        </div>
+        <div class="grid grid-cols-3 gap-2" id="thumbs-row">
+          <button type="button" id="thumb0" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-gray-100 hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
+          <button type="button" id="thumb1" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-gray-100 hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
+          <button type="button" id="thumb2" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-gray-100 hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
+        </div>
+      </div>
 
-    <!-- Información del producto -->
-    <div>
-      <h2 id="titulo" class="text-3xl font-bold text-gray-800">Nombre de la prenda</h2>
-      <p id="descripcion" class="mt-4 text-gray-600">Aquí va la descripción detallada de la prenda, materiales, talles disponibles, etc.</p>
-      <p id="precio" class="mt-6 text-2xl font-bold text-gray-900">$12.000</p>
-      <p id="stock" class="mt-2 text-sm text-gray-500">Stock disponible: 5 unidades</p>
+      <div class="flex flex-col">
+        <h2 id="titulo" class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">—</h2>
+        <p id="precio" class="mt-4 text-2xl font-bold text-gray-900 tabular-nums">—</p>
 
-      <div class="mt-6 flex gap-4">
-        <button type="button" onclick="agregarAlCarrito(productActual)" class="flex-1 bg-green-500 text-white py-3 rounded-full font-bold hover:bg-green-600 transition">
-          {{ btn_add_cart_detail }}
-        </button>
-        <button type="button" onclick="comprarAhora()" class="flex-1 bg-black text-white py-3 rounded-full font-bold hover:bg-gray-900 transition">
-          {{ btn_buy_now }}
-        </button>
+        <label for="variant-select" class="mt-6 block text-sm font-semibold text-gray-800">{{ detail_select_size }}</label>
+        <select id="variant-select" class="mt-2 w-full min-h-[48px] px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent">
+          <option value="">{{ detail_select_size }}</option>
+        </select>
+        <p id="variant-hint" class="mt-2 text-sm text-gray-600 min-h-[1.25rem]"></p>
+
+        <p id="descripcion" class="mt-6 text-gray-600 text-sm sm:text-base leading-relaxed">—</p>
+
+        <div class="mt-8 flex flex-col sm:flex-row gap-3">
+          <button type="button" id="btn-add-cart" onclick="agregarConVariante()" class="flex-1 min-h-[48px] rounded-full bg-green-600 text-white font-bold hover:bg-green-700 active:bg-green-800 transition touch-manipulation shadow-sm">
+            {{ btn_add_cart_detail }}
+          </button>
+          <button type="button" onclick="comprarAhora()" class="flex-1 min-h-[48px] rounded-full bg-black text-white font-bold hover:bg-gray-900 transition touch-manipulation shadow-sm">
+            {{ btn_buy_now }}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </main>
 
+  <footer class="bg-black text-gray-400 text-sm py-6 text-center px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] mt-auto">
+    {{ footer_copyright }}
+  </footer>
 
   <script>
     const LABEL_NO_DESCRIPTION = {{ label_no_description | tojson }};
-    const LABEL_STOCK_PREFIX = {{ label_stock_prefix | tojson }};
-    let productActual = null; // Variable global para almacenar el producto actual
-    console.log("Script tiredimages de producto cargado");
-    const product_id_from_template = "{{ product_id }}"; // Si usás Jinja2 para pasar el ID desde FastAPI
-    console.log("ID del producto:", product_id_from_template);
-    
-    fetch(`/api/producto/${product_id_from_template}`)
-      .then(res => res.json())
-      .then(p => {
-        productActual = p; // Guardamos el producto completo para usarlo en el carrito
-        console.log("JSON  recibido: en /api/producto/product_id_from_templeate", p);
-        document.getElementById("titulo").textContent = p.titulo;
-        document.getElementById("descripcion").textContent = p.descripcion || LABEL_NO_DESCRIPTION;
-        document.getElementById("precio").textContent = "$" + new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(p.precio) || 0);
-        document.getElementById("stock").textContent = LABEL_STOCK_PREFIX + " " + (p.stock ?? "N/D");
-        // Si tu API devuelve varias imágenes, las asignás aquí
-        if (p.imagenes && p.imagenes.length > 0) {
-          document.getElementById("img1").src = p.imagenes[0].url;
-          if (p.imagenes[1]) document.getElementById("img2").src = p.imagenes[1].url;
-          if (p.imagenes[2]) document.getElementById("img3").src = p.imagenes[2].url;
-        } else {
-          document.getElementById("img1").src = p.imagen;
-        }
-      });
+    const LABEL_DETAIL_REQUIRES = {{ detail_add_requires_size | tojson }};
+    const LABEL_IMMEDIATE = {{ detail_immediate | tojson }};
+    const LABEL_ENCARGO = {{ detail_encargo | tojson }};
+    const DETAIL_SELECT_PLACEHOLDER = {{ detail_select_size | tojson }};
 
+    let productActual = null;
+    let variantMap = {};
+    const product_id_from_template = "{{ product_id }}";
+
+    window.detailShowSizeWarning = function () {
+      alert(LABEL_DETAIL_REQUIRES);
+    };
+
+    function setMainImage(url) {
+      const el = document.getElementById('img-main');
+      if (url) el.src = url;
+    }
+
+    function setupThumbs(urls) {
+      const list = (urls || []).filter(Boolean).slice(0, 3);
+      for (let i = 0; i < 3; i++) {
+        const btn = document.getElementById('thumb' + i);
+        const u = list[i];
+        if (u) {
+          btn.classList.remove('hidden');
+          btn.innerHTML = '<img src="' + u.replace(/"/g, '&quot;') + '" alt="" class="w-full h-full object-contain">';
+          btn.onclick = () => setMainImage(u);
+        } else {
+          btn.classList.add('hidden');
+          btn.innerHTML = '';
+          btn.onclick = null;
+        }
+      }
+    }
+
+    function updateVariantHint() {
+      const sel = document.getElementById('variant-select');
+      const vid = parseInt(sel.value, 10);
+      const hint = document.getElementById('variant-hint');
+      if (!vid || !variantMap[vid]) {
+        hint.textContent = '';
+        return;
+      }
+      const v = variantMap[vid];
+      const parts = [];
+      if ((v.qty_stock_local || 0) > 0) parts.push(LABEL_IMMEDIATE + ' (' + v.qty_stock_local + ' u.)');
+      if (v.encargo_habilitado) {
+        let enc = LABEL_ENCARGO;
+        if (v.dias_encargo_estimados) enc += ' (~' + v.dias_encargo_estimados + ' d.)';
+        parts.push(enc);
+      }
+      hint.textContent = parts.join(' · ');
+    }
+
+    document.getElementById('variant-select').addEventListener('change', updateVariantHint);
+
+    function buildPayloadFromSelection() {
+      const sel = document.getElementById('variant-select');
+      const vid = parseInt(sel.value, 10);
+      if (!vid || !variantMap[vid]) return null;
+      const v = variantMap[vid];
+      const modo =
+        (v.qty_stock_local || 0) > 0 ? 'inmediato' : 'encargo';
+      return {
+        ...productActual,
+        variant_id: v.variant_id,
+        talle_label: v.size_label,
+        size_label: v.size_label,
+        modo_entrega: modo,
+      };
+    }
+
+    function agregarConVariante() {
+      const payload = buildPayloadFromSelection();
+      if (!payload) {
+        window.detailShowSizeWarning();
+        return;
+      }
+      agregarAlCarrito(payload);
+    }
+
+    function comprarAhora() {
+      agregarConVariante();
+      toggleCarrito();
+    }
+
+    fetch('/api/producto/' + product_id_from_template)
+      .then((res) => res.json())
+      .then((p) => {
+        productActual = p;
+        document.getElementById('titulo').textContent = p.titulo;
+        document.getElementById('descripcion').textContent = p.descripcion || LABEL_NO_DESCRIPTION;
+        document.getElementById('precio').textContent =
+          '$' +
+          new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(p.precio) || 0);
+
+        variantMap = {};
+        const sel = document.getElementById('variant-select');
+        sel.innerHTML = '<option value="">' + DETAIL_SELECT_PLACEHOLDER + '</option>';
+        (p.variantes || []).forEach((v) => {
+          variantMap[v.variant_id] = v;
+          const opt = document.createElement('option');
+          opt.value = String(v.variant_id);
+          opt.textContent = v.size_label + ' (' + v.size_code + ')';
+          sel.appendChild(opt);
+        });
+
+        const imgs = (p.imagenes || []).map((x) => x.url).filter(Boolean);
+        if (imgs.length > 0) {
+          setMainImage(imgs[0]);
+          setupThumbs(imgs);
+        }
+        updateVariantHint();
+      })
+      .catch(() => {
+        document.getElementById('titulo').textContent = 'No disponible';
+      });
   </script>
-  
+
   <script src="/static/js/shoppingCart.js"></script>
 </body>
 </html>

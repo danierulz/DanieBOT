@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title_admin_edit }} · {{ brand_name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+  {% include "partials/header.html" %}
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-10">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div>
+        <a href="/admin-panel?tab=list" class="text-sm font-semibold text-gray-600 hover:text-black">{{ admin_btn_back_list }}</a>
+        <h1 class="text-2xl font-bold text-gray-900 mt-2">{{ admin_edit_heading }} <span class="text-gray-500 font-mono text-lg">#{{ edit_product_id }}</span></h1>
+      </div>
+      <a href="/api/detalle/{{ edit_product_id }}" target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-semibold hover:bg-gray-50 shrink-0">
+        {{ admin_detail_open_hint }}
+      </a>
+    </div>
+
+    <p id="msg" class="text-center text-sm text-gray-700 min-h-[1.25rem] mb-4"></p>
+
+    <div class="bg-white shadow-lg rounded-lg p-6 md:p-10">
+      <form id="producto-form" class="space-y-4">
+        <div>
+          <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
+          <input id="item_title" name="item_title" type="text" required
+            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+        </div>
+        <div>
+          <label for="price" class="block text-sm font-medium text-gray-700">{{ label_price }}</label>
+          <input id="price" name="price" type="number" min="0" step="1" required
+            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+        </div>
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
+          <textarea id="description" name="description" rows="4"
+            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
+        </div>
+
+        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
+          <p class="text-xs text-gray-600 mb-3">{{ admin_variants_help }}</p>
+          <div class="overflow-x-auto rounded-md border border-gray-200 bg-white">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-100 text-left">
+                <tr>
+                  <th class="px-2 py-2 font-semibold text-gray-700">{{ admin_variants_col_size }}</th>
+                  <th class="px-2 py-2 font-semibold text-gray-700 whitespace-nowrap">{{ admin_variants_col_stock }}</th>
+                  <th class="px-2 py-2 font-semibold text-gray-700 text-center">{{ admin_variants_col_encargo }}</th>
+                  <th class="px-2 py-2 font-semibold text-gray-700 whitespace-nowrap">{{ admin_variants_col_days }}</th>
+                </tr>
+              </thead>
+              <tbody id="variants-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <label for="images" class="block text-sm font-medium text-gray-700">{{ label_images_optional }}</label>
+          <input id="images" name="images" type="file" multiple accept="image/*"
+            class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-black file:px-3 file:py-2 file:text-white file:font-semibold hover:file:bg-gray-900">
+        </div>
+
+        <div class="flex flex-col sm:flex-row flex-wrap gap-3 pt-4">
+          <button type="submit" id="btn-save-return"
+            class="flex-1 min-w-[220px] bg-black text-white py-3 rounded-md font-bold hover:bg-gray-900 transition min-h-[48px]">
+            {{ admin_btn_save_return_list }}
+          </button>
+          <button type="button" id="btn-save-stay"
+            class="flex-1 min-w-[220px] border border-gray-300 bg-white text-gray-900 py-3 rounded-md font-bold hover:bg-gray-50 transition min-h-[48px]">
+            {{ admin_btn_save_continue_here }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const EDIT_PRODUCT_ID = {{ edit_product_id | int }};
+    const LABELS = {
+      msgUpdated: {{ admin_msg_updated | tojson }},
+      msgError: {{ admin_msg_error | tojson }},
+      msgLoadErr: {{ admin_list_load_error | tojson }},
+    };
+
+    let saveStayOnPage = false;
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function resetVariantRows() {
+      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
+        const q = row.querySelector('.pv-qty');
+        const e = row.querySelector('.pv-encargo');
+        const d = row.querySelector('.pv-dias');
+        if (q) q.value = '0';
+        if (e) e.checked = false;
+        if (d) d.value = '';
+      });
+    }
+
+    function collectVariants() {
+      const out = [];
+      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
+        const code = row.getAttribute('data-size-code');
+        const qty = parseInt(row.querySelector('.pv-qty').value, 10) || 0;
+        const enc = row.querySelector('.pv-encargo').checked;
+        const diasRaw = (row.querySelector('.pv-dias').value || '').trim();
+        if (qty === 0 && !enc) return;
+        const o = { size_code: code, qty_stock_local: qty, encargo_habilitado: enc };
+        if (diasRaw) o.dias_encargo_estimados = parseInt(diasRaw, 10);
+        out.push(o);
+      });
+      return JSON.stringify(out);
+    }
+
+    function fillVariantsFromProduct(p) {
+      resetVariantRows();
+      if (!p.variantes || !p.variantes.length) return;
+      const byCode = {};
+      p.variantes.forEach(v => { byCode[v.size_code] = v; });
+      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
+        const code = row.getAttribute('data-size-code');
+        const v = byCode[code];
+        if (!v) return;
+        row.querySelector('.pv-qty').value = String(v.qty_stock_local ?? 0);
+        row.querySelector('.pv-encargo').checked = !!v.encargo_habilitado;
+        row.querySelector('.pv-dias').value = v.dias_encargo_estimados != null ? String(v.dias_encargo_estimados) : '';
+      });
+    }
+
+    async function initVariantsTable() {
+      const tbody = document.getElementById('variants-table-body');
+      tbody.innerHTML = '<tr><td colspan="4" class="px-2 py-3 text-gray-500 text-sm">Cargando talles…</td></tr>';
+      try {
+        const r = await fetch('/api/sizes');
+        if (!r.ok) throw new Error('fail');
+        const sizes = await r.json();
+        tbody.innerHTML = sizes.map(s => `
+          <tr data-size-code="${escapeHtml(s.code)}" class="border-t border-gray-100">
+            <td class="px-2 py-2 font-medium">${escapeHtml(s.label)} <span class="text-gray-400 text-xs">(${escapeHtml(s.code)})</span></td>
+            <td class="px-2 py-2"><input type="number" min="0" step="1" value="0" class="pv-qty w-24 sm:w-28 px-2 py-2 border rounded-md"></td>
+            <td class="px-2 py-2 text-center"><input type="checkbox" class="pv-encargo w-4 h-4 accent-black"></td>
+            <td class="px-2 py-2"><input type="number" min="1" step="1" placeholder="—" class="pv-dias w-20 px-2 py-2 border rounded-md"></td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-red-600 px-2 py-2 text-sm">' + LABELS.msgLoadErr + '</td></tr>';
+      }
+    }
+
+    async function loadProduct() {
+      const r = await fetch('/api/producto/' + EDIT_PRODUCT_ID);
+      if (!r.ok) {
+        document.getElementById('msg').textContent = LABELS.msgError;
+        return;
+      }
+      const p = await r.json();
+      document.getElementById('item_title').value = p.titulo || '';
+      document.getElementById('price').value = p.precio ?? '';
+      document.getElementById('description').value = p.descripcion || '';
+      fillVariantsFromProduct(p);
+    }
+
+    async function submitPut() {
+      const token = localStorage.getItem('token');
+      const msg = document.getElementById('msg');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+      const form = document.getElementById('producto-form');
+      const formData = new FormData(form);
+      formData.append('variants_json', collectVariants());
+      try {
+        const resp = await fetch('/api/productos/' + EDIT_PRODUCT_ID, {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData,
+        });
+        if (!resp.ok) {
+          msg.textContent = LABELS.msgError;
+          return;
+        }
+        if (saveStayOnPage) {
+          msg.textContent = LABELS.msgUpdated;
+          document.getElementById('images').value = '';
+        } else {
+          window.location.href = '/admin-panel?tab=list&updated=1';
+        }
+      } catch (err) {
+        msg.textContent = LABELS.msgError;
+      }
+    }
+
+    document.getElementById('producto-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveStayOnPage = false;
+      submitPut();
+    });
+
+    document.getElementById('btn-save-stay').addEventListener('click', () => {
+      saveStayOnPage = true;
+      submitPut();
+    });
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+      await initVariantsTable();
+      await loadProduct();
+    });
+  </script>
+
+</body>
+
+</html>

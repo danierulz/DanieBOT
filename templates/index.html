@@ -6,50 +6,50 @@
   <title>{{ page_title_catalog }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col antialiased">
+<body class="bg-[#fafafa] min-h-screen flex flex-col antialiased">
 
   {% include "partials/header.html" %}
 
-  <!-- Franja promocional: mismo negro que el header, pegada visualmente; sticky bajo la barra -->
   <div class="sticky top-[52px] sm:top-[56px] z-30 bg-black text-white text-center text-xs sm:text-sm leading-snug py-2 sm:py-2.5 px-3 sm:px-4 font-medium tracking-wide border-t border-white/10 shadow-sm">
     {{ promo_banner_text }}
   </div>
 
-<!-- Hero -->
-<section class="bg-neutral-100 py-6 sm:py-8 md:py-10 border-b border-neutral-200">
-  <div class="max-w-7xl mx-auto px-3 sm:px-4 text-center">
+<section class="relative bg-gradient-to-b from-neutral-100 via-white to-[#fafafa] py-8 sm:py-10 md:py-12 border-b border-neutral-200/80 overflow-hidden">
+  <div class="absolute inset-0 opacity-[0.35] pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-200/60 via-transparent to-transparent"></div>
+  <div class="relative max-w-7xl mx-auto px-3 sm:px-4 text-center">
+    <p class="text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">{{ brand_name }}</p>
     <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">{{ hero_headline }}</h1>
-    <p class="mt-2 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">{{ hero_subtitle }}</p>
+    <p class="mt-3 text-sm sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed">{{ hero_subtitle }}</p>
   </div>
 </section>
 
-<!-- Contenido -->
-<main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full">
-  <p id="catalog-loading" class="text-center text-gray-500 py-10 text-sm sm:text-base">Cargando catálogo…</p>
-  <div class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="contenedor-productos"></div>
-  <p id="catalog-empty" class="hidden text-center text-gray-500 py-12 text-sm sm:text-base px-2">No hay productos por el momento.</p>
+<main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-8 sm:py-10 w-full">
+  <p id="catalog-loading" class="text-center text-gray-500 py-12 text-sm sm:text-base">Cargando catálogo…</p>
+  <div class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6" id="contenedor-productos"></div>
+  <p id="catalog-empty" class="hidden text-center text-gray-500 py-16 text-sm sm:text-base px-2">No hay productos por el momento.</p>
 
-  <nav id="pagination" class="mt-8 sm:mt-10 flex flex-col items-stretch sm:items-center gap-3 hidden w-full max-w-md mx-auto sm:max-w-none" aria-label="Paginación del catálogo">
+  <nav id="pagination" class="mt-10 sm:mt-12 flex flex-col items-stretch sm:items-center gap-3 hidden w-full max-w-md mx-auto sm:max-w-none" aria-label="Paginación del catálogo">
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 w-full">
-      <button type="button" id="btn-prev" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none touch-manipulation shadow-sm">
+      <button type="button" id="btn-prev" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-200 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none touch-manipulation shadow-sm">
         Anterior
       </button>
       <span id="pagination-info" class="text-center text-sm text-gray-600 px-2 py-1 order-first sm:order-none"></span>
-      <button type="button" id="btn-next" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none touch-manipulation shadow-sm">
+      <button type="button" id="btn-next" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-200 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none touch-manipulation shadow-sm">
         Siguiente
       </button>
     </div>
   </nav>
   </main>
 
-  
   <footer class="bg-black text-gray-400 text-sm py-8 text-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
     {{ footer_copyright }}
   </footer>
 
 
   <script>
-    const BTN_ADD_TO_CART = {{ btn_add_to_cart | tojson }};
+    const LABEL_CTA = {{ label_catalog_cta | tojson }};
+    const BADGE_INM = {{ label_badge_inmediato | tojson }};
+    const BADGE_ENC = {{ label_badge_encargo | tojson }};
     const PLACEHOLDER_NO_IMAGE = {{ placeholder_no_image | tojson }};
     const PER_PAGE = 12;
 
@@ -59,28 +59,51 @@
       return moneyFmt.format(Number(n) || 0);
     }
 
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : String(s);
+      return d.innerHTML;
+    }
+
+    function badgesHtml(vr) {
+      if (!vr) return '';
+      const chips = [];
+      if (vr.badge_inmediato) {
+        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-900">' + BADGE_INM + '</span>');
+      }
+      if (vr.badge_encargo) {
+        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900">' + BADGE_ENC + '</span>');
+      }
+      return chips.length ? '<div class="flex flex-wrap gap-1.5 mt-2">' + chips.join('') + '</div>' : '';
+    }
+
     function renderProductos(productos) {
       const cont = document.getElementById('contenedor-productos');
-      cont.innerHTML = productos.map(p => `
-  <article class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
-    <a href="api/detalle/${p.id}" class="block aspect-[4/3] sm:h-52 bg-gray-100 overflow-hidden">
-      <img src="${p.imagen || ('https://via.placeholder.com/600x400?text=' + encodeURIComponent(PLACEHOLDER_NO_IMAGE))}" alt="" class="w-full h-full object-cover">
+      cont.innerHTML = productos.map(p => {
+        const vr = p.variantes_resumen || {};
+        const imgUrl = p.imagen || ('https://via.placeholder.com/600x400?text=' + encodeURIComponent(PLACEHOLDER_NO_IMAGE));
+        const titulo = escHtml(p.titulo);
+        const desc = escHtml(p.descripcion || '');
+        return `
+  <article class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden flex flex-col">
+    <a href="api/detalle/${p.id}" class="block relative bg-gray-50 aspect-[3/4] flex items-center justify-center overflow-hidden">
+      <img src="${imgUrl}" alt="" class="max-w-full max-h-full w-auto h-auto object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]">
     </a>
-    <div class="p-3 sm:p-4 flex-1 flex flex-col border-t border-gray-50">
+    <div class="p-4 flex-1 flex flex-col">
       <h3 class="text-base font-semibold text-gray-900 leading-snug">
-        <a href="api/detalle/${p.id}" class="hover:underline">${p.titulo}</a>
+        <a href="api/detalle/${p.id}" class="hover:text-black">${titulo}</a>
       </h3>
-      <p class="text-gray-900 text-lg font-bold mt-2 tabular-nums">$${formatPrecio(p.precio)}</p>
-      <p class="text-gray-500 text-sm mt-2 line-clamp-3 flex-1">${p.descripcion || ''}</p>
+      ${badgesHtml(vr)}
+      <p class="text-gray-900 text-lg font-bold mt-3 tabular-nums">$${formatPrecio(p.precio)}</p>
+      <p class="text-gray-500 text-sm mt-2 line-clamp-2 flex-1">${desc}</p>
       <div class="mt-4 pt-3 border-t border-gray-100">
-        <div class="flex gap-2 items-stretch">
-          <button type="button" onclick='agregarAlCarrito(${JSON.stringify(p)})' class="flex-1 min-h-[44px] px-3 rounded-full bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 transition touch-manipulation shadow-sm">${BTN_ADD_TO_CART}</button>
-          <a href="api/detalle/${p.id}" class="inline-flex min-w-[44px] min-h-[44px] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 touch-manipulation" title="Ver detalle">i</a>
-        </div>
+        <a href="api/detalle/${p.id}" class="flex w-full min-h-[44px] items-center justify-center rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900 active:bg-gray-950 transition touch-manipulation shadow-sm">
+          ${LABEL_CTA}
+        </a>
       </div>
     </div>
-  </article>
-`).join('');
+  </article>`;
+      }).join('');
     }
 
     function getPageFromUrl() {
@@ -166,7 +189,7 @@
 
     loadProductos(currentPage);
   </script>
-  
+
   <script src="/static/js/shoppingCart.js"></script>
 </body>
 </html>
