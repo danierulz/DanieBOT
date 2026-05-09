@@ -1,6 +1,8 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Request, Response, HTTPException, Form, Depends, UploadFile
+from math import ceil
+
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Request, Response, HTTPException, Form, UploadFile, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from auth.auth import create_access_token, get_current_user, ADMIN_USER
@@ -294,77 +296,169 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
 
 # Tu API de productos (la que consume el HTML)
 @app.get("/api/productos")
-def listar_productos(db: Session = Depends(get_db_fastApi)):
-    productos = db.query(Products).all()
+def listar_productos(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(12, ge=1, le=48),
+    q: Optional[str] = Query(None, max_length=200),
+    db: Session = Depends(get_db_fastApi),
+):
+    consulta = db.query(Products)
+    if q and q.strip():
+        consulta = consulta.filter(Products.item_title.ilike(f"%{q.strip()}%"))
+    total = consulta.count()
+    productos = (
+        consulta.order_by(Products.product_id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
     resultado = []
     for p in productos:
-        # Buscar la imagen principal (si existe)
         imagen_principal = None
-        if  p.images:
+        if p.images:
             main = next((img for img in p.images if img.is_main), None)
             if main:
                 imagen_principal = main.url
-                #or f"https://storage.googleapis.com/{BUCKET_NAME}/images/{p.page_ficha}/{main.filename}"
 
         resultado.append({
             "id": p.product_id,
             "titulo": p.item_title,
             "precio": p.price,
             "descripcion": p.description,
-            "imagen": imagen_principal
+            "imagen": imagen_principal,
         })
-    return resultado
+    total_pages = ceil(total / per_page) if total else 0
+    return {
+        "items": resultado,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+    }
+
+def _guardar_imagenes_producto(
+    db: Session,
+    product_id: int,
+    images: Optional[List[UploadFile]],
+) -> None:
+    is_main_set = False
+    if not images:
+        return
+    for img in images:
+        if not img.filename:
+            continue
+        url = uploader.upload_file(img.file, img.filename)
+        if not is_main_set:
+            is_main_set = True
+            db.add(
+                ProductImages(
+                    product_id=product_id,
+                    filename=img.filename,
+                    url=url,
+                    is_main=True,
+                )
+            )
+        else:
+            db.add(
+                ProductImages(
+                    product_id=product_id,
+                    filename=img.filename,
+                    url=url,
+                    is_main=False,
+                )
+            )
+
 
 @app.post("/api/productos", response_model=ProductOut)
-def crear_producto(item_title: str = Form(...),
+def crear_producto(
+    item_title: str = Form(...),
     price: int = Form(...),
     description: str = Form(...),
-    images: List[UploadFile] = File(None),
-    db: Session = Depends(get_db_fastApi)):
+    images: Optional[List[UploadFile]] = File(None),
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
     try:
         nuevo = Products(
             item_title=item_title,
             price=price,
-            cod_product='cod',
-            name='test',
+            cod_product="cod",
+            name="test",
             sku=123,
-            description=description
-            #,        images=producto.images[0].url if producto.images and len(producto.images) > 0 else None,
+            description=description,
         )
         db.add(nuevo)
         db.commit()
         db.refresh(nuevo)
 
-        # Insertar imágenes si vienen en la lista
-        # Subir imágenes a GCS y guardar URLs
-        isMainSet = False
-        if images:
-            for img in images:
-                url = uploader.upload_file(img.file, img.filename)  # tu clase GCSUploader
-                if not isMainSet:
-                    isMainSet = True
-                    main = ProductImages(product_id=nuevo.product_id,
-                                          filename=img.filename,
-                                          url=url,
-                                          is_main=True
-                
-                )
-                    db.add(main)
-                else:
-                    nueva_img = ProductImages(product_id=nuevo.product_id,
-                                              filename=img.filename,
-                                              url=url,
-                                              is_main=False)
-                    db.add(nueva_img)
-            db.commit()
-            db.refresh(nuevo)
-            return nuevo
+        _guardar_imagenes_producto(db, nuevo.product_id, images)
+        db.commit()
+        db.refresh(nuevo)
+        return nuevo
 
     except Exception as e:
         db.rollback()
         logging.error(f"Error al crear producto: {e}", exc_info=True)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error al crear producto")
+
+
+@app.put("/api/productos/{product_id}", response_model=ProductOut)
+def actualizar_producto(
+    product_id: int,
+    item_title: str = Form(...),
+    price: int = Form(...),
+    description: str = Form(...),
+    images: Optional[List[UploadFile]] = File(None),
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    producto = db.query(Products).filter(Products.product_id == product_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    try:
+        producto.item_title = item_title
+        producto.price = price
+        producto.description = description
+        has_new_images = bool(
+            images and any(getattr(img, "filename", None) for img in images)
+        )
+        if has_new_images:
+            db.query(ProductImages).filter(ProductImages.product_id == product_id).delete(
+                synchronize_session=False
+            )
+            _guardar_imagenes_producto(db, product_id, images)
+        db.commit()
+        db.refresh(producto)
+        return producto
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error al actualizar producto: {e}", exc_info=True)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error al actualizar producto")
+
+
+@app.delete("/api/productos/{product_id}")
+def eliminar_producto(
+    product_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    producto = db.query(Products).filter(Products.product_id == product_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    try:
+        db.query(ProductImages).filter(ProductImages.product_id == product_id).delete(
+            synchronize_session=False
+        )
+        db.delete(producto)
+        db.commit()
+        return {"ok": True, "id": product_id}
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error al eliminar producto: {e}", exc_info=True)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error al eliminar producto")
 
 @app.post("/upload-photos")
 async def upload_photos(files: List[UploadFile] = File(...)):

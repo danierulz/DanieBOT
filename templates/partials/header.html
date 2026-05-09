@@ -1,23 +1,21 @@
 <!-- Navbar -->
-<header class="bg-gradient-to-r from-pink-600 to-pink-500 text-white shadow">
-  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+<header class="sticky top-0 z-40 bg-black text-white shadow-md">
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2 min-h-[52px] sm:min-h-[56px]">
     <div class="flex items-center gap-4">
-      <a href="/" class="text-2xl font-extrabold hover:underline">{{ brand_name }}</a>
+      <a href="/" class="text-xl sm:text-2xl font-extrabold text-white hover:text-gray-200 hover:underline truncate max-w-[55vw] sm:max-w-none">{{ brand_name }}</a>
     </div>
     <div class="flex items-center gap-3">
-      <!--        <input id="search" type="search" placeholder="Buscar productos..." class="px-3 py-2 rounded-md text-sm text-gray-700" />
-        -->
       <button onclick="toggleCarrito()"
         type="button"
-        class="relative bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow">
-        🛒 <span id="carrito-count" class="ml-2">0</span>
+        class="relative inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:px-3 sm:py-2 px-2.5 py-2 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-100 touch-manipulation">
+        <span aria-hidden="true">🛒</span><span id="carrito-count" class="ml-1 sm:ml-2 tabular-nums">0</span>
       </button>
       <button id="btn-login" type="button"
-        class="bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow hover:bg-pink-100">
+        class="inline-flex items-center justify-center min-h-[44px] px-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-100 touch-manipulation text-sm sm:text-base">
         {{ nav_login }}
       </button>
       <button id="btn-admin" type="button"
-        class="hidden bg-white text-pink-600 px-3 py-2 rounded-full font-semibold shadow hover:bg-pink-100">
+        class="hidden inline-flex items-center justify-center min-h-[44px] px-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-100 touch-manipulation text-sm sm:text-base">
         {{ nav_admin }}
       </button>
     </div>
@@ -36,7 +34,7 @@
   <div class="p-4 border-t">
     <div class="flex justify-between items-center mb-3">
       <span class="font-semibold">{{ cart_total_label }}</span>
-      <span class="text-xl font-bold text-pink-600">$<span id="carrito-total">0</span></span>
+      <span class="text-xl font-bold text-gray-900">$<span id="carrito-total">0</span></span>
     </div>
     <div class="space-y-2">
       <!--
@@ -64,13 +62,11 @@
     function checkAuth() {
     const token = localStorage.getItem("token");
     if (token) {
-      // Mostrar botón Admin Panel
       btnAdmin.classList.remove("hidden");
       btnAdmin.onclick = () => {
         window.location.href = "/admin-panel";
       };
 
-      // Cambiar botón Login a Logout
       btnLogin.textContent = NAV_LOGOUT;
       btnLogin.onclick = () => {
         localStorage.removeItem("token");
@@ -78,10 +74,8 @@
         window.location.href = "/";
       };
     } else {
-      // Ocultar botón Admin Panel
       btnAdmin.classList.add("hidden");
 
-      // Botón Login
       btnLogin.textContent = NAV_LOGIN;
       btnLogin.onclick = () => {
         window.location.href = "/login";
@@ -90,6 +84,5 @@
   }
 
 
-  // Ejecutar al cargar
   checkAuth();
 </script>

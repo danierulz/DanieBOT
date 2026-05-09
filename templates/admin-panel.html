@@ -3,91 +3,410 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title_admin }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100 min-h-screen ">
+<body class="bg-gray-100 min-h-screen">
   {% include "partials/header.html" %}
 
-  <main class="flex flex-col items-center py-10">
-    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-3xl">
-      <h2 class="text-2xl font-bold mb-6 text-center text-pink-600">{{ admin_panel_heading }}</h2>
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-center text-gray-900 mb-2">{{ admin_panel_heading }}</h1>
+    <p id="msg" class="text-center text-sm text-gray-700 min-h-[1.25rem] mb-4"></p>
 
+    <!-- Pestañas -->
+    <div class="flex gap-2 mb-6 border-b border-gray-200">
+      <button type="button" id="tab-btn-new" class="tab-btn px-4 py-2 font-semibold border-b-2 border-black text-gray-900">
+        {{ admin_tab_new }}
+      </button>
+      <button type="button" id="tab-btn-list" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
+        {{ admin_tab_list }}
+      </button>
+    </div>
+
+    <!-- Panel: Nuevo / Editar -->
+    <div id="panel-new" class="bg-white shadow-lg rounded-lg p-6 md:p-8">
+      <p id="edit-hint" class="hidden mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        {{ admin_edit_mode_hint }}
+      </p>
       <form id="producto-form" class="space-y-4">
         <div>
           <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
           <input id="item_title" name="item_title" type="text" required
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
         </div>
         <div>
           <label for="price" class="block text-sm font-medium text-gray-700">{{ label_price }}</label>
-          <input id="price" name="price" type="number" required
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
+          <input id="price" name="price" type="number" min="0" step="1" required
+            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
         </div>
         <div>
           <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
           <textarea id="description" name="description" rows="3"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500"></textarea>
+            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
         </div>
-        <form action="/upload-photos" method="post" enctype="multipart/form-data">
-          <input type="file" name="images" multiple>
-          <button type="submit">{{ admin_btn_upload }}</button>
-<!--        </form>
-        <button type="submit"
-          class="w-full bg-green-600 text-white py-2 rounded-md font-bold hover:bg-green-700 transition">
-          Guardar producto
-        </button>
-        </form>-->
+        <div>
+          <label for="images" class="block text-sm font-medium text-gray-700">{{ label_images_optional }}</label>
+          <input id="images" name="images" type="file" multiple accept="image/*"
+            class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-black file:px-3 file:py-2 file:text-white file:font-semibold hover:file:bg-gray-900">
+        </div>
+        <div class="flex flex-wrap gap-3 pt-2">
+          <button type="submit" id="submit-btn"
+            class="flex-1 min-w-[160px] bg-black text-white py-2.5 rounded-md font-bold hover:bg-gray-900 transition">
+            {{ admin_btn_save }}
+          </button>
+          <button type="button" id="btn-cancel-edit" class="hidden px-4 py-2.5 border border-gray-300 rounded-md font-semibold text-gray-700 hover:bg-gray-50">
+            {{ admin_btn_cancel_edit }}
+          </button>
+        </div>
+      </form>
+    </div>
 
-      <p id="msg" class="mt-4 text-center text-sm text-gray-600"></p>
+    <!-- Panel: Lista -->
+    <div id="panel-list" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ admin_list_heading }}</h2>
+
+      <div class="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-end">
+        <div class="flex-1">
+          <label for="admin-search-input" class="block text-sm font-medium text-gray-700 mb-1">{{ admin_search_label }}</label>
+          <div class="flex rounded-md shadow-sm">
+            <input type="search" id="admin-search-input" autocomplete="off"
+              placeholder="{{ admin_search_placeholder }}"
+              aria-label="{{ admin_search_aria }}"
+              class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring focus:border-gray-900 text-sm">
+            <button type="button" id="admin-search-btn"
+              class="inline-flex items-center justify-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-md bg-black text-white hover:bg-gray-900"
+              aria-label="{{ admin_search_aria }}" title="{{ admin_search_aria }}">
+              <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p id="list-status" class="text-sm text-gray-500 mb-4"></p>
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_photo }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_title }}</th>
+              <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_price }}</th>
+              <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_actions }}</th>
+            </tr>
+          </thead>
+          <tbody id="lista-productos-body" class="divide-y divide-gray-100 bg-white"></tbody>
+        </table>
+      </div>
+
+      <nav id="admin-pagination" class="mt-6 hidden flex flex-col sm:flex-row items-center justify-center gap-4" aria-label="Paginación">
+        <div class="flex items-center gap-2">
+          <button type="button" id="admin-btn-prev" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-medium hover:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none">
+            Anterior
+          </button>
+          <span id="admin-pagination-info" class="text-sm text-gray-600 px-2"></span>
+          <button type="button" id="admin-btn-next" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-medium hover:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none">
+            Siguiente
+          </button>
+        </div>
+      </nav>
     </div>
   </main>
 
+  <!-- Modal eliminar -->
+  <div id="modal-delete" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50" aria-modal="true" role="dialog">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-bold text-gray-900">{{ admin_delete_confirm_title }}</h3>
+      <p class="mt-2 text-sm text-gray-600">{{ admin_delete_confirm_hint }}</p>
+      <div class="mt-6 flex justify-end gap-3">
+        <button type="button" id="modal-delete-cancel" class="px-4 py-2 rounded-md border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50">
+          {{ admin_delete_cancel_btn }}
+        </button>
+        <button type="button" id="modal-delete-confirm" class="px-4 py-2 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700">
+          {{ admin_delete_confirm_btn }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Check al cargar la página
-    window.addEventListener("DOMContentLoaded", () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        // Si no hay token, redirigir al login
-        window.location.href = "/login";
+    const LABELS = {
+      save: {{ admin_btn_save | tojson }},
+      update: {{ admin_btn_update | tojson }},
+      msgSaved: {{ admin_msg_saved | tojson }},
+      msgUpdated: {{ admin_msg_updated | tojson }},
+      msgDeleted: {{ admin_msg_deleted | tojson }},
+      msgError: {{ admin_msg_error | tojson }},
+      msgEmpty: {{ admin_list_empty | tojson }},
+      msgNoResults: {{ admin_list_no_results | tojson }},
+      msgLoadErr: {{ admin_list_load_error | tojson }},
+      edit: {{ admin_edit | tojson }},
+      del: {{ admin_delete | tojson }},
+    };
+
+    const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+    let editingId = null;
+    let deleteTargetId = null;
+
+    const panelNew = document.getElementById('panel-new');
+    const panelList = document.getElementById('panel-list');
+    const tabBtnNew = document.getElementById('tab-btn-new');
+    const tabBtnList = document.getElementById('tab-btn-list');
+    const editHint = document.getElementById('edit-hint');
+    const btnCancelEdit = document.getElementById('btn-cancel-edit');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function showTab(which) {
+      const isNew = which === 'new';
+      panelNew.classList.toggle('hidden', !isNew);
+      panelList.classList.toggle('hidden', isNew);
+      tabBtnNew.classList.toggle('border-black', isNew);
+      tabBtnNew.classList.toggle('text-gray-900', isNew);
+      tabBtnNew.classList.toggle('border-transparent', !isNew);
+      tabBtnNew.classList.toggle('text-gray-500', !isNew);
+      tabBtnList.classList.toggle('border-black', !isNew);
+      tabBtnList.classList.toggle('text-gray-900', !isNew);
+      tabBtnList.classList.toggle('border-transparent', isNew);
+      tabBtnList.classList.toggle('text-gray-500', isNew);
+      if (!isNew) {
+        listSearch = document.getElementById('admin-search-input').value;
+        loadList(listPage);
       }
-    });
+    }
 
+    tabBtnNew.addEventListener('click', () => showTab('new'));
+    tabBtnList.addEventListener('click', () => showTab('list'));
 
-    document.getElementById("producto-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    function resetForm() {
+      editingId = null;
+      document.getElementById('producto-form').reset();
+      document.getElementById('msg').textContent = '';
+      editHint.classList.add('hidden');
+      btnCancelEdit.classList.add('hidden');
+      submitBtn.textContent = LABELS.save;
+    }
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        document.getElementById("msg").textContent = "No estás logueado como admin.";
-        return;
-      }
+    /** Tras alta o edición exitosa: vacía el formulario y deja la pestaña “Nuevo producto”; no borra el mensaje (#msg). */
+    function clearFormAfterSuccess() {
+      editingId = null;
+      document.getElementById('producto-form').reset();
+      editHint.classList.add('hidden');
+      btnCancelEdit.classList.add('hidden');
+      submitBtn.textContent = LABELS.save;
+    }
 
-      const form = document.getElementById("producto-form");
-      const formData = new FormData(form);
+    btnCancelEdit.addEventListener('click', resetForm);
 
+    let listPage = 1;
+    let listSearch = '';
+
+    function buildListUrl(page) {
+      const u = new URL('/api/productos', window.location.origin);
+      u.searchParams.set('page', String(page));
+      u.searchParams.set('per_page', '12');
+      const t = listSearch.trim();
+      if (t) u.searchParams.set('q', t);
+      return u.toString();
+    }
+
+    function bindListRowActions(tbody) {
+      tbody.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => startEdit(Number(btn.getAttribute('data-edit'))));
+      });
+      tbody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal(Number(btn.getAttribute('data-del'))));
+      });
+    }
+
+    async function loadList(requestedPage) {
+      const page = requestedPage != null ? requestedPage : listPage;
+      const statusEl = document.getElementById('list-status');
+      const tbody = document.getElementById('lista-productos-body');
+      const nav = document.getElementById('admin-pagination');
+      const info = document.getElementById('admin-pagination-info');
+      const btnPrev = document.getElementById('admin-btn-prev');
+      const btnNext = document.getElementById('admin-btn-next');
+
+      statusEl.textContent = '';
+      tbody.innerHTML = '';
 
       try {
-        const resp = await fetch("/api/productos", {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + token
-//            "Content-Type": "application/json"
-          },
-          body: formData
-        });
+        const r = await fetch(buildListUrl(page));
+        if (!r.ok) throw new Error('fail');
+        let data = await r.json();
 
-        if (!resp.ok) {
-          document.getElementById("msg").textContent = "Error al guardar producto (¿token inválido?).";
+        if (data.total_pages && page > data.total_pages && data.total_pages >= 1) {
+          listPage = data.total_pages;
+          return loadList(listPage);
+        }
+
+        listPage = data.page || page;
+        const items = data.items || [];
+
+        if (items.length === 0) {
+          if ((data.total || 0) === 0) {
+            statusEl.textContent = listSearch.trim() ? LABELS.msgNoResults : LABELS.msgEmpty;
+          } else {
+            statusEl.textContent = LABELS.msgNoResults;
+          }
+          nav.classList.add('hidden');
           return;
         }
 
-        const data = await resp.json();
-        document.getElementById("msg").textContent = "Producto guardado ✔️";
-        console.log("Producto creado:", data);
+        tbody.innerHTML = items.map(p => `
+          <tr class="hover:bg-gray-50">
+            <td class="px-3 py-2 align-middle">
+              <img src="${p.imagen || 'https://via.placeholder.com/64?text=—'}" alt="" class="w-14 h-14 rounded object-cover bg-gray-100">
+            </td>
+            <td class="px-3 py-2 align-middle font-medium text-gray-900">${escapeHtml(p.titulo)}</td>
+            <td class="px-3 py-2 align-middle text-right whitespace-nowrap">$${moneyFmt.format(Number(p.precio) || 0)}</td>
+            <td class="px-3 py-2 align-middle text-right whitespace-nowrap space-x-2">
+              <button type="button" data-edit="${p.id}" class="text-black font-semibold hover:underline">${LABELS.edit}</button>
+              <button type="button" data-del="${p.id}" class="text-red-600 font-semibold hover:underline">${LABELS.del}</button>
+            </td>
+          </tr>
+        `).join('');
+
+        bindListRowActions(tbody);
+
+        if (!data.total_pages || data.total_pages <= 1) {
+          nav.classList.add('hidden');
+        } else {
+          nav.classList.remove('hidden');
+          info.textContent = 'Página ' + data.page + ' de ' + data.total_pages;
+          btnPrev.disabled = data.page <= 1;
+          btnNext.disabled = data.page >= data.total_pages;
+        }
+      } catch (e) {
+        statusEl.textContent = LABELS.msgLoadErr;
+        nav.classList.add('hidden');
+      }
+    }
+
+    function runSearch() {
+      listSearch = document.getElementById('admin-search-input').value;
+      listPage = 1;
+      loadList(1);
+    }
+
+    document.getElementById('admin-search-btn').addEventListener('click', runSearch);
+    document.getElementById('admin-search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runSearch();
+      }
+    });
+
+    document.getElementById('admin-btn-prev').addEventListener('click', () => {
+      if (listPage > 1) loadList(listPage - 1);
+    });
+    document.getElementById('admin-btn-next').addEventListener('click', () => {
+      loadList(listPage + 1);
+    });
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    async function startEdit(id) {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const r = await fetch('/api/producto/' + id);
+        if (!r.ok) throw new Error('fail');
+        const p = await r.json();
+        editingId = id;
+        document.getElementById('item_title').value = p.titulo || '';
+        document.getElementById('price').value = p.precio ?? '';
+        document.getElementById('description').value = p.descripcion || '';
+        document.getElementById('images').value = '';
+        editHint.classList.remove('hidden');
+        btnCancelEdit.classList.remove('hidden');
+        submitBtn.textContent = LABELS.update;
+        document.getElementById('msg').textContent = '';
+        showTab('new');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (e) {
+        document.getElementById('msg').textContent = LABELS.msgError;
+      }
+    }
+
+    const modal = document.getElementById('modal-delete');
+
+    function openDeleteModal(id) {
+      deleteTargetId = id;
+      modal.classList.remove('hidden');
+    }
+    function closeDeleteModal() {
+      deleteTargetId = null;
+      modal.classList.add('hidden');
+    }
+
+    document.getElementById('modal-delete-cancel').addEventListener('click', closeDeleteModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeDeleteModal(); });
+
+    document.getElementById('modal-delete-confirm').addEventListener('click', async () => {
+      if (deleteTargetId == null) return;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const r = await fetch('/api/productos/' + deleteTargetId, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token },
+        });
+        closeDeleteModal();
+        if (!r.ok) {
+          document.getElementById('msg').textContent = LABELS.msgError;
+          return;
+        }
+        document.getElementById('msg').textContent = LABELS.msgDeleted;
+        if (editingId === deleteTargetId) resetForm();
+        loadList();
+      } catch (e) {
+        closeDeleteModal();
+        document.getElementById('msg').textContent = LABELS.msgError;
+      }
+    });
+
+    document.getElementById('producto-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = localStorage.getItem('token');
+      const msg = document.getElementById('msg');
+      if (!token) {
+        msg.textContent = 'No estás logueado como admin.';
+        return;
+      }
+      const form = document.getElementById('producto-form');
+      const formData = new FormData(form);
+      const url = editingId ? ('/api/productos/' + editingId) : '/api/productos';
+      const method = editingId ? 'PUT' : 'POST';
+
+      try {
+        const resp = await fetch(url, {
+          method,
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData,
+        });
+        if (!resp.ok) {
+          msg.textContent = LABELS.msgError;
+          return;
+        }
+        const wasEditing = Boolean(editingId);
+        msg.textContent = wasEditing ? LABELS.msgUpdated : LABELS.msgSaved;
+        clearFormAfterSuccess();
       } catch (err) {
-        document.getElementById("msg").textContent = "Error de conexión.";
+        msg.textContent = LABELS.msgError;
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
       }
     });
   </script>

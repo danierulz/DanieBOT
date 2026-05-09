@@ -24,14 +24,14 @@
     <div>
       <h2 id="titulo" class="text-3xl font-bold text-gray-800">Nombre de la prenda</h2>
       <p id="descripcion" class="mt-4 text-gray-600">Aquí va la descripción detallada de la prenda, materiales, talles disponibles, etc.</p>
-      <p id="precio" class="mt-6 text-2xl font-bold text-pink-600">$12.000</p>
+      <p id="precio" class="mt-6 text-2xl font-bold text-gray-900">$12.000</p>
       <p id="stock" class="mt-2 text-sm text-gray-500">Stock disponible: 5 unidades</p>
 
       <div class="mt-6 flex gap-4">
         <button type="button" onclick="agregarAlCarrito(productActual)" class="flex-1 bg-green-500 text-white py-3 rounded-full font-bold hover:bg-green-600 transition">
           {{ btn_add_cart_detail }}
         </button>
-        <button type="button" onclick="comprarAhora()" class="flex-1 bg-pink-600 text-white py-3 rounded-full font-bold hover:bg-pink-700 transition">
+        <button type="button" onclick="comprarAhora()" class="flex-1 bg-black text-white py-3 rounded-full font-bold hover:bg-gray-900 transition">
           {{ btn_buy_now }}
         </button>
       </div>
@@ -54,7 +54,7 @@
         console.log("JSON  recibido: en /api/producto/product_id_from_templeate", p);
         document.getElementById("titulo").textContent = p.titulo;
         document.getElementById("descripcion").textContent = p.descripcion || LABEL_NO_DESCRIPTION;
-        document.getElementById("precio").textContent = "$" + p.precio;
+        document.getElementById("precio").textContent = "$" + new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(p.precio) || 0);
         document.getElementById("stock").textContent = LABEL_STOCK_PREFIX + " " + (p.stock ?? "N/D");
         // Si tu API devuelve varias imágenes, las asignás aquí
         if (p.imagenes && p.imagenes.length > 0) {

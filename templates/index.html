@@ -2,32 +2,48 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>{{ page_title_catalog }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
+<body class="bg-gray-50 min-h-screen flex flex-col antialiased">
 
   {% include "partials/header.html" %}
 
+  <!-- Franja promocional: mismo negro que el header, pegada visualmente; sticky bajo la barra -->
+  <div class="sticky top-[52px] sm:top-[56px] z-30 bg-black text-white text-center text-xs sm:text-sm leading-snug py-2 sm:py-2.5 px-3 sm:px-4 font-medium tracking-wide border-t border-white/10 shadow-sm">
+    {{ promo_banner_text }}
+  </div>
 
 <!-- Hero -->
-<section class="bg-pink-50 py-10">
-  <div class="max-w-7xl mx-auto px-4 text-center">
-    <h1 class="text-4xl font-bold text-pink-700">{{ hero_headline }}</h1>
-    <p class="mt-2 text-gray-600">{{ hero_subtitle }}</p>
+<section class="bg-neutral-100 py-6 sm:py-8 md:py-10 border-b border-neutral-200">
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 text-center">
+    <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">{{ hero_headline }}</h1>
+    <p class="mt-2 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">{{ hero_subtitle }}</p>
   </div>
 </section>
 
 <!-- Contenido -->
-<main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
-  <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" id="contenedor-productos">
-    <!-- tarjetas -->
-  </div>
+<main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full">
+  <p id="catalog-loading" class="text-center text-gray-500 py-10 text-sm sm:text-base">Cargando catálogo…</p>
+  <div class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6" id="contenedor-productos"></div>
+  <p id="catalog-empty" class="hidden text-center text-gray-500 py-12 text-sm sm:text-base px-2">No hay productos por el momento.</p>
+
+  <nav id="pagination" class="mt-8 sm:mt-10 flex flex-col items-stretch sm:items-center gap-3 hidden w-full max-w-md mx-auto sm:max-w-none" aria-label="Paginación del catálogo">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 w-full">
+      <button type="button" id="btn-prev" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none touch-manipulation shadow-sm">
+        Anterior
+      </button>
+      <span id="pagination-info" class="text-center text-sm text-gray-600 px-2 py-1 order-first sm:order-none"></span>
+      <button type="button" id="btn-next" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none touch-manipulation shadow-sm">
+        Siguiente
+      </button>
+    </div>
+  </nav>
   </main>
 
   
-  <footer class="bg-gray-100 py-6 text-center text-gray-600">
+  <footer class="bg-black text-gray-400 text-sm py-8 text-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
     {{ footer_copyright }}
   </footer>
 
@@ -35,25 +51,31 @@
   <script>
     const BTN_ADD_TO_CART = {{ btn_add_to_cart | tojson }};
     const PLACEHOLDER_NO_IMAGE = {{ placeholder_no_image | tojson }};
-    console.log("Página cargada, inicializando script index.html...");
+    const PER_PAGE = 12;
+
+    const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+
+    function formatPrecio(n) {
+      return moneyFmt.format(Number(n) || 0);
+    }
+
     function renderProductos(productos) {
-      console.log('Productos cargados:', productos);
       const cont = document.getElementById('contenedor-productos');
       cont.innerHTML = productos.map(p => `
-  <article class="bg-white rounded-lg shadow hover:shadow-xl transition overflow-hidden flex flex-col">
-    <a href="api/detalle/${p.id}">
-      <img src="${p.imagen || ('https://via.placeholder.com/600x400?text=' + encodeURIComponent(PLACEHOLDER_NO_IMAGE))}" class="w-full h-48 object-cover">
+  <article class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+    <a href="api/detalle/${p.id}" class="block aspect-[4/3] sm:h-52 bg-gray-100 overflow-hidden">
+      <img src="${p.imagen || ('https://via.placeholder.com/600x400?text=' + encodeURIComponent(PLACEHOLDER_NO_IMAGE))}" alt="" class="w-full h-full object-cover">
     </a>
-    <div class="p-4 flex-1 flex flex-col">
-      <h3 class="text-sm font-semibold text-gray-800">
-        <a href="api/detalle/${p.id}">${p.titulo}</a>
+    <div class="p-3 sm:p-4 flex-1 flex flex-col border-t border-gray-50">
+      <h3 class="text-base font-semibold text-gray-900 leading-snug">
+        <a href="api/detalle/${p.id}" class="hover:underline">${p.titulo}</a>
       </h3>
-      <p class="text-pink-600 text-lg font-bold mt-2">$${p.precio}</p>
-      <p class="text-gray-500 text-sm mt-2 line-clamp-3">${p.descripcion || ''}</p>
-      <div class="mt-auto pt-4">
-        <div class="flex gap-2">
-          <button onclick='agregarAlCarrito(${JSON.stringify(p)})' class="flex-1 bg-green-500 text-white py-2 rounded-full font-semibold hover:bg-green-600 transition">${BTN_ADD_TO_CART}</button>
-          <a href="api/detalle/${p.id}" class="w-12 bg-white border rounded-full text-gray-600 hover:bg-gray-50 flex items-center justify-center">i</a>
+      <p class="text-gray-900 text-lg font-bold mt-2 tabular-nums">$${formatPrecio(p.precio)}</p>
+      <p class="text-gray-500 text-sm mt-2 line-clamp-3 flex-1">${p.descripcion || ''}</p>
+      <div class="mt-4 pt-3 border-t border-gray-100">
+        <div class="flex gap-2 items-stretch">
+          <button type="button" onclick='agregarAlCarrito(${JSON.stringify(p)})' class="flex-1 min-h-[44px] px-3 rounded-full bg-green-600 text-white text-sm font-semibold hover:bg-green-700 active:bg-green-800 transition touch-manipulation shadow-sm">${BTN_ADD_TO_CART}</button>
+          <a href="api/detalle/${p.id}" class="inline-flex min-w-[44px] min-h-[44px] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 touch-manipulation" title="Ver detalle">i</a>
         </div>
       </div>
     </div>
@@ -61,20 +83,88 @@
 `).join('');
     }
 
-
-    function verDetalle(id) {
-      // placeholder: podés abrir modal con más info
-      alert('Ver detalle: ' + id);
+    function getPageFromUrl() {
+      const n = parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10);
+      return Number.isFinite(n) && n >= 1 ? n : 1;
     }
 
+    function setPageInUrl(page) {
+      const url = new URL(window.location.href);
+      if (page <= 1) url.searchParams.delete('page');
+      else url.searchParams.set('page', String(page));
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
 
+    function renderPaginationState(data) {
+      const nav = document.getElementById('pagination');
+      const info = document.getElementById('pagination-info');
+      const btnPrev = document.getElementById('btn-prev');
+      const btnNext = document.getElementById('btn-next');
 
-    // Cargar productos desde API al iniciar
-    fetch('/api/productos')
-      .then(r => r.json())
-      .then(data => renderProductos(data))
-      .catch(e => console.error(e));
+      if (!data.total_pages || data.total_pages <= 1) {
+        nav.classList.add('hidden');
+        return;
+      }
+      nav.classList.remove('hidden');
+      info.textContent = 'Página ' + data.page + ' de ' + data.total_pages;
+      btnPrev.disabled = data.page <= 1;
+      btnNext.disabled = data.page >= data.total_pages;
+    }
 
+    function showCatalogState(loading, hasProducts) {
+      document.getElementById('catalog-loading').classList.toggle('hidden', !loading);
+      const grid = document.getElementById('contenedor-productos');
+      grid.classList.toggle('hidden', loading || !hasProducts);
+      document.getElementById('catalog-empty').classList.toggle('hidden', loading || hasProducts);
+    }
+
+    function loadProductos(page) {
+      showCatalogState(true, true);
+      fetch('/api/productos?page=' + encodeURIComponent(page) + '&per_page=' + PER_PAGE)
+        .then(r => r.json())
+        .then(data => {
+          if (data.total_pages && page > data.total_pages && data.total_pages >= 1) {
+            currentPage = data.total_pages;
+            setPageInUrl(currentPage);
+            loadProductos(currentPage);
+            return;
+          }
+          currentPage = data.page || page;
+          const items = data.items || [];
+          renderProductos(items);
+          renderPaginationState(data);
+          const hasProducts = items.length > 0;
+          showCatalogState(false, hasProducts);
+          if (!hasProducts && (data.total || 0) === 0) {
+            document.getElementById('pagination').classList.add('hidden');
+          }
+        })
+        .catch(e => {
+          console.error(e);
+          showCatalogState(false, false);
+          document.getElementById('catalog-empty').textContent = 'No se pudo cargar el catálogo. Intentá de nuevo más tarde.';
+        });
+    }
+
+    let currentPage = getPageFromUrl();
+
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage -= 1;
+        setPageInUrl(currentPage);
+        loadProductos(currentPage);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+
+    document.getElementById('btn-next').addEventListener('click', () => {
+      currentPage += 1;
+      setPageInUrl(currentPage);
+      loadProductos(currentPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    loadProductos(currentPage);
   </script>
   
   <script src="/static/js/shoppingCart.js"></script>
