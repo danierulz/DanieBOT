@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Panel Admin</title>
+  <title>{{ page_title_admin }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
@@ -12,27 +12,27 @@
 
   <main class="flex flex-col items-center py-10">
     <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-3xl">
-      <h2 class="text-2xl font-bold mb-6 text-center text-pink-600">Panel de Administración</h2>
+      <h2 class="text-2xl font-bold mb-6 text-center text-pink-600">{{ admin_panel_heading }}</h2>
 
       <form id="producto-form" class="space-y-4">
         <div>
-          <label for="item_title" class="block text-sm font-medium text-gray-700">Título</label>
+          <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
           <input id="item_title" name="item_title" type="text" required
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
         </div>
         <div>
-          <label for="price" class="block text-sm font-medium text-gray-700">Precio</label>
+          <label for="price" class="block text-sm font-medium text-gray-700">{{ label_price }}</label>
           <input id="price" name="price" type="number" required
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500">
         </div>
         <div>
-          <label for="description" class="block text-sm font-medium text-gray-700">Descripción</label>
+          <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
           <textarea id="description" name="description" rows="3"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-pink-500"></textarea>
         </div>
         <form action="/upload-photos" method="post" enctype="multipart/form-data">
           <input type="file" name="images" multiple>
-          <button type="submit">Subir fotos</button>
+          <button type="submit">{{ admin_btn_upload }}</button>
 <!--        </form>
         <button type="submit"
           class="w-full bg-green-600 text-white py-2 rounded-md font-bold hover:bg-green-700 transition">

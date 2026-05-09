@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Detalle de producto</title>
+  <title>{{ page_title_product }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
@@ -28,11 +28,11 @@
       <p id="stock" class="mt-2 text-sm text-gray-500">Stock disponible: 5 unidades</p>
 
       <div class="mt-6 flex gap-4">
-        <button onclick="agregarAlCarrito(productActual)" class="flex-1 bg-green-500 text-white py-3 rounded-full font-bold hover:bg-green-600 transition">
-          Agregar al carrito
+        <button type="button" onclick="agregarAlCarrito(productActual)" class="flex-1 bg-green-500 text-white py-3 rounded-full font-bold hover:bg-green-600 transition">
+          {{ btn_add_cart_detail }}
         </button>
-        <button onclick="comprarAhora()" class="flex-1 bg-pink-600 text-white py-3 rounded-full font-bold hover:bg-pink-700 transition">
-          Comprar ahora
+        <button type="button" onclick="comprarAhora()" class="flex-1 bg-pink-600 text-white py-3 rounded-full font-bold hover:bg-pink-700 transition">
+          {{ btn_buy_now }}
         </button>
       </div>
     </div>
@@ -40,6 +40,8 @@
 
 
   <script>
+    const LABEL_NO_DESCRIPTION = {{ label_no_description | tojson }};
+    const LABEL_STOCK_PREFIX = {{ label_stock_prefix | tojson }};
     let productActual = null; // Variable global para almacenar el producto actual
     console.log("Script tiredimages de producto cargado");
     const product_id_from_template = "{{ product_id }}"; // Si usás Jinja2 para pasar el ID desde FastAPI
@@ -51,9 +53,9 @@
         productActual = p; // Guardamos el producto completo para usarlo en el carrito
         console.log("JSON  recibido: en /api/producto/product_id_from_templeate", p);
         document.getElementById("titulo").textContent = p.titulo;
-        document.getElementById("descripcion").textContent = p.descripcion || "Sin descripción";
+        document.getElementById("descripcion").textContent = p.descripcion || LABEL_NO_DESCRIPTION;
         document.getElementById("precio").textContent = "$" + p.precio;
-        document.getElementById("stock").textContent = "Stock disponible: " + (p.stock ?? "N/D");
+        document.getElementById("stock").textContent = LABEL_STOCK_PREFIX + " " + (p.stock ?? "N/D");
         // Si tu API devuelve varias imágenes, las asignás aquí
         if (p.imagenes && p.imagenes.length > 0) {
           document.getElementById("img1").src = p.imagenes[0].url;

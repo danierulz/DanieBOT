@@ -28,6 +28,7 @@ from database.models.Products import Products
 from database.models.ProductImages import ProductImages
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
+from config import get_template_context
 
 
 DB_USER = os.getenv("DB_USER")
@@ -68,6 +69,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 print("BASE_DIR:", BASE_DIR)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 #templates = Jinja2Templates(directory="/app/templates")
+
+
+def page_context(request: Request, **extra: dict) -> dict:
+    """request + textos de marca para plantillas Jinja2."""
+    ctx = {"request": request, **get_template_context()}
+    ctx.update(extra)
+    return ctx
 
 
 # --- Configuración de PyWa (¡IMPORTANTE! Usa variables de entorno) ---
@@ -213,7 +221,7 @@ async def read_item(request: Request):
 #    print("Archivos en /app/templates:", os.listdir("/templates"))
     print("Contexto:", {"request": request})
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", page_context(request))
 
 
 
@@ -225,9 +233,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
 @app.get("/login", response_class=HTMLResponse)
-def login_page():
-    with open("templates/login.html") as f:
-        return f.read()
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", page_context(request))
     '''
     Opcion de endpoint sin jinja2 (si no querés usar plantillas para el login)
 @app.get("/admin-panel", response_class=HTMLResponse)
@@ -239,7 +246,7 @@ def admin_panel():
     
 @app.get("/admin-panel", response_class=HTMLResponse)
 def admin_panel(request: Request):
-    return templates.TemplateResponse("admin-panel.html", {"request": request})
+    return templates.TemplateResponse("admin-panel.html", page_context(request))
 
 
 
@@ -249,9 +256,10 @@ async def read_item(request: Request, product_id: int):
     print("ID recibido en detalle: ", product_id)
     print("Request recibido en detalle: ", request)
     # Esto busca el archivo 'index.html' dentro de la carpeta 'templates'
-    return templates.TemplateResponse("tiredimages.html", 
-                                      {"request": request,
-                                        "product_id": product_id})
+    return templates.TemplateResponse(
+        "tiredimages.html",
+        page_context(request, product_id=product_id),
+    )
 
 #Utilizado en tiredimages.html para mostrar el detalle del producto
 @app.get("/api/producto/{id}")
