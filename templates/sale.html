@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>{{ page_title_sale }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#fafafa] min-h-screen flex flex-col antialiased">
+
+  {% include "partials/header.html" %}
+
+  <div class="sticky top-[52px] sm:top-[56px] z-30 bg-red-600 text-white text-center text-xs sm:text-sm leading-snug py-2 sm:py-2.5 px-3 sm:px-4 font-semibold tracking-wide shadow-sm">
+    🔥 SALE · Descuentos por tiempo limitado · {{ promo_banner_text }}
+  </div>
+
+  <section class="bg-gradient-to-b from-red-50 via-white to-[#fafafa] py-6 sm:py-8 border-b border-red-100">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 text-center">
+      <p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-red-500 mb-1">Precios rebajados</p>
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">Productos en SALE</h1>
+      <p class="mt-2 text-xs sm:text-base text-gray-600 max-w-xl mx-auto">Mirá las prendas con precio rebajado. También podés filtrar por categoría.</p>
+    </div>
+  </section>
+
+  <div class="bg-white border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 overflow-x-auto">
+      <div id="cats-row" class="flex items-center gap-2 whitespace-nowrap"></div>
+    </div>
+  </div>
+
+  <main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full">
+    <div id="active-filters" class="hidden mb-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700"></div>
+    <p id="catalog-loading" class="text-center text-gray-500 py-12 text-sm sm:text-base">Cargando productos en sale…</p>
+    <div class="hidden grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5" id="contenedor-productos"></div>
+    <p id="catalog-empty" class="hidden text-center text-gray-500 py-16 text-sm sm:text-base px-2">Por ahora no hay productos en sale.</p>
+
+    <nav id="pagination" class="mt-10 flex flex-col items-stretch sm:items-center gap-3 hidden w-full max-w-md mx-auto sm:max-w-none">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 w-full">
+        <button type="button" id="btn-prev" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-200 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none">Anterior</button>
+        <span id="pagination-info" class="text-center text-sm text-gray-600 px-2 py-1 order-first sm:order-none"></span>
+        <button type="button" id="btn-next" class="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-full border border-gray-200 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none">Siguiente</button>
+      </div>
+    </nav>
+  </main>
+
+  {% include "partials/footer.html" %}
+
+  <script>
+    const LABEL_CTA = {{ label_catalog_cta | tojson }};
+    const BADGE_INM = {{ label_badge_inmediato | tojson }};
+    const BADGE_ENC = {{ label_badge_encargo | tojson }};
+    const BADGE_SALE = {{ label_badge_sale | tojson }};
+    const PLACEHOLDER_NO_IMAGE = {{ placeholder_no_image | tojson }};
+    const PER_PAGE = 12;
+    const FORCE_SALE = true;
+
+    const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+    function formatPrecio(n) { return moneyFmt.format(Number(n) || 0); }
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    function badgesHtml(p) {
+      const vr = p.variantes_resumen || {};
+      const chips = [];
+      if (p.is_sale) chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white">' + BADGE_SALE + (p.descuento_porcentaje ? ' -' + p.descuento_porcentaje + '%' : '') + '</span>');
+      if (vr.badge_inmediato) chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-900">' + BADGE_INM + '</span>');
+      if (vr.badge_encargo) chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-900">' + BADGE_ENC + '</span>');
+      return chips.length ? '<div class="flex flex-wrap gap-1.5 mt-2">' + chips.join('') + '</div>' : '';
+    }
+
+    function priceBlock(p) {
+      const final = formatPrecio(p.precio_final ?? p.precio);
+      if (p.is_sale && p.precio_original && p.precio_original > (p.precio_final ?? p.precio)) {
+        return `<div class="mt-3 flex items-baseline gap-2 flex-wrap">
+            <span class="text-green-600 text-lg sm:text-xl font-extrabold tabular-nums">$${final}</span>
+            <span class="text-gray-400 text-sm line-through tabular-nums">$${formatPrecio(p.precio_original)}</span>
+          </div>`;
+      }
+      return `<p class="text-gray-900 text-lg sm:text-xl font-bold mt-3 tabular-nums">$${final}</p>`;
+    }
+
+    function renderProductos(productos) {
+      const cont = document.getElementById('contenedor-productos');
+      cont.innerHTML = productos.map(p => {
+        const imgUrl = p.imagen || ('https://via.placeholder.com/600x400?text=' + encodeURIComponent(PLACEHOLDER_NO_IMAGE));
+        const titulo = escHtml(p.titulo);
+        const cat = p.categoria && p.categoria.name ? escHtml(p.categoria.name) : '';
+        return `
+  <article class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col">
+    <a href="api/detalle/${p.id}" class="block relative bg-gray-50 aspect-[3/4] flex items-center justify-center overflow-hidden">
+      <span class="absolute top-2 left-2 z-10 inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-red-600 text-white shadow">${BADGE_SALE}${p.descuento_porcentaje ? ' -' + p.descuento_porcentaje + '%' : ''}</span>
+      <img src="${imgUrl}" alt="" class="max-w-full max-h-full w-auto h-auto object-contain p-2">
+    </a>
+    <div class="p-3 sm:p-4 flex-1 flex flex-col">
+      ${cat ? `<p class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-400">${cat}</p>` : ''}
+      <h3 class="text-sm sm:text-base font-semibold text-gray-900 leading-snug mt-0.5 line-clamp-2">
+        <a href="api/detalle/${p.id}" class="hover:text-black">${titulo}</a>
+      </h3>
+      ${badgesHtml(p)}
+      ${priceBlock(p)}
+      <div class="mt-3 sm:mt-4">
+        <a href="api/detalle/${p.id}" class="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center rounded-full bg-black text-white text-xs sm:text-sm font-semibold hover:bg-gray-900">${LABEL_CTA}</a>
+      </div>
+    </div>
+  </article>`;
+      }).join('');
+    }
+
+    function urlState() {
+      const u = new URL(window.location.href);
+      return {
+        page: Math.max(1, parseInt(u.searchParams.get('page') || '1', 10) || 1),
+        q: (u.searchParams.get('q') || '').trim(),
+        cat: (u.searchParams.get('cat') || '').trim().toLowerCase(),
+      };
+    }
+    function setUrl(s) {
+      const u = new URL(window.location.href);
+      if (s.page>1) u.searchParams.set('page', String(s.page)); else u.searchParams.delete('page');
+      if (s.q) u.searchParams.set('q', s.q); else u.searchParams.delete('q');
+      if (s.cat && s.cat!=='todos') u.searchParams.set('cat', s.cat); else u.searchParams.delete('cat');
+      window.history.replaceState({}, '', u.pathname + u.search);
+    }
+    function buildApiUrl(s) {
+      const p = new URLSearchParams();
+      p.set('page', String(s.page||1)); p.set('per_page', String(PER_PAGE));
+      if (FORCE_SALE) p.set('sale','1');
+      if (s.q) p.set('q', s.q);
+      if (s.cat && s.cat!=='todos') p.set('cat', s.cat);
+      return '/api/productos?' + p.toString();
+    }
+    function updateLink(patch){
+      const u = new URL(window.location.href);
+      Object.entries(patch).forEach(([k,v])=>{ if(v===''||v==null||v===false) u.searchParams.delete(k); else u.searchParams.set(k,String(v)); });
+      u.searchParams.delete('page');
+      return u.pathname + u.search;
+    }
+    function renderActiveFilters(s) {
+      const box = document.getElementById('active-filters');
+      const chips = [];
+      if (s.q) chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Buscar: "${escHtml(s.q)}" <a href="${updateLink({q:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      if (s.cat && s.cat!=='todos') chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Categoría: ${escHtml(s.cat)} <a href="${updateLink({cat:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      if (!chips.length) { box.classList.add('hidden'); box.innerHTML=''; return; }
+      box.classList.remove('hidden'); box.innerHTML = chips.join('');
+    }
+    function renderPaginationState(d) {
+      const nav = document.getElementById('pagination'), info = document.getElementById('pagination-info');
+      const bp = document.getElementById('btn-prev'), bn = document.getElementById('btn-next');
+      if (!d.total_pages || d.total_pages<=1) { nav.classList.add('hidden'); return; }
+      nav.classList.remove('hidden'); info.textContent = 'Página ' + d.page + ' de ' + d.total_pages;
+      bp.disabled = d.page<=1; bn.disabled = d.page>=d.total_pages;
+    }
+    function showCatalogState(loading, has) {
+      document.getElementById('catalog-loading').classList.toggle('hidden', !loading);
+      document.getElementById('contenedor-productos').classList.toggle('hidden', loading || !has);
+      document.getElementById('catalog-empty').classList.toggle('hidden', loading || has);
+    }
+
+    let state = urlState();
+    function loadProductos() {
+      showCatalogState(true, true); renderActiveFilters(state);
+      fetch(buildApiUrl(state)).then(r=>r.json()).then(data => {
+        if (data.total_pages && state.page>data.total_pages && data.total_pages>=1) { state.page=data.total_pages; setUrl(state); loadProductos(); return; }
+        state.page = data.page || state.page;
+        const items = data.items || [];
+        renderProductos(items); renderPaginationState(data);
+        const has = items.length>0; showCatalogState(false, has);
+        if (!has) document.getElementById('pagination').classList.add('hidden');
+      }).catch(()=>{ showCatalogState(false,false); document.getElementById('catalog-empty').textContent='No se pudo cargar el sale. Intentá más tarde.'; });
+    }
+    async function loadCategories() {
+      const row = document.getElementById('cats-row');
+      try {
+        const r = await fetch('/api/categories'); const cats = r.ok? await r.json() : [];
+        const items = [{slug:'todos', name:'Todas'}].concat(cats);
+        row.innerHTML = items.map(c => {
+          const active = (c.slug==='todos' && (!state.cat || state.cat==='todos')) || c.slug===state.cat;
+          const href = updateLink({cat: c.slug==='todos'?'':c.slug});
+          return `<a href="${href}" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border ${active?'bg-red-600 text-white border-red-600':'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}">${escHtml(c.name)}</a>`;
+        }).join('');
+      } catch (e) { row.innerHTML=''; }
+    }
+
+    document.getElementById('btn-prev').addEventListener('click', ()=>{ if(state.page>1){state.page-=1; setUrl(state); loadProductos(); window.scrollTo({top:0,behavior:'smooth'});} });
+    document.getElementById('btn-next').addEventListener('click', ()=>{ state.page+=1; setUrl(state); loadProductos(); window.scrollTo({top:0,behavior:'smooth'}); });
+
+    loadCategories();
+    loadProductos();
+  </script>
+
+  <script src="/static/js/shoppingCart.js"></script>
+</body>
+</html>
