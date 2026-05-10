@@ -68,6 +68,7 @@ def initialize_database():
         print("Database and tables created successfully.")
 
         _seed_sizes_if_empty()
+        _seed_categories_if_empty()
 
     except Exception as e:
          print(f"Error initializing database: {e}")
@@ -97,6 +98,37 @@ def _seed_sizes_if_empty() -> None:
     except Exception as e:
         session.rollback()
         print(f"No se pudieron insertar talles base: {e}")
+    finally:
+        session.close()
+
+
+def _seed_categories_if_empty() -> None:
+    """Categorías base de prendas. Idempotente."""
+    from database.models.Category import Category
+
+    session = SessionLocal()
+    try:
+        if session.query(Category).count() > 0:
+            return
+        defaults = [
+            ("jeans", "Jeans", 10),
+            ("pantalones", "Pantalones", 20),
+            ("remeras", "Remeras", 30),
+            ("camisas", "Camisas", 40),
+            ("blusas", "Blusas", 50),
+            ("camperas", "Camperas", 60),
+            ("vestidos", "Vestidos", 70),
+            ("polleras", "Polleras", 80),
+            ("buzos", "Buzos", 90),
+            ("accesorios", "Accesorios", 100),
+        ]
+        for slug, name, order in defaults:
+            session.add(Category(slug=slug, name=name, sort_order=order, activo=True))
+        session.commit()
+        print("Categorías base insertadas (categories).")
+    except Exception as e:
+        session.rollback()
+        print(f"No se pudieron insertar categorías base: {e}")
     finally:
         session.close()
 

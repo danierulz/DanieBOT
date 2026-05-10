@@ -6,51 +6,80 @@
   <title>{{ page_title_product }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col antialiased">
+<body class="bg-[#fafafa] min-h-screen flex flex-col antialiased">
 
 {% include "partials/header.html" %}
 
   <main class="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-10 w-full">
+    <nav class="text-xs text-gray-500 mb-4">
+      <a href="/" class="hover:text-black">Inicio</a>
+      <span class="mx-1">/</span>
+      <span id="breadcrumb-cat" class="text-gray-700">Producto</span>
+    </nav>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
       <!-- Galería -->
       <div class="space-y-3">
-        <div class="rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden aspect-[3/4] flex items-center justify-center">
-          <img id="img-main" src="https://via.placeholder.com/600x800?text=Foto" alt="" class="max-w-full max-h-full w-auto h-auto object-contain">
+        <div class="relative rounded-2xl bg-white border border-gray-200 overflow-hidden aspect-[3/4] flex items-center justify-center">
+          <span id="sale-badge" class="hidden absolute top-3 left-3 z-10 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-red-600 text-white shadow"></span>
+          <img id="img-main" src="https://via.placeholder.com/600x800?text=Foto" alt="" class="max-w-full max-h-full w-auto h-auto object-contain p-2">
         </div>
         <div class="grid grid-cols-3 gap-2" id="thumbs-row">
-          <button type="button" id="thumb0" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-gray-100 hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
-          <button type="button" id="thumb1" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-gray-100 hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
-          <button type="button" id="thumb2" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-gray-100 hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
+          <button type="button" id="thumb0" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-white hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
+          <button type="button" id="thumb1" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-white hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
+          <button type="button" id="thumb2" class="rounded-lg overflow-hidden border-2 border-transparent hover:border-black aspect-square bg-white hidden focus:outline-none focus:ring-2 focus:ring-black"></button>
         </div>
       </div>
 
       <div class="flex flex-col">
+        <p id="cat-label" class="text-xs uppercase tracking-[0.2em] text-gray-500"></p>
         <h2 id="titulo" class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">—</h2>
-        <p id="precio" class="mt-4 text-2xl font-bold text-gray-900 tabular-nums">—</p>
 
-        <label for="variant-select" class="mt-6 block text-sm font-semibold text-gray-800">{{ detail_select_size }}</label>
-        <select id="variant-select" class="mt-2 w-full min-h-[48px] px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent">
-          <option value="">{{ detail_select_size }}</option>
-        </select>
-        <p id="variant-hint" class="mt-2 text-sm text-gray-600 min-h-[1.25rem]"></p>
+        <div class="mt-4 flex items-baseline gap-3 flex-wrap">
+          <span id="precio-final" class="text-2xl sm:text-3xl font-extrabold text-gray-900 tabular-nums">—</span>
+          <span id="precio-original" class="hidden text-base text-gray-400 line-through tabular-nums">—</span>
+          <span id="precio-discount" class="hidden inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700"></span>
+        </div>
+        <p id="precio-savings" class="hidden text-sm text-green-700 font-semibold mt-1"></p>
+
+        <div class="mt-6">
+          <p class="text-sm font-semibold text-gray-800">{{ detail_select_size }}</p>
+          <div id="size-chips" class="mt-2 flex flex-wrap gap-2"></div>
+          <p id="size-empty" class="hidden mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+            Por ahora no hay talles disponibles para este producto. Consultanos por WhatsApp.
+          </p>
+        </div>
+
+        <div id="variant-hint" class="hidden mt-3 rounded-lg border px-3 py-2 text-sm"></div>
 
         <p id="descripcion" class="mt-6 text-gray-600 text-sm sm:text-base leading-relaxed">—</p>
 
         <div class="mt-8 flex flex-col sm:flex-row gap-3">
-          <button type="button" id="btn-add-cart" onclick="agregarConVariante()" class="flex-1 min-h-[48px] rounded-full bg-green-600 text-white font-bold hover:bg-green-700 active:bg-green-800 transition touch-manipulation shadow-sm">
-            {{ btn_add_cart_detail }}
+          <button type="button" id="btn-add-cart" onclick="agregarConVariante()" disabled
+            class="flex-1 min-h-[48px] rounded-full bg-gray-300 text-gray-600 font-bold cursor-not-allowed transition touch-manipulation shadow-sm">
+            {{ detail_select_size }}
           </button>
-          <button type="button" onclick="comprarAhora()" class="flex-1 min-h-[48px] rounded-full bg-black text-white font-bold hover:bg-gray-900 transition touch-manipulation shadow-sm">
+          <button type="button" onclick="comprarAhora()" id="btn-buy-now" disabled
+            class="flex-1 min-h-[48px] rounded-full bg-gray-200 text-gray-500 font-bold cursor-not-allowed transition">
             {{ btn_buy_now }}
           </button>
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+          <a href="{{ contact_asesor_url }}" target="_blank" rel="noopener noreferrer"
+            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-green-200 bg-green-50 text-green-800 hover:bg-green-100">
+            Consultar al {{ contact_asesor_label }}
+          </a>
+          <a href="/puntos-de-venta"
+            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-gray-200 bg-white text-gray-800 hover:bg-gray-50">
+            Ver puntos de retiro
+          </a>
         </div>
       </div>
     </div>
   </main>
 
-  <footer class="bg-black text-gray-400 text-sm py-6 text-center px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] mt-auto">
-    {{ footer_copyright }}
-  </footer>
+  {% include "partials/footer.html" %}
 
   <script>
     const LABEL_NO_DESCRIPTION = {{ label_no_description | tojson }};
@@ -58,14 +87,20 @@
     const LABEL_IMMEDIATE = {{ detail_immediate | tojson }};
     const LABEL_ENCARGO = {{ detail_encargo | tojson }};
     const DETAIL_SELECT_PLACEHOLDER = {{ detail_select_size | tojson }};
+    const BTN_ADD_IMMEDIATE = {{ btn_add_cart_immediate | tojson }};
+    const BTN_ADD_ENCARGO_DAYS = {{ btn_add_cart_encargo_days | tojson }};
+    const BTN_ADD_ENCARGO_NO_DAYS = {{ btn_add_cart_encargo_no_days | tojson }};
+    const BADGE_SALE = {{ label_badge_sale | tojson }};
+
+    const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+    function formatPrecio(n) { return moneyFmt.format(Number(n) || 0); }
 
     let productActual = null;
     let variantMap = {};
+    let selectedVariantId = null;
     const product_id_from_template = "{{ product_id }}";
 
-    window.detailShowSizeWarning = function () {
-      alert(LABEL_DETAIL_REQUIRES);
-    };
+    window.detailShowSizeWarning = function () { alert(LABEL_DETAIL_REQUIRES); };
 
     function setMainImage(url) {
       const el = document.getElementById('img-main');
@@ -89,55 +124,147 @@
       }
     }
 
+    function variantIsAvailable(v) {
+      return (v.qty_stock_local || 0) > 0 || !!v.encargo_habilitado;
+    }
+
+    function variantMode(v) {
+      return (v.qty_stock_local || 0) > 0 ? 'inmediato' : 'encargo';
+    }
+
+    function renderSizeChips() {
+      const cont = document.getElementById('size-chips');
+      const empty = document.getElementById('size-empty');
+      const variantes = (productActual.variantes || []).filter(variantIsAvailable);
+      if (!variantes.length) {
+        cont.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      cont.innerHTML = variantes.map(v => {
+        const isInmediato = (v.qty_stock_local || 0) > 0;
+        const cls = selectedVariantId === v.variant_id
+          ? 'bg-black text-white border-black'
+          : (isInmediato
+              ? 'bg-white text-gray-900 border-gray-300 hover:border-black'
+              : 'bg-amber-50 text-amber-900 border-amber-200 hover:border-amber-500');
+        return `<button type="button" data-vid="${v.variant_id}"
+          class="min-w-[3rem] min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition ${cls}">
+          ${v.size_label}
+        </button>`;
+      }).join('');
+      cont.querySelectorAll('button[data-vid]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedVariantId = parseInt(btn.getAttribute('data-vid'), 10);
+          renderSizeChips();
+          updateVariantHint();
+          updateCtaState();
+        });
+      });
+    }
+
     function updateVariantHint() {
-      const sel = document.getElementById('variant-select');
-      const vid = parseInt(sel.value, 10);
       const hint = document.getElementById('variant-hint');
-      if (!vid || !variantMap[vid]) {
+      if (!selectedVariantId || !variantMap[selectedVariantId]) {
+        hint.classList.add('hidden');
         hint.textContent = '';
         return;
       }
-      const v = variantMap[vid];
-      const parts = [];
-      if ((v.qty_stock_local || 0) > 0) parts.push(LABEL_IMMEDIATE + ' (' + v.qty_stock_local + ' u.)');
-      if (v.encargo_habilitado) {
-        let enc = LABEL_ENCARGO;
-        if (v.dias_encargo_estimados) enc += ' (~' + v.dias_encargo_estimados + ' d.)';
-        parts.push(enc);
+      const v = variantMap[selectedVariantId];
+      hint.classList.remove('hidden');
+      if ((v.qty_stock_local || 0) > 0) {
+        hint.className = 'mt-3 rounded-lg border px-3 py-2 text-sm bg-green-50 border-green-200 text-green-800';
+        hint.innerHTML = '<strong>' + LABEL_IMMEDIATE + ':</strong> tenemos ' + v.qty_stock_local + ' unidad(es) en local. Listas para retirar.';
+      } else if (v.encargo_habilitado) {
+        const dias = v.dias_encargo_estimados ? ' Llega en aprox. <strong>' + v.dias_encargo_estimados + ' días</strong>.' : ' Consultanos los días de demora por WhatsApp.';
+        hint.className = 'mt-3 rounded-lg border px-3 py-2 text-sm bg-amber-50 border-amber-200 text-amber-900';
+        hint.innerHTML = '<strong>' + LABEL_ENCARGO + ':</strong> sin stock inmediato.' + dias;
+      } else {
+        hint.classList.add('hidden');
       }
-      hint.textContent = parts.join(' · ');
     }
 
-    document.getElementById('variant-select').addEventListener('change', updateVariantHint);
+    function updateCtaState() {
+      const btn = document.getElementById('btn-add-cart');
+      const buy = document.getElementById('btn-buy-now');
+      const v = selectedVariantId ? variantMap[selectedVariantId] : null;
+      if (!v) {
+        btn.disabled = true; btn.className = 'flex-1 min-h-[48px] rounded-full bg-gray-300 text-gray-600 font-bold cursor-not-allowed transition touch-manipulation shadow-sm';
+        btn.textContent = DETAIL_SELECT_PLACEHOLDER;
+        buy.disabled = true; buy.className = 'flex-1 min-h-[48px] rounded-full bg-gray-200 text-gray-500 font-bold cursor-not-allowed transition';
+        return;
+      }
+      const inmediato = (v.qty_stock_local || 0) > 0;
+      if (inmediato) {
+        btn.disabled = false;
+        btn.className = 'flex-1 min-h-[48px] rounded-full bg-green-600 text-white font-bold hover:bg-green-700 active:bg-green-800 transition touch-manipulation shadow-sm';
+        btn.textContent = BTN_ADD_IMMEDIATE;
+      } else {
+        btn.disabled = false;
+        btn.className = 'flex-1 min-h-[48px] rounded-full bg-amber-500 text-white font-bold hover:bg-amber-600 active:bg-amber-700 transition touch-manipulation shadow-sm';
+        if (v.dias_encargo_estimados) {
+          btn.textContent = BTN_ADD_ENCARGO_DAYS.replace('{days}', String(v.dias_encargo_estimados));
+        } else {
+          btn.textContent = BTN_ADD_ENCARGO_NO_DAYS;
+        }
+      }
+      buy.disabled = false;
+      buy.className = 'flex-1 min-h-[48px] rounded-full bg-black text-white font-bold hover:bg-gray-900 transition touch-manipulation shadow-sm';
+    }
 
     function buildPayloadFromSelection() {
-      const sel = document.getElementById('variant-select');
-      const vid = parseInt(sel.value, 10);
-      if (!vid || !variantMap[vid]) return null;
-      const v = variantMap[vid];
-      const modo =
-        (v.qty_stock_local || 0) > 0 ? 'inmediato' : 'encargo';
+      if (!selectedVariantId || !variantMap[selectedVariantId]) return null;
+      const v = variantMap[selectedVariantId];
+      const modo = variantMode(v);
       return {
         ...productActual,
+        precio: productActual.precio_final ?? productActual.precio,
         variant_id: v.variant_id,
         talle_label: v.size_label,
         size_label: v.size_label,
+        size_code: v.size_code,
         modo_entrega: modo,
+        dias_encargo_estimados: v.dias_encargo_estimados || null,
       };
     }
 
     function agregarConVariante() {
       const payload = buildPayloadFromSelection();
-      if (!payload) {
-        window.detailShowSizeWarning();
-        return;
-      }
+      if (!payload) { window.detailShowSizeWarning(); return; }
       agregarAlCarrito(payload);
     }
 
     function comprarAhora() {
-      agregarConVariante();
+      const payload = buildPayloadFromSelection();
+      if (!payload) { window.detailShowSizeWarning(); return; }
+      agregarAlCarrito(payload);
       toggleCarrito();
+    }
+
+    function renderPrice(p) {
+      const final = formatPrecio(p.precio_final ?? p.precio);
+      document.getElementById('precio-final').textContent = '$' + final;
+      const orig = document.getElementById('precio-original');
+      const disc = document.getElementById('precio-discount');
+      const sav = document.getElementById('precio-savings');
+      const badge = document.getElementById('sale-badge');
+      if (p.is_sale && p.precio_original && p.precio_original > (p.precio_final ?? p.precio)) {
+        orig.textContent = '$' + formatPrecio(p.precio_original);
+        orig.classList.remove('hidden');
+        document.getElementById('precio-final').classList.add('text-green-600');
+        if (p.descuento_porcentaje) {
+          disc.textContent = '-' + p.descuento_porcentaje + '%';
+          disc.classList.remove('hidden');
+        }
+        const ahorro = (p.precio_original || 0) - (p.precio_final || p.precio || 0);
+        if (ahorro > 0) { sav.textContent = 'Ahorrás $' + formatPrecio(ahorro); sav.classList.remove('hidden'); }
+        badge.textContent = BADGE_SALE + (p.descuento_porcentaje ? ' -' + p.descuento_porcentaje + '%' : '');
+        badge.classList.remove('hidden');
+      } else {
+        orig.classList.add('hidden'); disc.classList.add('hidden'); sav.classList.add('hidden'); badge.classList.add('hidden');
+        document.getElementById('precio-final').classList.remove('text-green-600');
+      }
     }
 
     fetch('/api/producto/' + product_id_from_template)
@@ -146,31 +273,22 @@
         productActual = p;
         document.getElementById('titulo').textContent = p.titulo;
         document.getElementById('descripcion').textContent = p.descripcion || LABEL_NO_DESCRIPTION;
-        document.getElementById('precio').textContent =
-          '$' +
-          new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(p.precio) || 0);
+        if (p.categoria && p.categoria.name) {
+          document.getElementById('cat-label').textContent = p.categoria.name;
+          document.getElementById('breadcrumb-cat').textContent = p.categoria.name;
+        }
+        renderPrice(p);
 
         variantMap = {};
-        const sel = document.getElementById('variant-select');
-        sel.innerHTML = '<option value="">' + DETAIL_SELECT_PLACEHOLDER + '</option>';
-        (p.variantes || []).forEach((v) => {
-          variantMap[v.variant_id] = v;
-          const opt = document.createElement('option');
-          opt.value = String(v.variant_id);
-          opt.textContent = v.size_label + ' (' + v.size_code + ')';
-          sel.appendChild(opt);
-        });
-
-        const imgs = (p.imagenes || []).map((x) => x.url).filter(Boolean);
-        if (imgs.length > 0) {
-          setMainImage(imgs[0]);
-          setupThumbs(imgs);
-        }
+        (p.variantes || []).forEach(v => { variantMap[v.variant_id] = v; });
+        renderSizeChips();
         updateVariantHint();
+        updateCtaState();
+
+        const imgs = (p.imagenes || []).map(x => x.url).filter(Boolean);
+        if (imgs.length > 0) { setMainImage(imgs[0]); setupThumbs(imgs); }
       })
-      .catch(() => {
-        document.getElementById('titulo').textContent = 'No disponible';
-      });
+      .catch(() => { document.getElementById('titulo').textContent = 'No disponible'; });
   </script>
 
   <script src="/static/js/shoppingCart.js"></script>

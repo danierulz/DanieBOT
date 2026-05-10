@@ -14,18 +14,28 @@
     {{ promo_banner_text }}
   </div>
 
-<section class="relative bg-gradient-to-b from-neutral-100 via-white to-[#fafafa] py-8 sm:py-10 md:py-12 border-b border-neutral-200/80 overflow-hidden">
+<section class="relative bg-gradient-to-b from-neutral-100 via-white to-[#fafafa] py-6 sm:py-8 md:py-10 border-b border-neutral-200/80 overflow-hidden">
   <div class="absolute inset-0 opacity-[0.35] pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-200/60 via-transparent to-transparent"></div>
   <div class="relative max-w-7xl mx-auto px-3 sm:px-4 text-center">
-    <p class="text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">{{ brand_name }}</p>
-    <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">{{ hero_headline }}</h1>
-    <p class="mt-3 text-sm sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed">{{ hero_subtitle }}</p>
+    <p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gray-500 mb-1 sm:mb-2">{{ brand_name }}</p>
+    <h1 class="text-xl sm:text-3xl md:text-4xl font-bold text-gray-900">{{ hero_headline }}</h1>
+    <p class="mt-2 sm:mt-3 text-xs sm:text-base text-gray-600 max-w-xl mx-auto leading-relaxed">{{ hero_subtitle }}</p>
   </div>
 </section>
 
-<main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-8 sm:py-10 w-full">
+<!-- Chips de categorías -->
+<div class="bg-white border-b border-gray-100">
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 overflow-x-auto">
+    <div id="cats-row" class="flex items-center gap-2 whitespace-nowrap"></div>
+  </div>
+</div>
+
+<main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full">
+
+  <div id="active-filters" class="hidden mb-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700"></div>
+
   <p id="catalog-loading" class="text-center text-gray-500 py-12 text-sm sm:text-base">Cargando catálogo…</p>
-  <div class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6" id="contenedor-productos"></div>
+  <div class="hidden grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5" id="contenedor-productos"></div>
   <p id="catalog-empty" class="hidden text-center text-gray-500 py-16 text-sm sm:text-base px-2">No hay productos por el momento.</p>
 
   <nav id="pagination" class="mt-10 sm:mt-12 flex flex-col items-stretch sm:items-center gap-3 hidden w-full max-w-md mx-auto sm:max-w-none" aria-label="Paginación del catálogo">
@@ -39,25 +49,20 @@
       </button>
     </div>
   </nav>
-  </main>
+</main>
 
-  <footer class="bg-black text-gray-400 text-sm py-8 text-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
-    {{ footer_copyright }}
-  </footer>
-
+{% include "partials/footer.html" %}
 
   <script>
     const LABEL_CTA = {{ label_catalog_cta | tojson }};
     const BADGE_INM = {{ label_badge_inmediato | tojson }};
     const BADGE_ENC = {{ label_badge_encargo | tojson }};
+    const BADGE_SALE = {{ label_badge_sale | tojson }};
     const PLACEHOLDER_NO_IMAGE = {{ placeholder_no_image | tojson }};
     const PER_PAGE = 12;
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
-
-    function formatPrecio(n) {
-      return moneyFmt.format(Number(n) || 0);
-    }
+    function formatPrecio(n) { return moneyFmt.format(Number(n) || 0); }
 
     function escHtml(s) {
       const d = document.createElement('div');
@@ -65,39 +70,57 @@
       return d.innerHTML;
     }
 
-    function badgesHtml(vr) {
-      if (!vr) return '';
+    function badgesHtml(p) {
+      const vr = p.variantes_resumen || {};
       const chips = [];
+      if (p.is_sale) {
+        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-red-600 text-white">' + BADGE_SALE + (p.descuento_porcentaje ? ' -' + p.descuento_porcentaje + '%' : '') + '</span>');
+      }
       if (vr.badge_inmediato) {
-        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-900">' + BADGE_INM + '</span>');
+        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-green-100 text-green-900">' + BADGE_INM + '</span>');
       }
       if (vr.badge_encargo) {
-        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900">' + BADGE_ENC + '</span>');
+        chips.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-900">' + BADGE_ENC + '</span>');
       }
       return chips.length ? '<div class="flex flex-wrap gap-1.5 mt-2">' + chips.join('') + '</div>' : '';
+    }
+
+    function priceBlock(p) {
+      const final = formatPrecio(p.precio_final ?? p.precio);
+      if (p.is_sale && p.precio_original && p.precio_original > (p.precio_final ?? p.precio)) {
+        const orig = formatPrecio(p.precio_original);
+        return `
+          <div class="mt-3 flex items-baseline gap-2 flex-wrap">
+            <span class="text-green-600 text-lg sm:text-xl font-extrabold tabular-nums">$${final}</span>
+            <span class="text-gray-400 text-sm line-through tabular-nums">$${orig}</span>
+          </div>`;
+      }
+      return `<p class="text-gray-900 text-lg sm:text-xl font-bold mt-3 tabular-nums">$${final}</p>`;
     }
 
     function renderProductos(productos) {
       const cont = document.getElementById('contenedor-productos');
       cont.innerHTML = productos.map(p => {
-        const vr = p.variantes_resumen || {};
         const imgUrl = p.imagen || ('https://via.placeholder.com/600x400?text=' + encodeURIComponent(PLACEHOLDER_NO_IMAGE));
         const titulo = escHtml(p.titulo);
         const desc = escHtml(p.descripcion || '');
+        const cat = p.categoria && p.categoria.name ? escHtml(p.categoria.name) : '';
         return `
   <article class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden flex flex-col">
     <a href="api/detalle/${p.id}" class="block relative bg-gray-50 aspect-[3/4] flex items-center justify-center overflow-hidden">
+      ${p.is_sale ? '<span class="absolute top-2 left-2 z-10 inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-red-600 text-white shadow">' + BADGE_SALE + (p.descuento_porcentaje ? ' -' + p.descuento_porcentaje + '%' : '') + '</span>' : ''}
       <img src="${imgUrl}" alt="" class="max-w-full max-h-full w-auto h-auto object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]">
     </a>
-    <div class="p-4 flex-1 flex flex-col">
-      <h3 class="text-base font-semibold text-gray-900 leading-snug">
+    <div class="p-3 sm:p-4 flex-1 flex flex-col">
+      ${cat ? `<p class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-400">${cat}</p>` : ''}
+      <h3 class="text-sm sm:text-base font-semibold text-gray-900 leading-snug mt-0.5 line-clamp-2">
         <a href="api/detalle/${p.id}" class="hover:text-black">${titulo}</a>
       </h3>
-      ${badgesHtml(vr)}
-      <p class="text-gray-900 text-lg font-bold mt-3 tabular-nums">$${formatPrecio(p.precio)}</p>
-      <p class="text-gray-500 text-sm mt-2 line-clamp-2 flex-1">${desc}</p>
-      <div class="mt-4 pt-3 border-t border-gray-100">
-        <a href="api/detalle/${p.id}" class="flex w-full min-h-[44px] items-center justify-center rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900 active:bg-gray-950 transition touch-manipulation shadow-sm">
+      ${badgesHtml(p)}
+      ${priceBlock(p)}
+      <p class="hidden sm:block text-gray-500 text-sm mt-2 line-clamp-2 flex-1">${desc}</p>
+      <div class="mt-3 sm:mt-4 sm:pt-3 sm:border-t sm:border-gray-100">
+        <a href="api/detalle/${p.id}" class="flex w-full min-h-[40px] sm:min-h-[44px] items-center justify-center rounded-full bg-black text-white text-xs sm:text-sm font-semibold hover:bg-gray-900 active:bg-gray-950 transition touch-manipulation shadow-sm">
           ${LABEL_CTA}
         </a>
       </div>
@@ -106,16 +129,55 @@
       }).join('');
     }
 
-    function getPageFromUrl() {
-      const n = parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10);
-      return Number.isFinite(n) && n >= 1 ? n : 1;
+    function urlState() {
+      const u = new URL(window.location.href);
+      return {
+        page: Math.max(1, parseInt(u.searchParams.get('page') || '1', 10) || 1),
+        q: (u.searchParams.get('q') || '').trim(),
+        cat: (u.searchParams.get('cat') || '').trim().toLowerCase(),
+        sale: (u.searchParams.get('sale') || '') === '1',
+      };
     }
 
-    function setPageInUrl(page) {
-      const url = new URL(window.location.href);
-      if (page <= 1) url.searchParams.delete('page');
-      else url.searchParams.set('page', String(page));
-      window.history.replaceState({}, '', url.pathname + url.search);
+    function setUrl(state) {
+      const u = new URL(window.location.href);
+      if (state.page && state.page > 1) u.searchParams.set('page', String(state.page));
+      else u.searchParams.delete('page');
+      if (state.q) u.searchParams.set('q', state.q); else u.searchParams.delete('q');
+      if (state.cat && state.cat !== 'todos') u.searchParams.set('cat', state.cat); else u.searchParams.delete('cat');
+      if (state.sale) u.searchParams.set('sale', '1'); else u.searchParams.delete('sale');
+      window.history.replaceState({}, '', u.pathname + u.search);
+    }
+
+    function buildApiUrl(state) {
+      const params = new URLSearchParams();
+      params.set('page', String(state.page || 1));
+      params.set('per_page', String(PER_PAGE));
+      if (state.q) params.set('q', state.q);
+      if (state.cat && state.cat !== 'todos') params.set('cat', state.cat);
+      if (state.sale) params.set('sale', '1');
+      return '/api/productos?' + params.toString();
+    }
+
+    function renderActiveFilters(state) {
+      const box = document.getElementById('active-filters');
+      const chips = [];
+      if (state.q) chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Buscar: "${escHtml(state.q)}" <a href="${updateLink({q:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      if (state.cat && state.cat !== 'todos') chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Categoría: ${escHtml(state.cat)} <a href="${updateLink({cat:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      if (state.sale) chips.push(`<span class="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2.5 py-1 rounded-full">Sale <a href="${updateLink({sale:false})}" class="text-red-500 hover:text-red-900">×</a></span>`);
+      if (!chips.length) { box.classList.add('hidden'); box.innerHTML=''; return; }
+      box.classList.remove('hidden');
+      box.innerHTML = chips.join('');
+    }
+
+    function updateLink(patch) {
+      const u = new URL(window.location.href);
+      Object.entries(patch).forEach(([k,v]) => {
+        if (v === '' || v === false || v == null) u.searchParams.delete(k);
+        else u.searchParams.set(k, String(v));
+      });
+      u.searchParams.delete('page');
+      return u.pathname + u.search;
     }
 
     function renderPaginationState(data) {
@@ -123,11 +185,7 @@
       const info = document.getElementById('pagination-info');
       const btnPrev = document.getElementById('btn-prev');
       const btnNext = document.getElementById('btn-next');
-
-      if (!data.total_pages || data.total_pages <= 1) {
-        nav.classList.add('hidden');
-        return;
-      }
+      if (!data.total_pages || data.total_pages <= 1) { nav.classList.add('hidden'); return; }
       nav.classList.remove('hidden');
       info.textContent = 'Página ' + data.page + ' de ' + data.total_pages;
       btnPrev.disabled = data.page <= 1;
@@ -141,26 +199,27 @@
       document.getElementById('catalog-empty').classList.toggle('hidden', loading || hasProducts);
     }
 
-    function loadProductos(page) {
+    let state = urlState();
+
+    function loadProductos() {
       showCatalogState(true, true);
-      fetch('/api/productos?page=' + encodeURIComponent(page) + '&per_page=' + PER_PAGE)
+      renderActiveFilters(state);
+      fetch(buildApiUrl(state))
         .then(r => r.json())
         .then(data => {
-          if (data.total_pages && page > data.total_pages && data.total_pages >= 1) {
-            currentPage = data.total_pages;
-            setPageInUrl(currentPage);
-            loadProductos(currentPage);
+          if (data.total_pages && state.page > data.total_pages && data.total_pages >= 1) {
+            state.page = data.total_pages;
+            setUrl(state);
+            loadProductos();
             return;
           }
-          currentPage = data.page || page;
+          state.page = data.page || state.page;
           const items = data.items || [];
           renderProductos(items);
           renderPaginationState(data);
           const hasProducts = items.length > 0;
           showCatalogState(false, hasProducts);
-          if (!hasProducts && (data.total || 0) === 0) {
-            document.getElementById('pagination').classList.add('hidden');
-          }
+          if (!hasProducts) document.getElementById('pagination').classList.add('hidden');
         })
         .catch(e => {
           console.error(e);
@@ -169,25 +228,30 @@
         });
     }
 
-    let currentPage = getPageFromUrl();
+    async function loadCategories() {
+      const row = document.getElementById('cats-row');
+      try {
+        const r = await fetch('/api/categories');
+        const cats = r.ok ? await r.json() : [];
+        const allActive = !state.cat || state.cat === 'todos';
+        const items = [{slug:'todos', name:'Todas'}].concat(cats);
+        row.innerHTML = items.map(c => {
+          const active = (c.slug === 'todos' && allActive) || (c.slug === state.cat);
+          const href = updateLink({cat: c.slug === 'todos' ? '' : c.slug});
+          return `<a href="${href}" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border ${active ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}">${escHtml(c.name)}</a>`;
+        }).join('');
+      } catch (e) { row.innerHTML=''; }
+    }
 
     document.getElementById('btn-prev').addEventListener('click', () => {
-      if (currentPage > 1) {
-        currentPage -= 1;
-        setPageInUrl(currentPage);
-        loadProductos(currentPage);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      if (state.page > 1) { state.page -= 1; setUrl(state); loadProductos(); window.scrollTo({top:0,behavior:'smooth'}); }
     });
-
     document.getElementById('btn-next').addEventListener('click', () => {
-      currentPage += 1;
-      setPageInUrl(currentPage);
-      loadProductos(currentPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      state.page += 1; setUrl(state); loadProductos(); window.scrollTo({top:0,behavior:'smooth'});
     });
 
-    loadProductos(currentPage);
+    loadCategories();
+    loadProductos();
   </script>
 
   <script src="/static/js/shoppingCart.js"></script>

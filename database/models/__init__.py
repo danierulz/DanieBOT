@@ -1,3 +1,4 @@
+from .Category import Category
 from .Products import Products
 from .ProductImages import ProductImages
 from .Order import Order

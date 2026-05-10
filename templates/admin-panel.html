@@ -44,6 +44,31 @@
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
         </div>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="category_id" class="block text-sm font-medium text-gray-700">{{ admin_label_category }}</label>
+            <select id="category_id" name="category_id" class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+              <option value="">{{ admin_label_category_none }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="border border-red-200 rounded-lg p-4 bg-red-50">
+          <h3 class="text-sm font-semibold text-red-900 mb-1">{{ admin_sale_heading }}</h3>
+          <p class="text-xs text-red-800 mb-3">{{ admin_sale_help }}</p>
+          <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+              <input type="checkbox" id="is_sale" name="is_sale" value="1" class="w-4 h-4 accent-red-600">
+              <span class="font-medium">{{ admin_sale_toggle }}</span>
+            </label>
+            <div class="flex-1">
+              <label for="discount_percent" class="block text-xs font-medium text-gray-700">{{ admin_sale_discount_label }}</label>
+              <input id="discount_percent" name="discount_percent" type="number" min="1" max="95" step="1" placeholder="—"
+                class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900" disabled>
+            </div>
+          </div>
+        </div>
+
         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
           <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
           <p class="text-xs text-gray-600 mb-3">{{ admin_variants_help }}</p>
@@ -215,6 +240,32 @@
       return JSON.stringify(out);
     }
 
+    async function loadCategoriesSelect(selectId) {
+      const sel = document.getElementById(selectId);
+      if (!sel) return;
+      try {
+        const r = await fetch('/api/categories');
+        if (!r.ok) return;
+        const cats = await r.json();
+        const current = sel.value;
+        sel.innerHTML = '<option value="">{{ admin_label_category_none }}</option>' +
+          cats.map(c => `<option value="${c.category_id}">${escapeHtml(c.name)}</option>`).join('');
+        if (current) sel.value = current;
+      } catch (e) {}
+    }
+
+    function bindSaleToggle() {
+      const cb = document.getElementById('is_sale');
+      const dc = document.getElementById('discount_percent');
+      if (!cb || !dc) return;
+      const sync = () => {
+        dc.disabled = !cb.checked;
+        if (!cb.checked) dc.value = '';
+      };
+      cb.addEventListener('change', sync);
+      sync();
+    }
+
     async function initVariantsTable() {
       const tbody = document.getElementById('variants-table-body');
       tbody.innerHTML = '<tr><td colspan="4" class="px-2 py-3 text-gray-500 text-sm">Cargando talles…</td></tr>';
@@ -247,6 +298,8 @@
       document.getElementById('producto-form').reset();
       resetVariantRows();
       submitBtn.textContent = LABELS.save;
+      const dc = document.getElementById('discount_percent');
+      if (dc) dc.disabled = true;
     }
 
     let listPage = 1;
@@ -435,6 +488,8 @@
         return;
       }
       initVariantsTable();
+      loadCategoriesSelect('category_id');
+      bindSaleToggle();
       const params = new URLSearchParams(window.location.search);
       if (params.get('tab') === 'list') {
         showTab('list');

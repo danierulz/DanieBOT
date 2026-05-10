@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>{{ page_title_contact }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#fafafa] min-h-screen flex flex-col antialiased">
+  {% include "partials/header.html" %}
+
+  <main class="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
+    <header class="text-center mb-8">
+      <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ contact_subtitle }}</p>
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mt-1">{{ contact_title }}</h1>
+      <p class="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">{{ contact_intro }}</p>
+    </header>
+
+    <p class="text-center text-sm text-gray-700 mb-6 font-medium">{{ contact_choose_help }}</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+      <a href="{{ contact_bot_url }}" target="_blank" rel="noopener noreferrer"
+        class="group bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-green-500 transition flex flex-col">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-700">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+              <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.62-5.946C.122 5.335 5.46 0 12.057 0c3.181 0 6.167 1.24 8.412 3.488a11.82 11.82 0 013.48 8.413c-.003 6.557-5.34 11.892-11.892 11.892a11.9 11.9 0 01-5.683-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+            </svg>
+          </span>
+          <div>
+            <p class="text-xs uppercase tracking-wider text-gray-500">{{ contact_bot_label }}</p>
+            <p class="text-lg font-bold text-gray-900">+{{ contact_bot_number }}</p>
+          </div>
+        </div>
+        <p class="mt-4 text-sm text-gray-600">{{ contact_bot_desc }}</p>
+        <span class="mt-5 inline-flex items-center justify-center min-h-[44px] px-4 rounded-full bg-green-600 text-white text-sm font-semibold group-hover:bg-green-700">{{ contact_open_in_whatsapp }}</span>
+      </a>
+
+      <a href="{{ contact_asesor_url }}" target="_blank" rel="noopener noreferrer"
+        class="group bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-green-500 transition flex flex-col">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-700">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+              <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.62-5.946C.122 5.335 5.46 0 12.057 0c3.181 0 6.167 1.24 8.412 3.488a11.82 11.82 0 013.48 8.413c-.003 6.557-5.34 11.892-11.892 11.892a11.9 11.9 0 01-5.683-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+            </svg>
+          </span>
+          <div>
+            <p class="text-xs uppercase tracking-wider text-gray-500">{{ contact_asesor_label }}</p>
+            <p class="text-lg font-bold text-gray-900">+{{ contact_asesor_number }}</p>
+          </div>
+        </div>
+        <p class="mt-4 text-sm text-gray-600">{{ contact_asesor_desc }}</p>
+        <span class="mt-5 inline-flex items-center justify-center min-h-[44px] px-4 rounded-full bg-green-600 text-white text-sm font-semibold group-hover:bg-green-700">{{ contact_open_in_whatsapp }}</span>
+      </a>
+    </div>
+
+    <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <a href="{{ social_instagram_url }}" target="_blank" rel="noopener noreferrer"
+        class="bg-white border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-3 hover:border-pink-400">
+        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-pink-100 text-pink-600">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M12 2.2c3.2 0 3.584.012 4.85.07 1.17.054 1.97.24 2.43.41a4.92 4.92 0 0 1 1.78 1.16 4.92 4.92 0 0 1 1.16 1.78c.17.46.357 1.26.41 2.43.058 1.266.07 1.65.07 4.85s-.012 3.584-.07 4.85c-.053 1.17-.24 1.97-.41 2.43a4.92 4.92 0 0 1-1.16 1.78 4.92 4.92 0 0 1-1.78 1.16c-.46.17-1.26.357-2.43.41-1.266.058-1.65.07-4.85.07s-3.584-.012-4.85-.07c-1.17-.053-1.97-.24-2.43-.41a4.92 4.92 0 0 1-1.78-1.16 4.92 4.92 0 0 1-1.16-1.78c-.17-.46-.357-1.26-.41-2.43C2.212 15.584 2.2 15.2 2.2 12s.012-3.584.07-4.85c.053-1.17.24-1.97.41-2.43A4.92 4.92 0 0 1 3.84 2.94 4.92 4.92 0 0 1 5.62 1.78c.46-.17 1.26-.357 2.43-.41C9.316 1.312 9.7 1.3 12 1.3z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs uppercase tracking-wider text-gray-500">Instagram</p>
+          <p class="text-sm font-semibold text-gray-900">@outfit_jazmines</p>
+        </div>
+      </a>
+      <a href="{{ social_facebook_url }}" target="_blank" rel="noopener noreferrer"
+        class="bg-white border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-3 hover:border-blue-400">
+        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-700">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M22 12.07C22 6.51 17.52 2 12 2S2 6.51 2 12.07c0 4.99 3.66 9.13 8.44 9.93v-7.02H7.9v-2.91h2.54V9.84c0-2.51 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.87h2.78l-.45 2.91h-2.34V22c4.78-.8 8.45-4.94 8.45-9.93z"/></svg>
+        </span>
+        <div>
+          <p class="text-xs uppercase tracking-wider text-gray-500">Facebook</p>
+          <p class="text-sm font-semibold text-gray-900">jazmines.jazmines</p>
+        </div>
+      </a>
+    </div>
+  </main>
+
+  {% include "partials/footer.html" %}
+  <script src="/static/js/shoppingCart.js"></script>
+</body>
+</html>

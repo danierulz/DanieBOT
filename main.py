@@ -30,6 +30,8 @@ from database.models.Products import Products
 from database.models.ProductImages import ProductImages
 from database.models.Size import Size
 from database.models.ProductVariant import ProductVariant
+from database.models.Category import Category
+from sqlalchemy import or_
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context
@@ -142,6 +144,31 @@ def _list_variant_summary(variants: List[ProductVariant]) -> dict:
         "badge_inmediato": len(inmediato) > 0,
         "badge_encargo": len(encargo) > 0,
     }
+
+
+def _compute_pricing(price: Optional[int], is_sale: bool, discount_percent: Optional[int]) -> dict:
+    """Devuelve precio_original, precio_final, descuento_porcentaje y is_sale efectivo."""
+    base = int(price) if price is not None else 0
+    pct = int(discount_percent) if (is_sale and discount_percent and discount_percent > 0) else 0
+    if pct > 95:
+        pct = 95
+    final = base
+    on_sale_effective = False
+    if pct > 0 and base > 0:
+        final = int(round(base * (100 - pct) / 100))
+        on_sale_effective = True
+    return {
+        "precio_original": base,
+        "precio_final": final,
+        "descuento_porcentaje": pct,
+        "is_sale": on_sale_effective,
+    }
+
+
+def _category_public(cat: Optional[Category]) -> Optional[dict]:
+    if not cat:
+        return None
+    return {"category_id": cat.category_id, "slug": cat.slug, "name": cat.name}
 
 
 def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
@@ -317,6 +344,21 @@ async def read_item(request: Request):
     return templates.TemplateResponse("index.html", page_context(request))
 
 
+@app.get("/sale", response_class=HTMLResponse)
+async def page_sale(request: Request):
+    return templates.TemplateResponse("sale.html", page_context(request))
+
+
+@app.get("/contacto", response_class=HTMLResponse)
+async def page_contacto(request: Request):
+    return templates.TemplateResponse("contacto.html", page_context(request))
+
+
+@app.get("/puntos-de-venta", response_class=HTMLResponse)
+async def page_stores(request: Request):
+    return templates.TemplateResponse("puntos-venta.html", page_context(request))
+
+
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -370,6 +412,7 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
         .options(
             joinedload(Products.variants).joinedload(ProductVariant.size),
             joinedload(Products.images),
+            joinedload(Products.category),
         )
         .filter(Products.product_id == id)
         .first()
@@ -395,14 +438,21 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
         key=lambda v: (v.size.sort_order if v.size else 0, v.size.code if v.size else ""),
     )
 
+    pricing = _compute_pricing(producto.price, bool(producto.is_sale), producto.discount_percent)
+
     return {
         "id": producto.product_id,
         "titulo": producto.item_title,
-        "precio": producto.price,
+        "precio": pricing["precio_final"],
+        "precio_original": pricing["precio_original"],
+        "precio_final": pricing["precio_final"],
+        "descuento_porcentaje": pricing["descuento_porcentaje"],
+        "is_sale": pricing["is_sale"],
         "descripcion": producto.description,
         "stock": getattr(producto, "stock", None),
         "imagenes": imagenes,
         "variantes": _variants_public_list(vars_sorted),
+        "categoria": _category_public(producto.category),
     }
 
 
@@ -410,6 +460,20 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
 def listar_talles(db: Session = Depends(get_db_fastApi)):
     rows = db.query(Size).order_by(Size.sort_order.asc(), Size.code.asc()).all()
     return [{"size_id": s.size_id, "code": s.code, "label": s.label} for s in rows]
+
+
+@app.get("/api/categories")
+def listar_categorias(db: Session = Depends(get_db_fastApi)):
+    rows = (
+        db.query(Category)
+        .filter(Category.activo.is_(True))
+        .order_by(Category.sort_order.asc(), Category.name.asc())
+        .all()
+    )
+    return [
+        {"category_id": c.category_id, "slug": c.slug, "name": c.name}
+        for c in rows
+    ]
 
 
 # Tu API de productos (la que consume el HTML)
@@ -420,11 +484,28 @@ def listar_productos(
     q: Optional[str] = Query(None, max_length=200),
     size_code: Optional[str] = Query(None, max_length=32),
     disponibilidad: Optional[str] = Query(None, pattern="^(inmediata|encargo)$"),
+    cat: Optional[str] = Query(None, max_length=64),
+    sale: Optional[int] = Query(None, ge=0, le=1),
     db: Session = Depends(get_db_fastApi),
 ):
     consulta = db.query(Products)
     if q and q.strip():
-        consulta = consulta.filter(Products.item_title.ilike(f"%{q.strip()}%"))
+        like = f"%{q.strip()}%"
+        consulta = consulta.outerjoin(Category, Products.category_id == Category.category_id).filter(
+            or_(
+                Products.item_title.ilike(like),
+                Products.description.ilike(like),
+                Category.name.ilike(like),
+            )
+        )
+
+    if cat and cat.strip() and cat.strip().lower() != "todos":
+        consulta = consulta.join(Category, Products.category_id == Category.category_id).filter(
+            Category.slug == cat.strip().lower()
+        )
+
+    if sale == 1:
+        consulta = consulta.filter(Products.is_sale.is_(True))
 
     if size_code or disponibilidad:
         pv_q = db.query(ProductVariant.product_id).join(Size)
@@ -456,7 +537,10 @@ def listar_productos(
         consulta.order_by(Products.product_id.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
-        .options(joinedload(Products.variants).joinedload(ProductVariant.size))
+        .options(
+            joinedload(Products.variants).joinedload(ProductVariant.size),
+            joinedload(Products.category),
+        )
         .all()
     )
     resultado = []
@@ -467,13 +551,19 @@ def listar_productos(
             if main:
                 imagen_principal = main.url
 
+        pricing = _compute_pricing(p.price, bool(p.is_sale), p.discount_percent)
         resultado.append(
             {
                 "id": p.product_id,
                 "titulo": p.item_title,
-                "precio": p.price,
+                "precio": pricing["precio_final"],
+                "precio_original": pricing["precio_original"],
+                "precio_final": pricing["precio_final"],
+                "descuento_porcentaje": pricing["descuento_porcentaje"],
+                "is_sale": pricing["is_sale"],
                 "descripcion": p.description,
                 "imagen": imagen_principal,
+                "categoria": _category_public(p.category),
                 "variantes_resumen": _list_variant_summary(list(p.variants or [])),
             }
         )
@@ -519,17 +609,53 @@ def _guardar_imagenes_producto(
             )
 
 
-@app.post("/api/productos", response_model=ProductOut)
+def _resolve_category_id(db: Session, category_id_raw: Optional[str]) -> Optional[int]:
+    if not category_id_raw:
+        return None
+    raw = str(category_id_raw).strip()
+    if not raw:
+        return None
+    try:
+        cid = int(raw)
+    except ValueError:
+        return None
+    if cid <= 0:
+        return None
+    exists = db.query(Category.category_id).filter(Category.category_id == cid).first()
+    return cid if exists else None
+
+
+def _normalize_discount(is_sale: bool, discount_percent_raw: Optional[str]) -> Optional[int]:
+    if not is_sale:
+        return None
+    if discount_percent_raw is None or str(discount_percent_raw).strip() == "":
+        return None
+    try:
+        pct = int(str(discount_percent_raw).strip())
+    except ValueError:
+        return None
+    if pct < 1:
+        return None
+    if pct > 95:
+        pct = 95
+    return pct
+
+
+@app.post("/api/productos")
 def crear_producto(
     item_title: str = Form(...),
     price: int = Form(...),
     description: str = Form(...),
     variants_json: str = Form("[]"),
+    category_id: Optional[str] = Form(None),
+    is_sale: Optional[str] = Form(None),
+    discount_percent: Optional[str] = Form(None),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
 ):
     try:
+        is_sale_b = str(is_sale).lower() in ("1", "true", "on", "yes")
         nuevo = Products(
             item_title=item_title,
             price=price,
@@ -537,6 +663,9 @@ def crear_producto(
             name="test",
             sku=123,
             description=description,
+            category_id=_resolve_category_id(db, category_id),
+            is_sale=is_sale_b,
+            discount_percent=_normalize_discount(is_sale_b, discount_percent),
         )
         db.add(nuevo)
         db.commit()
@@ -546,7 +675,7 @@ def crear_producto(
         _sync_product_variants(db, nuevo.product_id, _parse_variants_json(variants_json))
         db.commit()
         db.refresh(nuevo)
-        return nuevo
+        return {"ok": True, "id": nuevo.product_id}
 
     except Exception as e:
         db.rollback()
@@ -555,13 +684,16 @@ def crear_producto(
         raise HTTPException(status_code=500, detail="Error al crear producto")
 
 
-@app.put("/api/productos/{product_id}", response_model=ProductOut)
+@app.put("/api/productos/{product_id}")
 def actualizar_producto(
     product_id: int,
     item_title: str = Form(...),
     price: int = Form(...),
     description: str = Form(...),
     variants_json: str = Form("[]"),
+    category_id: Optional[str] = Form(None),
+    is_sale: Optional[str] = Form(None),
+    discount_percent: Optional[str] = Form(None),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
@@ -570,9 +702,14 @@ def actualizar_producto(
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     try:
+        is_sale_b = str(is_sale).lower() in ("1", "true", "on", "yes")
         producto.item_title = item_title
         producto.price = price
         producto.description = description
+        producto.category_id = _resolve_category_id(db, category_id)
+        producto.is_sale = is_sale_b
+        producto.discount_percent = _normalize_discount(is_sale_b, discount_percent)
+
         has_new_images = bool(
             images and any(getattr(img, "filename", None) for img in images)
         )
@@ -584,7 +721,7 @@ def actualizar_producto(
         _sync_product_variants(db, product_id, _parse_variants_json(variants_json))
         db.commit()
         db.refresh(producto)
-        return producto
+        return {"ok": True, "id": producto.product_id}
     except Exception as e:
         db.rollback()
         logging.error(f"Error al actualizar producto: {e}", exc_info=True)
