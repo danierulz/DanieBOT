@@ -15,14 +15,21 @@ from dataclasses import asdict
 from fastapi.templating import Jinja2Templates  
 from fastapi.responses import HTMLResponse  
 from fastapi.staticfiles import StaticFiles      
+from pydantic import BaseModel
 from sqlalchemy.orm import sessionmaker, declarative_base, Session, joinedload
 from sqlalchemy import create_engine, inspect
 from database.init_db import Base
 from database.schemas.ProductCreate import ProductCreate, ProductOut
 from gcs.GCSUploader import GCSUploader
+from provider_importers.sochic import (
+    ImportedSoChicProduct,
+    ProviderImportError,
+    fetch_sochic_product,
+)
 from scraper_locas.constants import BUCKET_NAME
 #from scraper_locas.scraper_core import scraper_code_main
 import logging
+from urllib.parse import urlparse
 
 import uvicorn
 
@@ -639,6 +646,136 @@ def _normalize_discount(is_sale: bool, discount_percent_raw: Optional[str]) -> O
     if pct > 95:
         pct = 95
     return pct
+
+
+class ProviderUrlImportRequest(BaseModel):
+    url: str
+    category_id: Optional[int] = None
+    size_code: str = "UNICO"
+    encargo_habilitado: bool = True
+    dias_encargo_estimados: Optional[int] = None
+
+
+def _truncate(value: Optional[str], max_len: int) -> str:
+    clean = " ".join(str(value or "").split())
+    return clean[:max_len].rstrip()
+
+
+def _resolve_category_slug(db: Session, slug: Optional[str]) -> Optional[int]:
+    if not slug:
+        return None
+    row = (
+        db.query(Category.category_id)
+        .filter(Category.slug == slug.strip().lower(), Category.activo.is_(True))
+        .first()
+    )
+    return row[0] if row else None
+
+
+def _ensure_size_code(db: Session, size_code: str) -> str:
+    code = (size_code or "UNICO").strip().upper()[:32] or "UNICO"
+    size = db.query(Size).filter(Size.code == code).first()
+    if not size:
+        db.add(
+            Size(
+                code=code,
+                label="Unico" if code == "UNICO" else code,
+                sort_order=70 if code == "UNICO" else 999,
+            )
+        )
+        db.flush()
+    return code
+
+
+def _provider_description(product: ImportedSoChicProduct) -> str:
+    parts = []
+    if product.description:
+        parts.append(product.description)
+    if product.colors:
+        parts.append("Colores proveedor: " + ", ".join(product.colors))
+    return _truncate(" | ".join(parts) or "Producto importado desde So Chic.", 255)
+
+
+def _image_filename_from_url(image_url: str, idx: int) -> str:
+    filename = os.path.basename(urlparse(image_url).path)
+    return _truncate(filename or f"sochic-{idx + 1}.jpg", 255)
+
+
+@app.post("/api/proveedores/sochic/importar")
+def importar_producto_sochic(
+    payload: ProviderUrlImportRequest,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    try:
+        imported = fetch_sochic_product(payload.url)
+    except ProviderImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    existing = db.query(Products).filter(Products.cod_product == imported.cod_product).first()
+    if existing:
+        return {"ok": True, "created": False, "id": existing.product_id}
+
+    try:
+        is_sale = bool(imported.discount_percent and imported.original_price)
+        base_price = imported.original_price if is_sale else imported.price
+        category_id = (
+            _resolve_category_id(db, str(payload.category_id))
+            if payload.category_id
+            else _resolve_category_slug(db, imported.category_slug)
+        )
+        nuevo = Products(
+            item_title=_truncate(imported.title, 255),
+            price=base_price,
+            cod_product=imported.cod_product,
+            name=_truncate(imported.title, 80),
+            sku=imported.sku,
+            description=_provider_description(imported),
+            category_id=category_id,
+            status=False,
+            is_sale=is_sale,
+            discount_percent=imported.discount_percent if is_sale else None,
+        )
+        db.add(nuevo)
+        db.flush()
+
+        for idx, image_url in enumerate(imported.image_urls):
+            db.add(
+                ProductImages(
+                    product_id=nuevo.product_id,
+                    filename=_image_filename_from_url(image_url, idx),
+                    url=image_url,
+                    is_main=(idx == 0),
+                )
+            )
+
+        size_code = _ensure_size_code(db, payload.size_code)
+        _sync_product_variants(
+            db,
+            nuevo.product_id,
+            [
+                {
+                    "size_code": size_code,
+                    "qty_stock_local": 0,
+                    "encargo_habilitado": payload.encargo_habilitado,
+                    "dias_encargo_estimados": payload.dias_encargo_estimados,
+                }
+            ],
+        )
+        db.commit()
+        db.refresh(nuevo)
+        return {
+            "ok": True,
+            "created": True,
+            "id": nuevo.product_id,
+            "cod_product": nuevo.cod_product,
+            "imagenes": len(imported.image_urls),
+            "colores": imported.colors,
+        }
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error al importar producto So Chic: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error al importar producto So Chic")
 
 
 @app.post("/api/productos")

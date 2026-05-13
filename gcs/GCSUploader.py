@@ -3,15 +3,22 @@ import uuid
 
 class GCSUploader:
     def __init__(self, bucket_name: str):
-        self.client = storage.Client()
-        self.bucket = self.client.bucket(bucket_name)
+        self.bucket_name = bucket_name
+        self.client = None
+        self.bucket = None
+
+    def _get_bucket(self):
+        if self.bucket is None:
+            self.client = storage.Client()
+            self.bucket = self.client.bucket(self.bucket_name)
+        return self.bucket
 
     def upload_file(self, file, filename: str) -> str:
         """
         Sube un archivo a GCS y devuelve la URL pública.
         """
         blob_name = f"uploads/{uuid.uuid4()}-{filename}"
-        blob = self.bucket.blob(blob_name)
+        blob = self._get_bucket().blob(blob_name)
         blob.upload_from_file(file, content_type="image/jpeg")  # ajusta content_type según tu caso
         blob.make_public()
         return blob.public_url
