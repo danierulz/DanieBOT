@@ -40,6 +40,16 @@ Los campos exactos están en `database/models/`; al cambiar el modelo, actualiza
 - Respetar términos de uso del sitio origen y frecuencia de requests.
 - Mantener trazabilidad (`page_ficha` u otro id) para asociar imágenes en bucket con registros.
 
+## Importador “So Chic”
+
+**Propósito:** permitir que el admin pegue una URL de producto So Chic y generar el alta sin navegador.
+
+**Operación:**
+
+- `provider_importers/sochic.py` usa HTTP + BeautifulSoup; no depende de Selenium.
+- `POST /api/proveedores/sochic/importar` crea el producto, guarda URLs remotas en `ProductImages` y habilita variante `UNICO` por encargo con stock local 0.
+- El scraper Las Locas queda independiente para ejecución local.
+
 ## DTOs / schemas
 
 - `database/schemas/ProductCreate.py` y tipos en `frontend/src/types/ProductDTO.ts` pueden usarse para alinear contratos front-back cuando el front evolucione.

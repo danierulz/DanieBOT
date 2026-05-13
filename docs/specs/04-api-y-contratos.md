@@ -35,6 +35,7 @@ Convención base: JSON salvo donde se indique `multipart/form-data` o HTML.
 | GET | `/api/productos` | Lista productos con imagen principal si existe. |
 | GET | `/api/producto/{id}` | Detalle: título, precio, descripción, stock, imágenes con URLs (GCS o campo `url`). |
 | POST | `/api/productos` | Alta producto: `Form` (título, precio, descripción) + `File` imágenes opcionales; sube a GCS y crea filas `ProductImages`. |
+| POST | `/api/proveedores/sochic/importar` | Alta desde URL de producto So Chic: body JSON `{ "url": "https://sochic.com.ar/product/..." }`; crea producto, imágenes remotas y variante por encargo. Requiere JWT admin. |
 | POST | `/upload-photos` | Sube fotos y devuelve URLs (`uploaded_urls`). |
 
 ## Pedidos (código en `routes/orders.py` — ver backlog)
