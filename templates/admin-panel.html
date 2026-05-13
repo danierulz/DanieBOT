@@ -27,6 +27,22 @@
 
     <!-- Panel: Nuevo producto -->
     <div id="panel-new" class="bg-white shadow-lg rounded-lg p-6 md:p-8">
+      <section class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h2 class="text-sm font-semibold text-amber-950">{{ admin_provider_heading }}</h2>
+        <p class="mt-1 text-xs text-amber-900">{{ admin_provider_help }}</p>
+        <div class="mt-3 flex flex-col sm:flex-row gap-3">
+          <div class="flex-1">
+            <label for="provider-url" class="block text-xs font-medium text-amber-950">{{ admin_provider_url_label }}</label>
+            <input id="provider-url" type="url" placeholder="{{ admin_provider_url_placeholder }}"
+              class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white">
+          </div>
+          <button type="button" id="provider-import-btn"
+            class="sm:self-end px-4 py-2 rounded-md bg-amber-600 text-white font-bold hover:bg-amber-700 transition">
+            {{ admin_provider_btn }}
+          </button>
+        </div>
+      </section>
+
       <form id="producto-form" class="space-y-4">
         <div>
           <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
@@ -177,6 +193,10 @@
       msgUpdated: {{ admin_msg_updated | tojson }},
       msgDeleted: {{ admin_msg_deleted | tojson }},
       msgError: {{ admin_msg_error | tojson }},
+      providerBtn: {{ admin_provider_btn | tojson }},
+      providerImporting: {{ admin_provider_importing | tojson }},
+      providerCreated: {{ admin_provider_created | tojson }},
+      providerExists: {{ admin_provider_exists | tojson }},
       msgEmpty: {{ admin_list_empty | tojson }},
       msgNoResults: {{ admin_list_no_results | tojson }},
       msgLoadErr: {{ admin_list_load_error | tojson }},
@@ -449,6 +469,48 @@
       } catch (e) {
         closeDeleteModal();
         document.getElementById('msg').textContent = LABELS.msgError;
+      }
+    });
+
+    document.getElementById('provider-import-btn').addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      const msg = document.getElementById('msg');
+      const input = document.getElementById('provider-url');
+      const btn = document.getElementById('provider-import-btn');
+      const url = (input.value || '').trim();
+      if (!token) {
+        msg.textContent = 'No estás logueado como admin.';
+        return;
+      }
+      if (!url) {
+        input.focus();
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = LABELS.providerImporting;
+      msg.textContent = LABELS.providerImporting;
+      try {
+        const resp = await fetch('/api/proveedores/sochic/importar', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok) {
+          msg.textContent = data.detail || LABELS.msgError;
+          return;
+        }
+        msg.textContent = data.created ? LABELS.providerCreated : LABELS.providerExists;
+        input.value = '';
+        showTab('list');
+      } catch (err) {
+        msg.textContent = LABELS.msgError;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = LABELS.providerBtn;
       }
     });
 
