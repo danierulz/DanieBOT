@@ -216,14 +216,25 @@ def _extract_colors(soup: BeautifulSoup) -> list[str]:
 
 
 def _extract_category_slug(soup: BeautifulSoup) -> Optional[str]:
-    for link in soup.select(".posted_in a[href], a[href*='/product-category/']"):
-        parsed = urlparse(link.get("href") or "")
-        parts = [p for p in parsed.path.split("/") if p]
-        if "product-category" not in parts:
-            continue
-        slug = parts[-1].lower()
-        if slug and slug != "ver-todo":
+    for link in soup.select(".posted_in a[href]"):
+        slug = _slug_from_category_link(link.get("href") or "")
+        if slug:
             return slug
+    for link in soup.select("a[href*='/product-category/']"):
+        slug = _slug_from_category_link(link.get("href") or "")
+        if slug:
+            return slug
+    return None
+
+
+def _slug_from_category_link(href: str) -> Optional[str]:
+    parsed = urlparse(href)
+    parts = [p for p in parsed.path.split("/") if p]
+    if "product-category" not in parts:
+        return None
+    slug = parts[-1].lower()
+    if slug and slug != "ver-todo":
+        return slug
     return None
 
 
