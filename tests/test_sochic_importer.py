@@ -62,6 +62,7 @@ class SoChicImporterTest(unittest.TestCase):
             "https://sochic.com.ar/product/campera-friza-young-leaders/",
         )
 
+        self.assertEqual(product.provider, "sochic")
         self.assertEqual(product.title, "Campera Friza Young Leaders")
         self.assertEqual(product.sku, 3515)
         self.assertEqual(product.cod_product, "sochic-3515-campera-friza-young-leaders")

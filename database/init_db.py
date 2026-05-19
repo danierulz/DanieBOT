@@ -67,11 +67,28 @@ def initialize_database():
         Base.metadata.create_all(engine)
         print("Database and tables created successfully.")
 
+        _migrate_home_banners_columns()
         _seed_sizes_if_empty()
         _seed_categories_if_empty()
 
     except Exception as e:
          print(f"Error initializing database: {e}")
+
+
+def _migrate_home_banners_columns() -> None:
+    """Añade columnas nuevas a home_banners en bases ya existentes."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE home_banners "
+                    "ADD COLUMN IF NOT EXISTS media_type VARCHAR(16) NOT NULL DEFAULT 'image'"
+                )
+            )
+            conn.commit()
+            print("Migración home_banners (media_type) aplicada o ya existente.")
+    except Exception as e:
+        print(f"Nota migración home_banners: {e}")
 
 
 def _seed_sizes_if_empty() -> None:

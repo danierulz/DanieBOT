@@ -9,7 +9,18 @@
       <h4 class="text-white text-sm font-semibold uppercase tracking-wider mb-3">Navegación</h4>
       <ul class="space-y-1.5 text-sm">
         {% for link in nav_links %}
+          {% if link.dropdown and link.children %}
+          <li>
+            <a class="hover:text-white font-medium" href="{{ link.href }}">{{ link.label }}</a>
+            <ul class="mt-1 ml-3 space-y-1 border-l border-white/10 pl-3">
+              {% for child in link.children %}
+              <li><a class="hover:text-white text-gray-400" href="{{ child.href }}">{{ child.label }}</a></li>
+              {% endfor %}
+            </ul>
+          </li>
+          {% else %}
           <li><a class="hover:text-white {% if link.highlight %}text-red-400 font-bold{% endif %}" href="{{ link.href }}">{{ link.label }}</a></li>
+          {% endif %}
         {% endfor %}
       </ul>
     </div>

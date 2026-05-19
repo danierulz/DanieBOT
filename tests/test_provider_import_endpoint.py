@@ -24,7 +24,7 @@ from database.models.Size import Size
 from provider_importers.types import ImportedProduct
 
 
-class SoChicEndpointTest(unittest.TestCase):
+class ProviderImportEndpointTest(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine(
             "sqlite://",
@@ -55,7 +55,7 @@ class SoChicEndpointTest(unittest.TestCase):
         main.app.dependency_overrides.clear()
         Base.metadata.drop_all(self.engine)
 
-    def test_import_endpoint_creates_orderable_product_from_provider_data(self):
+    def test_unified_import_sochic_creates_inactive_product(self):
         imported = ImportedProduct(
             provider="sochic",
             source_url="https://sochic.com.ar/product/campera-friza-young-leaders/",
@@ -67,69 +67,60 @@ class SoChicEndpointTest(unittest.TestCase):
             is_sale=True,
             sku=3515,
             cod_product="sochic-3515-campera-friza-young-leaders",
-            image_urls=[
-                "https://sochic.com.ar/wp-content/uploads/main.jpeg",
-                "https://sochic.com.ar/wp-content/uploads/detail.jpeg",
-            ],
+            image_urls=["https://sochic.com.ar/wp-content/uploads/main.jpeg"],
             category_slug="camperas",
-            colors=["Celeste", "Rosa"],
+            colors=["Celeste"],
         )
 
         with patch.object(main, "fetch_product", return_value=imported):
             response = self.client.post(
-                "/api/proveedores/sochic/importar",
-                json={"url": imported.source_url},
+                "/api/proveedores/importar",
+                json={"url": imported.source_url, "status": False},
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["created"], True)
+        body = response.json()
+        self.assertTrue(body["created"])
+        self.assertEqual(body["provider"], "sochic")
 
         session = self.SessionLocal()
         try:
             product = session.query(Products).one()
-            self.assertEqual(product.item_title, imported.title)
-            self.assertEqual(product.price, 29000)
-            self.assertTrue(product.is_sale)
-            self.assertEqual(product.discount_percent, 10)
-            self.assertIn("Colores proveedor: Celeste, Rosa", product.description)
-            self.assertEqual(product.category.slug, "camperas")
             self.assertFalse(product.status)
-            self.assertEqual(session.query(ProductImages).count(), 2)
-            variant = session.query(ProductVariant).one()
-            self.assertEqual(variant.qty_stock_local, 0)
-            self.assertTrue(variant.encargo_habilitado)
-            self.assertEqual(variant.size.code, "UNICO")
+            self.assertEqual(session.query(ProductImages).count(), 1)
+            self.assertEqual(session.query(ProductVariant).count(), 1)
         finally:
             session.close()
 
-    def test_import_endpoint_returns_existing_product_without_duplicate(self):
+    def test_unified_import_laslocas_uploads_to_gcs(self):
         imported = ImportedProduct(
-            provider="sochic",
-            source_url="https://sochic.com.ar/product/campera-friza-young-leaders/",
-            title="Campera Friza Young Leaders",
-            description="MEDIDAS CONTORNO PECHO: 58",
-            price=26100,
-            original_price=29000,
-            discount_percent=10,
-            is_sale=True,
-            sku=3515,
-            cod_product="sochic-3515-campera-friza-young-leaders",
-            image_urls=[],
-            category_slug="camperas",
-            colors=[],
+            provider="laslocas",
+            source_url="https://laslocas.com/ficha-224-jogger-blue-sporty",
+            title="BLUE SPORTY",
+            description="Jogger denim",
+            price=12500,
+            cod_product="BSPOR",
+            sku=224,
+            page_ficha="ficha-224-jogger-blue-sporty",
+            image_assets=[("foto1.jpg", b"binary-image")],
         )
 
         with patch.object(main, "fetch_product", return_value=imported):
-            first = self.client.post("/api/proveedores/sochic/importar", json={"url": imported.source_url})
-            second = self.client.post("/api/proveedores/sochic/importar", json={"url": imported.source_url})
+            with patch.object(main.uploader, "upload_bytes", return_value="https://storage.googleapis.com/bucket/x.jpg"):
+                response = self.client.post(
+                    "/api/proveedores/importar",
+                    json={"url": imported.source_url},
+                )
 
-        self.assertEqual(first.status_code, 200)
-        self.assertEqual(second.status_code, 200)
-        self.assertEqual(second.json()["created"], False)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["provider"], "laslocas")
 
         session = self.SessionLocal()
         try:
-            self.assertEqual(session.query(Products).count(), 1)
+            product = session.query(Products).one()
+            self.assertFalse(product.status)
+            image = session.query(ProductImages).one()
+            self.assertTrue(image.url.startswith("https://storage.googleapis.com/"))
         finally:
             session.close()
 

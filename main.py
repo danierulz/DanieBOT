@@ -5,7 +5,7 @@ from math import ceil
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Request, Response, HTTPException, Form, UploadFile, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
-from auth.auth import create_access_token, get_current_user, ADMIN_USER
+from auth.auth import create_access_token, get_current_user, get_optional_user, ADMIN_USER
 from pywa import WhatsApp
 from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
@@ -21,11 +21,8 @@ from sqlalchemy import create_engine, inspect
 from database.init_db import Base
 from database.schemas.ProductCreate import ProductCreate, ProductOut
 from gcs.GCSUploader import GCSUploader
-from provider_importers.sochic import (
-    ImportedSoChicProduct,
-    ProviderImportError,
-    fetch_sochic_product,
-)
+from provider_importers.registry import detect_provider, fetch_product
+from provider_importers.types import ImportedProduct, ProviderImportError
 from scraper_locas.constants import BUCKET_NAME
 #from scraper_locas.scraper_core import scraper_code_main
 import logging
@@ -38,6 +35,7 @@ from database.models.ProductImages import ProductImages
 from database.models.Size import Size
 from database.models.ProductVariant import ProductVariant
 from database.models.Category import Category
+from database.models.HomeBanner import HomeBanner
 from sqlalchemy import or_
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
@@ -412,7 +410,11 @@ async def read_item(request: Request, product_id: int):
 
 #Utilizado en tiredimages.html para mostrar el detalle del producto
 @app.get("/api/producto/{id}")
-def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
+def obtener_producto(
+    id: int,
+    db: Session = Depends(get_db_fastApi),
+    user: Optional[dict] = Depends(get_optional_user),
+):
     print(f"Obteniendo producto con ID: {id}")
     producto = (
         db.query(Products)
@@ -425,6 +427,8 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
         .first()
     )
     if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    if not _product_is_active(producto) and not user:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
     imagenes = []
@@ -455,6 +459,7 @@ def obtener_producto(id: int, db: Session = Depends(get_db_fastApi)):
         "precio_final": pricing["precio_final"],
         "descuento_porcentaje": pricing["descuento_porcentaje"],
         "is_sale": pricing["is_sale"],
+        "activo": _product_is_active(producto),
         "descripcion": producto.description,
         "stock": getattr(producto, "stock", None),
         "imagenes": imagenes,
@@ -483,6 +488,161 @@ def listar_categorias(db: Session = Depends(get_db_fastApi)):
     ]
 
 
+_BANNER_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov", ".m4v"}
+_BANNER_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".bmp"}
+_BANNER_ALLOWED_EXTENSIONS = _BANNER_VIDEO_EXTENSIONS | _BANNER_IMAGE_EXTENSIONS
+
+
+def _banner_media_type_from_name(name: str) -> str:
+    lower = (name or "").split("?")[0].lower()
+    for ext in _BANNER_VIDEO_EXTENSIONS:
+        if lower.endswith(ext):
+            return "video"
+    return "image"
+
+
+def _validate_banner_upload(filename: str) -> None:
+    lower = (filename or "").lower()
+    if not any(lower.endswith(ext) for ext in _BANNER_ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no permitido. Usá imagen (JPG, PNG, WebP, GIF) o video (MP4, WebM).",
+        )
+
+
+def _resolve_banner_media(url: str, filename: Optional[str] = None) -> str:
+    if filename:
+        return _banner_media_type_from_name(filename)
+    return _banner_media_type_from_name(url)
+
+
+def _banner_public(b: HomeBanner) -> dict:
+    media = getattr(b, "media_type", None) or _banner_media_type_from_name(b.image_url)
+    return {
+        "banner_id": b.banner_id,
+        "image_url": b.image_url,
+        "media_type": media,
+        "title": b.title,
+        "subtitle": b.subtitle,
+        "link_href": b.link_href,
+        "sort_order": b.sort_order,
+    }
+
+
+def _banner_admin(b: HomeBanner) -> dict:
+    d = _banner_public(b)
+    d["activo"] = b.activo
+    return d
+
+
+@app.get("/api/home-banners")
+def listar_home_banners_publicos(db: Session = Depends(get_db_fastApi)):
+    rows = (
+        db.query(HomeBanner)
+        .filter(HomeBanner.activo.is_(True))
+        .order_by(HomeBanner.sort_order.asc(), HomeBanner.banner_id.asc())
+        .all()
+    )
+    return [_banner_public(b) for b in rows]
+
+
+@app.get("/api/admin/banners")
+def listar_banners_admin(
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    rows = (
+        db.query(HomeBanner)
+        .order_by(HomeBanner.sort_order.asc(), HomeBanner.banner_id.asc())
+        .all()
+    )
+    return [_banner_admin(b) for b in rows]
+
+
+@app.post("/api/admin/banners")
+def crear_banner(
+    title: Optional[str] = Form(None),
+    subtitle: Optional[str] = Form(None),
+    link_href: str = Form("/"),
+    sort_order: int = Form(0),
+    activo: Optional[str] = Form("1"),
+    image_url: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    url = (image_url or "").strip()
+    upload_name: Optional[str] = None
+    if image and image.filename:
+        _validate_banner_upload(image.filename)
+        upload_name = image.filename
+        url = uploader.upload_file(image.file, image.filename)
+    if not url:
+        raise HTTPException(status_code=400, detail="Se requiere URL de imagen/video o archivo")
+    media_type = _resolve_banner_media(url, upload_name)
+    activo_b = str(activo).lower() in ("1", "true", "on", "yes")
+    banner = HomeBanner(
+        image_url=url,
+        media_type=media_type,
+        title=(title or "").strip() or None,
+        subtitle=(subtitle or "").strip() or None,
+        link_href=(link_href or "/").strip() or "/",
+        sort_order=sort_order,
+        activo=activo_b,
+    )
+    db.add(banner)
+    db.commit()
+    db.refresh(banner)
+    return {"ok": True, "banner": _banner_admin(banner)}
+
+
+@app.put("/api/admin/banners/{banner_id}")
+def actualizar_banner(
+    banner_id: int,
+    title: Optional[str] = Form(None),
+    subtitle: Optional[str] = Form(None),
+    link_href: str = Form("/"),
+    sort_order: int = Form(0),
+    activo: Optional[str] = Form("1"),
+    image_url: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    banner = db.query(HomeBanner).filter(HomeBanner.banner_id == banner_id).first()
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner no encontrado")
+    if image and image.filename:
+        _validate_banner_upload(image.filename)
+        banner.image_url = uploader.upload_file(image.file, image.filename)
+        banner.media_type = _resolve_banner_media(banner.image_url, image.filename)
+    elif image_url and image_url.strip():
+        banner.image_url = image_url.strip()
+        banner.media_type = _resolve_banner_media(banner.image_url)
+    banner.title = (title or "").strip() or None
+    banner.subtitle = (subtitle or "").strip() or None
+    banner.link_href = (link_href or "/").strip() or "/"
+    banner.sort_order = sort_order
+    banner.activo = str(activo).lower() in ("1", "true", "on", "yes")
+    db.commit()
+    db.refresh(banner)
+    return {"ok": True, "banner": _banner_admin(banner)}
+
+
+@app.delete("/api/admin/banners/{banner_id}")
+def eliminar_banner(
+    banner_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    banner = db.query(HomeBanner).filter(HomeBanner.banner_id == banner_id).first()
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner no encontrado")
+    db.delete(banner)
+    db.commit()
+    return {"ok": True, "id": banner_id}
+
+
 # Tu API de productos (la que consume el HTML)
 @app.get("/api/productos")
 def listar_productos(
@@ -493,9 +653,14 @@ def listar_productos(
     disponibilidad: Optional[str] = Query(None, pattern="^(inmediata|encargo)$"),
     cat: Optional[str] = Query(None, max_length=64),
     sale: Optional[int] = Query(None, ge=0, le=1),
+    status_filter: Optional[str] = Query(
+        None, pattern="^(activos|inactivos|todos)$"
+    ),
     db: Session = Depends(get_db_fastApi),
+    user: Optional[dict] = Depends(get_optional_user),
 ):
     consulta = db.query(Products)
+    consulta = _apply_products_status_filter(consulta, status_filter, bool(user))
     if q and q.strip():
         like = f"%{q.strip()}%"
         consulta = consulta.outerjoin(Category, Products.category_id == Category.category_id).filter(
@@ -572,6 +737,7 @@ def listar_productos(
                 "imagen": imagen_principal,
                 "categoria": _category_public(p.category),
                 "variantes_resumen": _list_variant_summary(list(p.variants or [])),
+                "activo": _product_is_active(p),
             }
         )
     total_pages = ceil(total / per_page) if total else 0
@@ -582,6 +748,7 @@ def listar_productos(
         "per_page": per_page,
         "total_pages": total_pages,
     }
+
 
 def _guardar_imagenes_producto(
     db: Session,
@@ -654,6 +821,7 @@ class ProviderUrlImportRequest(BaseModel):
     size_code: str = "UNICO"
     encargo_habilitado: bool = True
     dias_encargo_estimados: Optional[int] = None
+    status: bool = False
 
 
 def _truncate(value: Optional[str], max_len: int) -> str:
@@ -687,18 +855,168 @@ def _ensure_size_code(db: Session, size_code: str) -> str:
     return code
 
 
-def _provider_description(product: ImportedSoChicProduct) -> str:
+def _provider_description(product: ImportedProduct) -> str:
     parts = []
     if product.description:
         parts.append(product.description)
     if product.colors:
         parts.append("Colores proveedor: " + ", ".join(product.colors))
-    return _truncate(" | ".join(parts) or "Producto importado desde So Chic.", 255)
+    default = {
+        "sochic": "Producto importado desde So Chic.",
+        "laslocas": "Producto importado desde Las Locas.",
+    }
+    return _truncate(" | ".join(parts) or default.get(product.provider, "Producto importado."), 255)
 
 
-def _image_filename_from_url(image_url: str, idx: int) -> str:
+def _image_filename_from_url(image_url: str, idx: int, provider: str = "sochic") -> str:
     filename = os.path.basename(urlparse(image_url).path)
-    return _truncate(filename or f"sochic-{idx + 1}.jpg", 255)
+    return _truncate(filename or f"{provider}-{idx + 1}.jpg", 255)
+
+
+def _product_is_active(product: Products) -> bool:
+    return bool(product.status)
+
+
+def _parse_form_bool(value: Optional[str]) -> bool:
+    return str(value or "").lower() in ("1", "true", "on", "yes")
+
+
+def _apply_products_status_filter(consulta, status_filter: Optional[str], is_admin: bool):
+    if status_filter:
+        if not is_admin:
+            raise HTTPException(
+                status_code=403,
+                detail="Se requiere autenticación admin para filtrar por estado.",
+            )
+        if status_filter == "activos":
+            return consulta.filter(Products.status.is_(True))
+        if status_filter == "inactivos":
+            return consulta.filter(or_(Products.status.is_(False), Products.status.is_(None)))
+        return consulta
+    return consulta.filter(Products.status.is_(True))
+
+
+def _persist_imported_product(
+    db: Session,
+    imported: ImportedProduct,
+    payload: ProviderUrlImportRequest,
+) -> dict:
+    existing = db.query(Products).filter(Products.cod_product == imported.cod_product).first()
+    if existing:
+        return {
+            "ok": True,
+            "created": False,
+            "id": existing.product_id,
+            "provider": imported.provider,
+            "cod_product": existing.cod_product,
+            "activo": _product_is_active(existing),
+        }
+
+    is_sale = imported.is_sale or bool(imported.discount_percent and imported.original_price)
+    base_price = imported.original_price if is_sale else imported.price
+    category_id = (
+        _resolve_category_id(db, str(payload.category_id))
+        if payload.category_id
+        else _resolve_category_slug(db, imported.category_slug)
+    )
+    nuevo = Products(
+        item_title=_truncate(imported.title, 255),
+        price=base_price,
+        cod_product=imported.cod_product,
+        name=_truncate(imported.title, 80),
+        sku=imported.sku,
+        description=_provider_description(imported),
+        category_id=category_id,
+        status=bool(payload.status),
+        is_sale=is_sale,
+        discount_percent=imported.discount_percent if is_sale else None,
+    )
+    db.add(nuevo)
+    db.flush()
+
+    image_count = 0
+    page_ficha = imported.page_ficha or _page_ficha_from_url(imported.source_url)
+
+    for idx, image_url in enumerate(imported.image_urls):
+        db.add(
+            ProductImages(
+                product_id=nuevo.product_id,
+                filename=_image_filename_from_url(image_url, idx, imported.provider),
+                url=image_url,
+                is_main=(image_count == 0),
+            )
+        )
+        image_count += 1
+
+    for filename, data in imported.image_assets:
+        blob_path = f"images/{page_ficha}/{filename}"
+        public_url = uploader.upload_bytes(blob_path, data)
+        db.add(
+            ProductImages(
+                product_id=nuevo.product_id,
+                filename=_truncate(filename, 255),
+                url=public_url,
+                is_main=(image_count == 0),
+            )
+        )
+        image_count += 1
+
+    size_code = _ensure_size_code(db, payload.size_code)
+    _sync_product_variants(
+        db,
+        nuevo.product_id,
+        [
+            {
+                "size_code": size_code,
+                "qty_stock_local": 0,
+                "encargo_habilitado": payload.encargo_habilitado,
+                "dias_encargo_estimados": payload.dias_encargo_estimados,
+            }
+        ],
+    )
+    db.commit()
+    db.refresh(nuevo)
+    return {
+        "ok": True,
+        "created": True,
+        "id": nuevo.product_id,
+        "provider": imported.provider,
+        "cod_product": nuevo.cod_product,
+        "imagenes": image_count,
+        "colores": imported.colors,
+        "activo": _product_is_active(nuevo),
+    }
+
+
+def _page_ficha_from_url(url: str) -> str:
+    path = urlparse(url).path.strip("/")
+    return path.replace("/", "") or "ficha"
+
+
+def _import_product_from_url(
+    payload: ProviderUrlImportRequest,
+    db: Session,
+) -> dict:
+    try:
+        imported = fetch_product(payload.url)
+    except ProviderImportError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    try:
+        return _persist_imported_product(db, imported, payload)
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error al importar producto ({detect_provider(payload.url)}): {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error al importar producto desde proveedor")
+
+
+@app.post("/api/proveedores/importar")
+def importar_producto_proveedor(
+    payload: ProviderUrlImportRequest,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    return _import_product_from_url(payload, db)
 
 
 @app.post("/api/proveedores/sochic/importar")
@@ -707,75 +1025,7 @@ def importar_producto_sochic(
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
 ):
-    try:
-        imported = fetch_sochic_product(payload.url)
-    except ProviderImportError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    existing = db.query(Products).filter(Products.cod_product == imported.cod_product).first()
-    if existing:
-        return {"ok": True, "created": False, "id": existing.product_id}
-
-    try:
-        is_sale = bool(imported.discount_percent and imported.original_price)
-        base_price = imported.original_price if is_sale else imported.price
-        category_id = (
-            _resolve_category_id(db, str(payload.category_id))
-            if payload.category_id
-            else _resolve_category_slug(db, imported.category_slug)
-        )
-        nuevo = Products(
-            item_title=_truncate(imported.title, 255),
-            price=base_price,
-            cod_product=imported.cod_product,
-            name=_truncate(imported.title, 80),
-            sku=imported.sku,
-            description=_provider_description(imported),
-            category_id=category_id,
-            status=False,
-            is_sale=is_sale,
-            discount_percent=imported.discount_percent if is_sale else None,
-        )
-        db.add(nuevo)
-        db.flush()
-
-        for idx, image_url in enumerate(imported.image_urls):
-            db.add(
-                ProductImages(
-                    product_id=nuevo.product_id,
-                    filename=_image_filename_from_url(image_url, idx),
-                    url=image_url,
-                    is_main=(idx == 0),
-                )
-            )
-
-        size_code = _ensure_size_code(db, payload.size_code)
-        _sync_product_variants(
-            db,
-            nuevo.product_id,
-            [
-                {
-                    "size_code": size_code,
-                    "qty_stock_local": 0,
-                    "encargo_habilitado": payload.encargo_habilitado,
-                    "dias_encargo_estimados": payload.dias_encargo_estimados,
-                }
-            ],
-        )
-        db.commit()
-        db.refresh(nuevo)
-        return {
-            "ok": True,
-            "created": True,
-            "id": nuevo.product_id,
-            "cod_product": nuevo.cod_product,
-            "imagenes": len(imported.image_urls),
-            "colores": imported.colors,
-        }
-    except Exception as e:
-        db.rollback()
-        logging.error(f"Error al importar producto So Chic: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error al importar producto So Chic")
+    return _import_product_from_url(payload, db)
 
 
 @app.post("/api/productos")
@@ -831,6 +1081,7 @@ def actualizar_producto(
     category_id: Optional[str] = Form(None),
     is_sale: Optional[str] = Form(None),
     discount_percent: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
@@ -846,6 +1097,8 @@ def actualizar_producto(
         producto.category_id = _resolve_category_id(db, category_id)
         producto.is_sale = is_sale_b
         producto.discount_percent = _normalize_discount(is_sale_b, discount_percent)
+        if status is not None:
+            producto.status = _parse_form_bool(status)
 
         has_new_images = bool(
             images and any(getattr(img, "filename", None) for img in images)
@@ -892,7 +1145,10 @@ def eliminar_producto(
         raise HTTPException(status_code=500, detail="Error al eliminar producto")
 
 @app.post("/upload-photos")
-async def upload_photos(files: List[UploadFile] = File(...)):
+async def upload_photos(
+    files: List[UploadFile] = File(...),
+    _: dict = Depends(get_current_user),
+):
     urls = uploader.upload_multiple(files)
 
     # Guardar en PostgreSQL

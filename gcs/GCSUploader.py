@@ -23,6 +23,18 @@ class GCSUploader:
         blob.make_public()
         return blob.public_url
 
+    def upload_bytes(
+        self,
+        blob_path: str,
+        data: bytes,
+        content_type: str = "image/jpeg",
+    ) -> str:
+        """Sube bytes a una ruta fija del bucket y devuelve la URL pública."""
+        blob = self._get_bucket().blob(blob_path)
+        blob.upload_from_string(data, content_type=content_type)
+        blob.make_public()
+        return blob.public_url
+
     def upload_multiple(self, files: list) -> list:
         """
         Sube múltiples archivos y devuelve una lista de URLs.

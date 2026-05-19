@@ -40,15 +40,21 @@ Los campos exactos están en `database/models/`; al cambiar el modelo, actualiza
 - Respetar términos de uso del sitio origen y frecuencia de requests.
 - Mantener trazabilidad (`page_ficha` u otro id) para asociar imágenes en bucket con registros.
 
-## Importador “So Chic”
+## Importadores por proveedor (admin)
 
-**Propósito:** permitir que el admin pegue una URL de producto So Chic y generar el alta sin navegador.
+**Propósito:** pegar una URL y cargar el catálogo **desactivado** (`status=false`) para que la administradora active y ajuste precios cuando quiera.
 
 **Operación:**
 
-- `provider_importers/sochic.py` usa HTTP + BeautifulSoup; no depende de Selenium.
-- `POST /api/proveedores/sochic/importar` crea el producto, guarda URLs remotas en `ProductImages` y habilita variante `UNICO` por encargo con stock local 0.
-- El scraper Las Locas queda independiente para ejecución local.
+- `provider_importers/registry.py` detecta el host (`sochic.com.ar`, `laslocas.com`) y delega al importer.
+- **So Chic:** `provider_importers/sochic.py` — HTTP + BeautifulSoup; imágenes por URL remota en `ProductImages`.
+- **Las Locas:** `provider_importers/laslocas.py` — HTTP + BeautifulSoup + login (`LOGIN_EMAIL`, `LOGIN_PASS`); imágenes subidas a GCS (`images/{page_ficha}/...`).
+- `POST /api/proveedores/importar` persiste producto, variantes por encargo (stock local 0).
+- El scraper masivo Selenium en `scraper_locas/` puede migrarse en una fase posterior al mismo importer HTTP.
+
+## Importador “So Chic” (detalle)
+
+- Misma lógica de parseo que antes; códigos `sochic-{sku}-{slug}`.
 
 ## DTOs / schemas
 

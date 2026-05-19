@@ -13,7 +13,7 @@
    - `--no-allow-unauthenticated` (invocación autenticada; el webhook de Meta debe poder alcanzar la URL — revisar configuración IAM/ingress según doc Meta)
    - **VPC connector:** `whatsapp-bot-vpc-connecto` (acceso a Cloud SQL u otros recursos privados)
    - **Secrets** montados como env (Secret Manager):  
-     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`
+     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
 
 ### Cloud Run
 
@@ -44,6 +44,7 @@
 | `PYWA_*` | Tokens e ID de teléfono WhatsApp |
 | `APP_ID`, `APP_SECRET` | Meta / PyWa |
 | `GOOGLE_CLOUD_PROJECT` | Integraciones GCP (compose/local) |
+| `LOGIN_EMAIL`, `LOGIN_PASS` | Login mayorista Las Locas (import por URL) |
 
 No commitear valores reales; usar `.env` local y Secret Manager en GCP.
 

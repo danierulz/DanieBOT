@@ -1,4 +1,5 @@
 from .Category import Category
+from .HomeBanner import HomeBanner
 from .Products import Products
 from .ProductImages import ProductImages
 from .Order import Order

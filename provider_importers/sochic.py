@@ -1,7 +1,6 @@
 import json
 import re
 import unicodedata
-from dataclasses import dataclass, field
 from html import unescape
 from typing import Any, Iterable, Optional
 from urllib.parse import urljoin, urlparse
@@ -9,31 +8,25 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from provider_importers.types import ImportedProduct, ProviderImportError  # noqa: F401
+
+__all__ = [
+    "ImportedProduct",
+    "ImportedSoChicProduct",
+    "ProviderImportError",
+    "fetch_sochic_product",
+    "parse_sochic_product",
+]
+
 
 SOCHIC_HOSTS = {"sochic.com.ar", "www.sochic.com.ar"}
 DEFAULT_TIMEOUT_SECONDS = 20
 
-
-class ProviderImportError(ValueError):
-    """Raised when a provider page cannot be imported safely."""
-
-
-@dataclass
-class ImportedSoChicProduct:
-    source_url: str
-    title: str
-    description: str
-    price: int
-    original_price: Optional[int]
-    discount_percent: Optional[int]
-    sku: Optional[int]
-    cod_product: str
-    image_urls: list[str] = field(default_factory=list)
-    category_slug: Optional[str] = None
-    colors: list[str] = field(default_factory=list)
+# Compatibilidad con tests y código legado
+ImportedSoChicProduct = ImportedProduct
 
 
-def fetch_sochic_product(url: str) -> ImportedSoChicProduct:
+def fetch_sochic_product(url: str) -> ImportedProduct:
     _validate_sochic_url(url)
     try:
         response = requests.get(
@@ -52,7 +45,7 @@ def fetch_sochic_product(url: str) -> ImportedSoChicProduct:
     return parse_sochic_product(response.text, response.url)
 
 
-def parse_sochic_product(html: str, source_url: str) -> ImportedSoChicProduct:
+def parse_sochic_product(html: str, source_url: str) -> ImportedProduct:
     _validate_sochic_url(source_url)
     soup = BeautifulSoup(html, "html.parser")
     product_json = _find_product_jsonld(soup)
@@ -87,13 +80,16 @@ def parse_sochic_product(html: str, source_url: str) -> ImportedSoChicProduct:
     category_slug = _extract_category_slug(soup)
     slug = _slugify(urlparse(source_url).path.rstrip("/").split("/")[-1] or title)
 
-    return ImportedSoChicProduct(
+    is_sale = bool(discount_percent and original_price)
+    return ImportedProduct(
+        provider="sochic",
         source_url=source_url,
         title=_squash_ws(title),
         description=_squash_ws(description or ""),
         price=final_price,
         original_price=original_price,
         discount_percent=discount_percent,
+        is_sale=is_sale,
         sku=sku,
         cod_product=_build_cod_product(sku_raw, slug),
         image_urls=image_urls,

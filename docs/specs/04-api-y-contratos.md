@@ -32,10 +32,12 @@ Convención base: JSON salvo donde se indique `multipart/form-data` o HTML.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/productos` | Lista productos con imagen principal si existe. |
-| GET | `/api/producto/{id}` | Detalle: título, precio, descripción, stock, imágenes con URLs (GCS o campo `url`). |
+| GET | `/api/productos` | Lista productos. **Público:** solo `status=true`. **Admin (JWT):** query `status_filter=activos\|inactivos\|todos`. Cada ítem incluye `activo`. |
+| GET | `/api/producto/{id}` | Detalle. **Público:** 404 si inactivo. **Admin (JWT):** permite inactivos; incluye `activo`. |
 | POST | `/api/productos` | Alta producto: `Form` (título, precio, descripción) + `File` imágenes opcionales; sube a GCS y crea filas `ProductImages`. |
-| POST | `/api/proveedores/sochic/importar` | Alta desde URL de producto So Chic: body JSON `{ "url": "https://sochic.com.ar/product/..." }`; crea producto, imágenes remotas y variante por encargo. Requiere JWT admin. |
+| PUT | `/api/productos/{id}` | Actualiza producto; `Form` incluye `status` (`1`/`0`) para activar/desactivar en tienda. Requiere JWT admin. |
+| POST | `/api/proveedores/importar` | Body JSON `{ "url": "...", "status": false }` (`status` opcional, default `false`). Auto-detecta proveedor. Respuesta incluye `activo`. Requiere JWT admin. |
+| POST | `/api/proveedores/sochic/importar` | Alias de `/api/proveedores/importar` (compatibilidad). |
 | POST | `/upload-photos` | Sube fotos y devuelve URLs (`uploaded_urls`). |
 
 ## Pedidos (código en `routes/orders.py` — ver backlog)

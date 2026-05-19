@@ -33,6 +33,11 @@ def crear_pedido(pedido: PedidoIn, db: Session = Depends(get_db)):
         product = db.query(Products).filter(Products.product_id == it.id).first()
         if not product:
             raise HTTPException(status_code=404, detail=f"Producto {it.id} no encontrado")
+        if not bool(product.status):
+            raise HTTPException(
+                status_code=400,
+                detail=f"El producto {it.titulo} no está disponible para la venta.",
+            )
         # Si querés validar stock:
         try:
             stock_int = int(getattr(product, "stock", 0) or 0)
@@ -116,6 +121,11 @@ def crear_pedido(pedido: PedidoIn, db: Session = Depends(get_db)):
         product = db.query(Products).filter(Products.product_id == it.id).first()
         if not product:
             raise HTTPException(status_code=404, detail=f"Producto {it.id} no encontrado")
+        if not bool(product.status):
+            raise HTTPException(
+                status_code=400,
+                detail=f"El producto {it.titulo} no está disponible para la venta.",
+            )
         stock_int = int(getattr(product, "stock", 0) or 0)
         if stock_int < it.cantidad:
             raise HTTPException(status_code=400, detail=f"Stock insuficiente para {it.titulo}")

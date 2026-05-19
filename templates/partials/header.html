@@ -68,10 +68,33 @@
   <nav id="main-nav" class="hidden lg:block border-t border-white/10 bg-black">
     <div class="max-w-7xl mx-auto px-3 sm:px-4 flex flex-wrap items-center gap-1 sm:gap-2 py-1.5 text-sm">
       {% for link in nav_links %}
+        {% if link.dropdown and link.children %}
+        <div class="relative group">
+          <a href="{{ link.href }}"
+            class="inline-flex items-center gap-1 px-3 py-2 rounded-full hover:bg-white/10 text-gray-200 group-hover:bg-white/10"
+            aria-haspopup="true">
+            {{ link.label }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 opacity-70" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </a>
+          <div class="absolute left-0 top-full pt-1 min-w-[11rem] opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-150 z-50">
+            <div class="rounded-xl border border-white/10 bg-neutral-900 shadow-xl py-1 overflow-hidden">
+              {% for child in link.children %}
+              <a href="{{ child.href }}"
+                class="block px-4 py-2.5 text-gray-200 hover:bg-white/10 hover:text-white text-sm whitespace-nowrap">
+                {{ child.label }}
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% else %}
         <a href="{{ link.href }}"
           class="inline-flex items-center px-3 py-2 rounded-full hover:bg-white/10 {% if link.highlight %}text-red-400 font-bold hover:text-red-300{% else %}text-gray-200{% endif %}">
           {{ link.label }}
         </a>
+        {% endif %}
       {% endfor %}
     </div>
   </nav>
@@ -80,10 +103,31 @@
   <div id="mobile-nav" class="lg:hidden hidden border-t border-white/10 bg-black">
     <div class="px-2 py-2 grid grid-cols-1 gap-1">
       {% for link in nav_links %}
+        {% if link.dropdown and link.children %}
+        <div class="nav-mobile-dropdown">
+          <button type="button"
+            class="nav-mobile-dropdown-btn w-full flex items-center justify-between px-3 py-3 rounded-lg text-base text-gray-100 hover:bg-white/10 touch-manipulation"
+            aria-expanded="false">
+            <span>{{ link.label }}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 opacity-70 nav-mobile-chevron transition-transform" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </button>
+          <div class="nav-mobile-dropdown-panel hidden pl-2 pb-1 grid grid-cols-1 gap-0.5">
+            {% for child in link.children %}
+            <a href="{{ child.href }}"
+              class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white">
+              {{ child.label }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
         <a href="{{ link.href }}"
           class="block px-3 py-3 rounded-lg text-base hover:bg-white/10 {% if link.highlight %}text-red-400 font-bold{% else %}text-gray-100{% endif %}">
           {{ link.label }}
         </a>
+        {% endif %}
       {% endfor %}
       <div class="border-t border-white/10 mt-1 pt-2 grid grid-cols-2 gap-2 px-2">
         <button id="btn-login-mobile" type="button"
@@ -170,5 +214,17 @@
     if (!el.classList.contains('hidden')) {
       el.querySelector('input[name="q"]')?.focus();
     }
+  });
+
+  document.querySelectorAll('.nav-mobile-dropdown-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wrap = btn.closest('.nav-mobile-dropdown');
+      const panel = wrap?.querySelector('.nav-mobile-dropdown-panel');
+      const chevron = btn.querySelector('.nav-mobile-chevron');
+      if (!panel) return;
+      const open = panel.classList.toggle('hidden') === false;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      chevron?.classList.toggle('rotate-180', open);
+    });
   });
 </script>

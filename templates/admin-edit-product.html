@@ -52,6 +52,16 @@
           </div>
         </div>
 
+        <div class="border border-green-200 rounded-lg p-4 bg-green-50">
+          <label class="inline-flex items-start gap-2 text-sm text-gray-800 cursor-pointer">
+            <input type="checkbox" id="status" name="status" value="1" class="mt-0.5 w-4 h-4 accent-green-700">
+            <span>
+              <span class="font-semibold block">{{ admin_product_active_label }}</span>
+              <span class="text-xs text-gray-700">{{ admin_product_active_help }}</span>
+            </span>
+          </label>
+        </div>
+
         <div class="border border-red-200 rounded-lg p-4 bg-red-50">
           <h3 class="text-sm font-semibold text-red-900 mb-1">{{ admin_sale_heading }}</h3>
           <p class="text-xs text-red-800 mb-3">{{ admin_sale_help }}</p>
@@ -207,8 +217,15 @@
       sync();
     }
 
+    function productAuthHeaders() {
+      const token = localStorage.getItem('token');
+      return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+
     async function loadProduct() {
-      const r = await fetch('/api/producto/' + EDIT_PRODUCT_ID);
+      const r = await fetch('/api/producto/' + EDIT_PRODUCT_ID, {
+        headers: productAuthHeaders(),
+      });
       if (!r.ok) {
         document.getElementById('msg').textContent = LABELS.msgError;
         return;
@@ -225,6 +242,8 @@
       cb.checked = !!p.is_sale;
       dc.disabled = !cb.checked;
       dc.value = p.descuento_porcentaje ? String(p.descuento_porcentaje) : '';
+      const statusCb = document.getElementById('status');
+      if (statusCb) statusCb.checked = !!p.activo;
       fillVariantsFromProduct(p);
     }
 
@@ -237,6 +256,7 @@
       }
       const form = document.getElementById('producto-form');
       const formData = new FormData(form);
+      formData.set('status', document.getElementById('status').checked ? '1' : '0');
       formData.append('variants_json', collectVariants());
       try {
         const resp = await fetch('/api/productos/' + EDIT_PRODUCT_ID, {

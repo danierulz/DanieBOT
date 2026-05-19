@@ -23,6 +23,9 @@
       <button type="button" id="tab-btn-list" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_list }}
       </button>
+      <button type="button" id="tab-btn-banners" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
+        {{ admin_tab_banners }}
+      </button>
     </div>
 
     <!-- Panel: Nuevo producto -->
@@ -41,6 +44,13 @@
             {{ admin_provider_btn }}
           </button>
         </div>
+        <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 cursor-pointer">
+          <input type="checkbox" id="provider-status-active" class="mt-0.5 w-4 h-4 accent-amber-600">
+          <span>
+            <span class="font-semibold">{{ admin_provider_status_label }}</span>
+            <span class="block text-amber-900/90">{{ admin_provider_status_help }}</span>
+          </span>
+        </label>
       </section>
 
       <form id="producto-form" class="space-y-4">
@@ -138,6 +148,15 @@
             </button>
           </div>
         </div>
+        <div class="sm:w-48">
+          <label for="admin-list-status-filter" class="block text-sm font-medium text-gray-700 mb-1">{{ admin_list_status_filter_label }}</label>
+          <select id="admin-list-status-filter"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring focus:border-gray-900 bg-white">
+            <option value="todos">{{ admin_list_status_all }}</option>
+            <option value="activos">{{ admin_list_status_active }}</option>
+            <option value="inactivos">{{ admin_list_status_inactive }}</option>
+          </select>
+        </div>
       </div>
 
       <p id="list-status" class="text-sm text-gray-500 mb-4"></p>
@@ -147,6 +166,7 @@
             <tr>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_photo }}</th>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_title }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_status }}</th>
               <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_price }}</th>
               <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_actions }}</th>
             </tr>
@@ -166,6 +186,90 @@
           </button>
         </div>
       </nav>
+    </div>
+
+    <!-- Panel: Banners inicio -->
+    <div id="panel-banners" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ admin_banners_heading }}</h2>
+      <p class="text-xs text-gray-600 mb-6">{{ admin_banners_help }}</p>
+
+      <form id="banner-form" class="space-y-4 mb-8 border-b border-gray-200 pb-8">
+        <input type="hidden" id="banner-id" value="">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label for="banner-image-url" class="block text-sm font-medium text-gray-700">{{ admin_banners_label_image_url }}</label>
+            <input id="banner-image-url" type="url" placeholder="https://..."
+              class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          </div>
+          <div class="sm:col-span-2">
+            <label for="banner-image-file" class="block text-sm font-medium text-gray-700">{{ admin_banners_label_upload }}</label>
+            <input id="banner-image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime"
+              class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-black file:px-3 file:py-2 file:text-white file:font-semibold">
+          </div>
+          <div>
+            <label for="banner-title" class="block text-sm font-medium text-gray-700">{{ admin_banners_label_title }}</label>
+            <input id="banner-title" type="text"
+              class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          </div>
+          <div>
+            <label for="banner-subtitle" class="block text-sm font-medium text-gray-700">{{ admin_banners_label_subtitle }}</label>
+            <input id="banner-subtitle" type="text"
+              class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          </div>
+          <div>
+            <label for="banner-link" class="block text-sm font-medium text-gray-700">{{ admin_banners_label_link }}</label>
+            <select id="banner-link-preset" class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm">
+              <option value="/">Inicio</option>
+              <option value="/sale">Sale</option>
+              <option value="/?cat=todos">Todos los productos</option>
+              {% for cat in nav_categories %}
+              <option value="/?cat={{ cat.slug }}">{{ cat.name }}</option>
+              {% endfor %}
+              <option value="__custom__">Otro (personalizado)</option>
+            </select>
+            <input id="banner-link-custom" type="text" placeholder="/ o URL"
+              class="mt-2 w-full px-3 py-2 border rounded-md hidden focus:outline-none focus:ring focus:border-gray-900">
+          </div>
+          <div>
+            <label for="banner-sort" class="block text-sm font-medium text-gray-700">{{ admin_banners_label_order }}</label>
+            <input id="banner-sort" type="number" min="0" step="1" value="0"
+              class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          </div>
+          <div class="flex items-end">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+              <input type="checkbox" id="banner-activo" value="1" checked class="w-4 h-4 accent-black">
+              <span class="font-medium">{{ admin_banners_label_active }}</span>
+            </label>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button type="submit" id="banner-submit-btn"
+            class="px-4 py-2 rounded-md bg-black text-white font-bold hover:bg-gray-900">
+            {{ admin_banners_btn_save }}
+          </button>
+          <button type="button" id="banner-cancel-btn" class="hidden px-4 py-2 rounded-md border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50">
+            {{ admin_banners_btn_cancel }}
+          </button>
+        </div>
+      </form>
+
+      <p id="banners-status" class="text-sm text-gray-500 mb-4"></p>
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_banners_col_image }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_banners_col_type }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_banners_col_title }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_banners_col_link }}</th>
+              <th class="px-3 py-2 text-center font-semibold text-gray-700">{{ admin_banners_col_order }}</th>
+              <th class="px-3 py-2 text-center font-semibold text-gray-700">{{ admin_banners_col_active }}</th>
+              <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_banners_col_actions }}</th>
+            </tr>
+          </thead>
+          <tbody id="banners-table-body" class="divide-y divide-gray-100 bg-white"></tbody>
+        </table>
+      </div>
     </div>
   </main>
 
@@ -196,12 +300,24 @@
       providerBtn: {{ admin_provider_btn | tojson }},
       providerImporting: {{ admin_provider_importing | tojson }},
       providerCreated: {{ admin_provider_created | tojson }},
+      providerCreatedActive: {{ admin_provider_created_active | tojson }},
       providerExists: {{ admin_provider_exists | tojson }},
+      statusActive: {{ admin_status_active | tojson }},
+      statusInactive: {{ admin_status_inactive | tojson }},
       msgEmpty: {{ admin_list_empty | tojson }},
       msgNoResults: {{ admin_list_no_results | tojson }},
       msgLoadErr: {{ admin_list_load_error | tojson }},
       edit: {{ admin_edit | tojson }},
       del: {{ admin_delete | tojson }},
+      bannerSave: {{ admin_banners_btn_save | tojson }},
+      bannerUpdate: {{ admin_banners_btn_update | tojson }},
+      bannerMsgSaved: {{ admin_banners_msg_saved | tojson }},
+      bannerMsgUpdated: {{ admin_banners_msg_updated | tojson }},
+      bannerMsgDeleted: {{ admin_banners_msg_deleted | tojson }},
+      bannerEmpty: {{ admin_banners_list_empty | tojson }},
+      bannerDeleteConfirm: {{ admin_banners_delete_confirm | tojson }},
+      bannerTypeImage: {{ admin_banners_type_image | tojson }},
+      bannerTypeVideo: {{ admin_banners_type_video | tojson }},
     };
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
@@ -209,30 +325,40 @@
 
     const panelNew = document.getElementById('panel-new');
     const panelList = document.getElementById('panel-list');
+    const panelBanners = document.getElementById('panel-banners');
     const tabBtnNew = document.getElementById('tab-btn-new');
     const tabBtnList = document.getElementById('tab-btn-list');
+    const tabBtnBanners = document.getElementById('tab-btn-banners');
     const submitBtn = document.getElementById('submit-btn');
+
+    function setTabBtnStyle(btn, active) {
+      if (!btn) return;
+      btn.classList.toggle('border-black', active);
+      btn.classList.toggle('text-gray-900', active);
+      btn.classList.toggle('border-transparent', !active);
+      btn.classList.toggle('text-gray-500', !active);
+    }
 
     function showTab(which) {
       const isNew = which === 'new';
+      const isList = which === 'list';
+      const isBanners = which === 'banners';
       panelNew.classList.toggle('hidden', !isNew);
-      panelList.classList.toggle('hidden', isNew);
-      tabBtnNew.classList.toggle('border-black', isNew);
-      tabBtnNew.classList.toggle('text-gray-900', isNew);
-      tabBtnNew.classList.toggle('border-transparent', !isNew);
-      tabBtnNew.classList.toggle('text-gray-500', !isNew);
-      tabBtnList.classList.toggle('border-black', !isNew);
-      tabBtnList.classList.toggle('text-gray-900', !isNew);
-      tabBtnList.classList.toggle('border-transparent', isNew);
-      tabBtnList.classList.toggle('text-gray-500', isNew);
-      if (!isNew) {
+      panelList.classList.toggle('hidden', !isList);
+      panelBanners.classList.toggle('hidden', !isBanners);
+      setTabBtnStyle(tabBtnNew, isNew);
+      setTabBtnStyle(tabBtnList, isList);
+      setTabBtnStyle(tabBtnBanners, isBanners);
+      if (isList) {
         listSearch = document.getElementById('admin-search-input').value;
         loadList(listPage);
       }
+      if (isBanners) loadBannersList();
     }
 
     tabBtnNew.addEventListener('click', () => showTab('new'));
     tabBtnList.addEventListener('click', () => showTab('list'));
+    tabBtnBanners.addEventListener('click', () => showTab('banners'));
 
     function resetVariantRows() {
       document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
@@ -331,7 +457,16 @@
       u.searchParams.set('per_page', '12');
       const t = listSearch.trim();
       if (t) u.searchParams.set('q', t);
+      const statusFilter = document.getElementById('admin-list-status-filter');
+      if (statusFilter && statusFilter.value) {
+        u.searchParams.set('status_filter', statusFilter.value);
+      }
       return u.toString();
+    }
+
+    function listAuthHeaders() {
+      const token = localStorage.getItem('token');
+      return token ? { 'Authorization': 'Bearer ' + token } : {};
     }
 
     function bindListRowActions(tbody) {
@@ -352,8 +487,15 @@
       statusEl.textContent = '';
       tbody.innerHTML = '';
 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        statusEl.textContent = 'No estás logueado como admin.';
+        nav.classList.add('hidden');
+        return;
+      }
+
       try {
-        const r = await fetch(buildListUrl(page));
+        const r = await fetch(buildListUrl(page), { headers: listAuthHeaders() });
         if (!r.ok) throw new Error('fail');
         let data = await r.json();
 
@@ -385,6 +527,9 @@
             </td>
             <td class="px-3 py-2 align-middle">
               <a href="/api/detalle/${p.id}" target="_blank" rel="noopener noreferrer" class="font-medium text-gray-900 hover:underline">${escapeHtml(p.titulo)}</a>
+            </td>
+            <td class="px-3 py-2 align-middle whitespace-nowrap">
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${p.activo ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}">${p.activo ? LABELS.statusActive : LABELS.statusInactive}</span>
             </td>
             <td class="px-3 py-2 align-middle text-right whitespace-nowrap">$${moneyFmt.format(Number(p.precio) || 0)}</td>
             <td class="px-3 py-2 align-middle text-right whitespace-nowrap space-x-3">
@@ -422,6 +567,10 @@
         e.preventDefault();
         runSearch();
       }
+    });
+    document.getElementById('admin-list-status-filter').addEventListener('change', () => {
+      listPage = 1;
+      loadList(1);
     });
 
     document.getElementById('admin-btn-prev').addEventListener('click', () => {
@@ -490,20 +639,28 @@
       btn.textContent = LABELS.providerImporting;
       msg.textContent = LABELS.providerImporting;
       try {
-        const resp = await fetch('/api/proveedores/sochic/importar', {
+        const resp = await fetch('/api/proveedores/importar', {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({
+            url,
+            status: document.getElementById('provider-status-active').checked,
+          }),
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.ok) {
           msg.textContent = data.detail || LABELS.msgError;
           return;
         }
-        msg.textContent = data.created ? LABELS.providerCreated : LABELS.providerExists;
+        const providerLabel = data.provider ? ` (${data.provider})` : '';
+        if (data.created) {
+          msg.textContent = (data.activo ? LABELS.providerCreatedActive : LABELS.providerCreated) + providerLabel;
+        } else {
+          msg.textContent = LABELS.providerExists + providerLabel;
+        }
         input.value = '';
         showTab('list');
       } catch (err) {
@@ -543,6 +700,180 @@
       }
     });
 
+    function bannerAuthHeaders() {
+      const token = localStorage.getItem('token');
+      return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+
+    function getBannerLinkValue() {
+      const preset = document.getElementById('banner-link-preset').value;
+      if (preset === '__custom__') {
+        return (document.getElementById('banner-link-custom').value || '/').trim() || '/';
+      }
+      return preset;
+    }
+
+    function setBannerLinkFields(href) {
+      const preset = document.getElementById('banner-link-preset');
+      const custom = document.getElementById('banner-link-custom');
+      const opts = Array.from(preset.options).map(o => o.value);
+      if (opts.includes(href)) {
+        preset.value = href;
+        custom.classList.add('hidden');
+        custom.value = '';
+      } else {
+        preset.value = '__custom__';
+        custom.classList.remove('hidden');
+        custom.value = href || '/';
+      }
+    }
+
+    document.getElementById('banner-link-preset').addEventListener('change', () => {
+      const custom = document.getElementById('banner-link-custom');
+      if (document.getElementById('banner-link-preset').value === '__custom__') {
+        custom.classList.remove('hidden');
+        custom.focus();
+      } else {
+        custom.classList.add('hidden');
+      }
+    });
+
+    function resetBannerForm() {
+      document.getElementById('banner-id').value = '';
+      document.getElementById('banner-form').reset();
+      document.getElementById('banner-sort').value = '0';
+      document.getElementById('banner-activo').checked = true;
+      document.getElementById('banner-image-file').value = '';
+      setBannerLinkFields('/');
+      document.getElementById('banner-submit-btn').textContent = LABELS.bannerSave;
+      document.getElementById('banner-cancel-btn').classList.add('hidden');
+    }
+
+    async function loadBannersList() {
+      const tbody = document.getElementById('banners-table-body');
+      const status = document.getElementById('banners-status');
+      tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-gray-500">Cargando…</td></tr>';
+      try {
+        const r = await fetch('/api/admin/banners', { headers: bannerAuthHeaders() });
+        if (!r.ok) throw new Error('fail');
+        const rows = await r.json();
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-gray-500">' + escapeHtml(LABELS.bannerEmpty) + '</td></tr>';
+          status.textContent = '';
+          return;
+        }
+        tbody.innerHTML = rows.map(b => {
+          const isVideo = b.media_type === 'video' || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(b.image_url || '');
+          const typeLabel = isVideo ? LABELS.bannerTypeVideo : LABELS.bannerTypeImage;
+          const thumb = isVideo
+            ? `<video src="${escapeHtml(b.image_url)}" class="h-12 w-20 object-cover rounded border border-gray-200" muted playsinline preload="metadata"></video>`
+            : `<img src="${escapeHtml(b.image_url)}" alt="" class="h-12 w-20 object-cover rounded border border-gray-200">`;
+          return `
+          <tr class="border-t border-gray-100">
+            <td class="px-3 py-2">${thumb}</td>
+            <td class="px-3 py-2 text-xs text-gray-600">${escapeHtml(typeLabel)}</td>
+            <td class="px-3 py-2">${escapeHtml(b.title || '—')}</td>
+            <td class="px-3 py-2 text-xs break-all max-w-[140px]">${escapeHtml(b.link_href)}</td>
+            <td class="px-3 py-2 text-center tabular-nums">${b.sort_order}</td>
+            <td class="px-3 py-2 text-center">${b.activo ? '✓' : '—'}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <button type="button" class="text-black font-semibold hover:underline banner-edit-btn" data-id="${b.banner_id}">${escapeHtml(LABELS.edit)}</button>
+              <button type="button" class="ml-2 text-red-600 font-semibold hover:underline banner-del-btn" data-id="${b.banner_id}">${escapeHtml(LABELS.del)}</button>
+            </td>
+          </tr>
+        `;
+        }).join('');
+        status.textContent = rows.length + ' banner(s)';
+        tbody.querySelectorAll('.banner-edit-btn').forEach(btn => {
+          btn.addEventListener('click', () => editBanner(parseInt(btn.dataset.id, 10), rows));
+        });
+        tbody.querySelectorAll('.banner-del-btn').forEach(btn => {
+          btn.addEventListener('click', () => deleteBanner(parseInt(btn.dataset.id, 10)));
+        });
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-red-600">' + escapeHtml(LABELS.msgError) + '</td></tr>';
+      }
+    }
+
+    function editBanner(id, rows) {
+      const b = rows.find(x => x.banner_id === id);
+      if (!b) return;
+      document.getElementById('banner-id').value = String(b.banner_id);
+      document.getElementById('banner-image-url').value = b.image_url || '';
+      document.getElementById('banner-title').value = b.title || '';
+      document.getElementById('banner-subtitle').value = b.subtitle || '';
+      setBannerLinkFields(b.link_href || '/');
+      document.getElementById('banner-sort').value = String(b.sort_order ?? 0);
+      document.getElementById('banner-activo').checked = !!b.activo;
+      document.getElementById('banner-image-file').value = '';
+      document.getElementById('banner-submit-btn').textContent = LABELS.bannerUpdate;
+      document.getElementById('banner-cancel-btn').classList.remove('hidden');
+      document.getElementById('banner-image-url').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function deleteBanner(id) {
+      if (!confirm(LABELS.bannerDeleteConfirm)) return;
+      const status = document.getElementById('banners-status');
+      try {
+        const r = await fetch('/api/admin/banners/' + id, {
+          method: 'DELETE',
+          headers: bannerAuthHeaders(),
+        });
+        if (!r.ok) throw new Error('fail');
+        status.textContent = LABELS.bannerMsgDeleted;
+        resetBannerForm();
+        loadBannersList();
+      } catch (e) {
+        status.textContent = LABELS.msgError;
+      }
+    }
+
+    document.getElementById('banner-cancel-btn').addEventListener('click', resetBannerForm);
+
+    document.getElementById('banner-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = localStorage.getItem('token');
+      const status = document.getElementById('banners-status');
+      if (!token) {
+        status.textContent = 'No estás logueado como admin.';
+        return;
+      }
+      const id = document.getElementById('banner-id').value;
+      const fd = new FormData();
+      const urlVal = (document.getElementById('banner-image-url').value || '').trim();
+      const file = document.getElementById('banner-image-file').files[0];
+      if (urlVal) fd.append('image_url', urlVal);
+      if (file) fd.append('image', file);
+      if (!id && !urlVal && !file) {
+        status.textContent = 'Indicá una URL o subí una imagen.';
+        return;
+      }
+      fd.append('title', document.getElementById('banner-title').value);
+      fd.append('subtitle', document.getElementById('banner-subtitle').value);
+      fd.append('link_href', getBannerLinkValue());
+      fd.append('sort_order', document.getElementById('banner-sort').value || '0');
+      fd.append('activo', document.getElementById('banner-activo').checked ? '1' : '0');
+      const method = id ? 'PUT' : 'POST';
+      const path = id ? '/api/admin/banners/' + id : '/api/admin/banners';
+      try {
+        const r = await fetch(path, {
+          method,
+          headers: bannerAuthHeaders(),
+          body: fd,
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          status.textContent = data.detail || LABELS.msgError;
+          return;
+        }
+        status.textContent = id ? LABELS.bannerMsgUpdated : LABELS.bannerMsgSaved;
+        resetBannerForm();
+        loadBannersList();
+      } catch (err) {
+        status.textContent = LABELS.msgError;
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -552,9 +883,12 @@
       initVariantsTable();
       loadCategoriesSelect('category_id');
       bindSaleToggle();
+      resetBannerForm();
       const params = new URLSearchParams(window.location.search);
       if (params.get('tab') === 'list') {
         showTab('list');
+      } else if (params.get('tab') === 'banners') {
+        showTab('banners');
       }
       if (params.get('updated') === '1') {
         document.getElementById('msg').textContent = LABELS.msgUpdated;

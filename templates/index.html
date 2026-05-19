@@ -23,12 +23,12 @@
   </div>
 </section>
 
-<!-- Chips de categorías -->
-<div class="bg-white border-b border-gray-100">
-  <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 overflow-x-auto">
-    <div id="cats-row" class="flex items-center gap-2 whitespace-nowrap"></div>
+<!-- Banners destacados -->
+<section id="home-banners-section" class="hidden bg-white border-b border-gray-100">
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-5">
+    <div id="home-banners" class="w-full"></div>
   </div>
-</div>
+</section>
 
 <main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full">
 
@@ -228,19 +228,69 @@
         });
     }
 
-    async function loadCategories() {
-      const row = document.getElementById('cats-row');
+    function bannerMediaType(b) {
+      if (b.media_type === 'video' || b.media_type === 'image') return b.media_type;
+      const u = (b.image_url || '').split('?')[0].toLowerCase();
+      if (/\.(mp4|webm|mov|m4v)$/.test(u)) return 'video';
+      return 'image';
+    }
+
+    function bannerMediaHtml(b, altText) {
+      const url = escHtml(b.image_url);
+      if (bannerMediaType(b) === 'video') {
+        return `<video src="${url}" class="absolute inset-0 w-full h-full object-cover pointer-events-none" playsinline muted autoplay loop preload="metadata" aria-label="${altText}"></video>`;
+      }
+      return `<img src="${url}" alt="${altText}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" loading="lazy">`;
+    }
+
+    function bannerItemClass(count) {
+      const base = 'group relative block overflow-hidden rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow bg-gray-100 min-h-[28dvh] max-h-[40dvh] h-[33dvh]';
+      if (count <= 2) return base + ' w-full';
+      return base + ' flex-shrink-0 w-[92vw] sm:w-full snap-center';
+    }
+
+    function applyBannerContainerLayout(container, count) {
+      if (count === 1) {
+        container.className = 'grid grid-cols-1 gap-2 w-full';
+      } else if (count === 2) {
+        container.className = 'grid grid-cols-2 gap-2 w-full';
+      } else {
+        container.className = 'flex gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth w-full pb-1 [-webkit-overflow-scrolling:touch]';
+      }
+    }
+
+    async function loadHomeBanners() {
+      const section = document.getElementById('home-banners-section');
+      const container = document.getElementById('home-banners');
+      if (!section || !container) return;
       try {
-        const r = await fetch('/api/categories');
-        const cats = r.ok ? await r.json() : [];
-        const allActive = !state.cat || state.cat === 'todos';
-        const items = [{slug:'todos', name:'Todas'}].concat(cats);
-        row.innerHTML = items.map(c => {
-          const active = (c.slug === 'todos' && allActive) || (c.slug === state.cat);
-          const href = updateLink({cat: c.slug === 'todos' ? '' : c.slug});
-          return `<a href="${href}" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border ${active ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}">${escHtml(c.name)}</a>`;
+        const r = await fetch('/api/home-banners');
+        const banners = r.ok ? await r.json() : [];
+        if (!banners.length) {
+          section.classList.add('hidden');
+          return;
+        }
+        section.classList.remove('hidden');
+        const n = banners.length;
+        applyBannerContainerLayout(container, n);
+        container.innerHTML = banners.map(b => {
+          const title = b.title ? escHtml(b.title) : '';
+          const subtitle = b.subtitle ? escHtml(b.subtitle) : '';
+          const overlay = (title || subtitle)
+            ? `<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4 sm:p-6 z-10 pointer-events-none">
+                ${title ? `<p class="text-white text-lg sm:text-2xl font-bold leading-tight">${title}</p>` : ''}
+                ${subtitle ? `<p class="text-white/90 text-xs sm:text-sm mt-1">${subtitle}</p>` : ''}
+              </div>`
+            : '';
+          const altText = escHtml(b.title || 'Banner promocional');
+          return `<a href="${escHtml(b.link_href || '/')}" class="${bannerItemClass(n)}">
+            ${bannerMediaHtml(b, altText)}
+            ${overlay}
+          </a>`;
         }).join('');
-      } catch (e) { row.innerHTML=''; }
+      } catch (e) {
+        section.classList.add('hidden');
+      }
     }
 
     document.getElementById('btn-prev').addEventListener('click', () => {
@@ -250,7 +300,7 @@
       state.page += 1; setUrl(state); loadProductos(); window.scrollTo({top:0,behavior:'smooth'});
     });
 
-    loadCategories();
+    loadHomeBanners();
     loadProductos();
   </script>
 
