@@ -26,6 +26,9 @@
       <button type="button" id="tab-btn-banners" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_banners }}
       </button>
+      <button type="button" id="tab-btn-orders" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
+        {{ admin_tab_orders }}
+      </button>
     </div>
 
     <!-- Panel: Nuevo producto -->
@@ -271,6 +274,46 @@
         </table>
       </div>
     </div>
+
+    <!-- Panel: Pedidos -->
+    <div id="panel-orders" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ admin_orders_heading }}</h2>
+      <p class="text-xs text-gray-600 mb-4">{{ admin_orders_help }}</p>
+      <div class="flex flex-col sm:flex-row gap-3 mb-4 sm:items-end">
+        <div class="sm:w-56">
+          <label for="admin-orders-status-filter" class="block text-sm font-medium text-gray-700 mb-1">{{ admin_col_status }}</label>
+          <select id="admin-orders-status-filter"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring focus:border-gray-900 bg-white">
+            <option value="">{{ admin_orders_filter_all }}</option>
+            <option value="enviado_whatsapp">{{ admin_orders_status_enviado }}</option>
+            <option value="recibido">{{ admin_orders_status_recibido }}</option>
+            <option value="en_revision">{{ admin_orders_status_en_revision }}</option>
+            <option value="confirmado">{{ admin_orders_status_confirmado }}</option>
+            <option value="cancelado">{{ admin_orders_status_cancelado }}</option>
+          </select>
+        </div>
+        <button type="button" id="admin-orders-refresh"
+          class="px-4 py-2 rounded-md bg-black text-white text-sm font-semibold hover:bg-gray-900">
+          Actualizar
+        </button>
+      </div>
+      <p id="orders-status" class="text-sm text-gray-500 mb-4"></p>
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_orders_col_code }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_orders_col_date }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_orders_col_customer }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_orders_col_status }}</th>
+              <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_orders_col_total }}</th>
+              <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_orders_col_actions }}</th>
+            </tr>
+          </thead>
+          <tbody id="orders-table-body" class="divide-y divide-gray-100 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <!-- Modal eliminar -->
@@ -318,6 +361,13 @@
       bannerDeleteConfirm: {{ admin_banners_delete_confirm | tojson }},
       bannerTypeImage: {{ admin_banners_type_image | tojson }},
       bannerTypeVideo: {{ admin_banners_type_video | tojson }},
+      ordersEmpty: {{ admin_orders_empty | tojson }},
+      ordersLoadErr: {{ admin_orders_load_error | tojson }},
+      ordersMsgUpdated: {{ admin_orders_msg_updated | tojson }},
+      ordersConfirm: {{ admin_orders_btn_confirm | tojson }},
+      ordersReview: {{ admin_orders_btn_review | tojson }},
+      ordersCancel: {{ admin_orders_btn_cancel | tojson }},
+      ordersLines: {{ admin_orders_lines | tojson }},
     };
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
@@ -326,9 +376,11 @@
     const panelNew = document.getElementById('panel-new');
     const panelList = document.getElementById('panel-list');
     const panelBanners = document.getElementById('panel-banners');
+    const panelOrders = document.getElementById('panel-orders');
     const tabBtnNew = document.getElementById('tab-btn-new');
     const tabBtnList = document.getElementById('tab-btn-list');
     const tabBtnBanners = document.getElementById('tab-btn-banners');
+    const tabBtnOrders = document.getElementById('tab-btn-orders');
     const submitBtn = document.getElementById('submit-btn');
 
     function setTabBtnStyle(btn, active) {
@@ -343,22 +395,117 @@
       const isNew = which === 'new';
       const isList = which === 'list';
       const isBanners = which === 'banners';
+      const isOrders = which === 'orders';
       panelNew.classList.toggle('hidden', !isNew);
       panelList.classList.toggle('hidden', !isList);
       panelBanners.classList.toggle('hidden', !isBanners);
+      panelOrders.classList.toggle('hidden', !isOrders);
       setTabBtnStyle(tabBtnNew, isNew);
       setTabBtnStyle(tabBtnList, isList);
       setTabBtnStyle(tabBtnBanners, isBanners);
+      setTabBtnStyle(tabBtnOrders, isOrders);
       if (isList) {
         listSearch = document.getElementById('admin-search-input').value;
         loadList(listPage);
       }
       if (isBanners) loadBannersList();
+      if (isOrders) loadOrdersList();
     }
 
     tabBtnNew.addEventListener('click', () => showTab('new'));
     tabBtnList.addEventListener('click', () => showTab('list'));
     tabBtnBanners.addEventListener('click', () => showTab('banners'));
+    tabBtnOrders.addEventListener('click', () => showTab('orders'));
+
+    function authHeaders() {
+      const token = localStorage.getItem('token');
+      return token ? { Authorization: 'Bearer ' + token } : {};
+    }
+
+    async function patchOrderStatus(orderId, status) {
+      const res = await fetch('/api/admin/pedidos/' + orderId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || res.statusText);
+      }
+      return res.json();
+    }
+
+    async function loadOrdersList() {
+      const statusEl = document.getElementById('orders-status');
+      const tbody = document.getElementById('orders-table-body');
+      const filter = document.getElementById('admin-orders-status-filter').value;
+      statusEl.textContent = 'Cargando…';
+      tbody.innerHTML = '';
+      try {
+        let url = '/api/admin/pedidos?limit=100';
+        if (filter) url += '&status=' + encodeURIComponent(filter);
+        const res = await fetch(url, { headers: authHeaders() });
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = '/login';
+          return;
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const items = data.items || [];
+        if (!items.length) {
+          statusEl.textContent = LABELS.ordersEmpty;
+          return;
+        }
+        statusEl.textContent = items.length + ' pedido(s)';
+        tbody.innerHTML = items.map(o => {
+          const date = o.created_at ? new Date(o.created_at).toLocaleString('es-AR') : '—';
+          const customer = o.customer_name || o.whatsapp_wa_id || '—';
+          const lines = (o.lines || []).map(l =>
+            `${escapeHtml(l.title)} x${l.quantity} ($${moneyFmt.format(l.subtotal)})`
+          ).join('<br>');
+          return `<tr class="align-top">
+            <td class="px-3 py-3 font-mono text-xs font-semibold">${escapeHtml(o.order_code || '—')}</td>
+            <td class="px-3 py-3 text-gray-600 whitespace-nowrap">${escapeHtml(date)}</td>
+            <td class="px-3 py-3">${escapeHtml(customer)}</td>
+            <td class="px-3 py-3"><span class="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium">${escapeHtml(o.status_label || o.status)}</span></td>
+            <td class="px-3 py-3 text-right font-semibold tabular-nums">$${moneyFmt.format(o.total)}</td>
+            <td class="px-3 py-3 text-right">
+              <details class="text-left mb-2">
+                <summary class="cursor-pointer text-xs text-gray-600">${LABELS.ordersLines}</summary>
+                <div class="mt-1 text-xs text-gray-700">${lines || '—'}</div>
+              </details>
+              <div class="flex flex-wrap gap-1 justify-end">
+                ${o.status !== 'confirmado' ? `<button type="button" data-order-id="${o.order_id}" data-status="confirmado" class="order-status-btn px-2 py-1 text-xs rounded bg-green-600 text-white">${LABELS.ordersConfirm}</button>` : ''}
+                ${o.status !== 'en_revision' && o.status !== 'confirmado' ? `<button type="button" data-order-id="${o.order_id}" data-status="en_revision" class="order-status-btn px-2 py-1 text-xs rounded bg-amber-600 text-white">${LABELS.ordersReview}</button>` : ''}
+                ${o.status !== 'cancelado' ? `<button type="button" data-order-id="${o.order_id}" data-status="cancelado" class="order-status-btn px-2 py-1 text-xs rounded bg-red-600 text-white">${LABELS.ordersCancel}</button>` : ''}
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+        tbody.querySelectorAll('.order-status-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-order-id');
+            const st = btn.getAttribute('data-status');
+            btn.disabled = true;
+            try {
+              await patchOrderStatus(id, st);
+              document.getElementById('msg').textContent = LABELS.ordersMsgUpdated;
+              loadOrdersList();
+            } catch (e) {
+              alert(e.message || LABELS.ordersLoadErr);
+            } finally {
+              btn.disabled = false;
+            }
+          });
+        });
+      } catch (e) {
+        statusEl.textContent = LABELS.ordersLoadErr;
+        console.error(e);
+      }
+    }
+
+    document.getElementById('admin-orders-refresh').addEventListener('click', loadOrdersList);
+    document.getElementById('admin-orders-status-filter').addEventListener('change', loadOrdersList);
 
     function resetVariantRows() {
       document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
@@ -889,6 +1036,8 @@
         showTab('list');
       } else if (params.get('tab') === 'banners') {
         showTab('banners');
+      } else if (params.get('tab') === 'orders') {
+        showTab('orders');
       }
       if (params.get('updated') === '1') {
         document.getElementById('msg').textContent = LABELS.msgUpdated;

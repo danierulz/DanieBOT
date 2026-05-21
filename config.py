@@ -24,6 +24,34 @@ _SOCIAL_INSTAGRAM = os.getenv(
 # Contactos (números en formato internacional sin signos para wa.me)
 _WHATSAPP_BOT = os.getenv("SITE_WA_BOT", "5491125298412")
 _WHATSAPP_ASESOR = os.getenv("SITE_WA_ASESOR", "5491126295590")
+_SITE_PUBLIC_URL = os.getenv("SITE_PUBLIC_URL", "https://outfitjazmines.com.ar")
+
+
+def get_whatsapp_bot_number() -> str:
+    return _WHATSAPP_BOT
+
+
+def get_whatsapp_asesor_number() -> str:
+    return _WHATSAPP_ASESOR
+
+
+def get_site_public_url() -> str:
+    return _SITE_PUBLIC_URL.rstrip("/")
+
+
+def get_catalog_categories() -> list[dict]:
+    """Categorías del catálogo (slug + name) para menú web y bot WhatsApp."""
+    return list(_NAV_CATEGORIES)
+
+
+def get_bot_welcome_text(user_name: str) -> str:
+    return (
+        f"¡Hola {user_name}! Soy el asistente de *{_BRAND}* 👖\n\n"
+        f"{_PROMO_BANNER}\n\n"
+        "Te ayudo con *jeans*, talles, envíos y retiro en sucursal. "
+        "Elegí en la web y, al confirmar, enviá acá el mensaje con tu *código de pedido*.\n\n"
+        "Usá los botones o escribí *jeans*, *talles*, *envío* o *asesor*."
+    )
 
 # Sucursales (puntos de venta con retiro confirmado)
 _STORES = [
@@ -162,6 +190,28 @@ def get_template_context() -> dict:
         "admin_btn_save_continue_here": "Guardar y seguir aquí",
         "admin_tab_new": "Nuevo producto",
         "admin_tab_list": "Mis productos",
+        "admin_tab_orders": "Pedidos",
+        "admin_orders_heading": "Pedidos de la tienda",
+        "admin_orders_help": "Pedidos creados desde la web y confirmados por WhatsApp. El asesor recibe aviso por WhatsApp al registrarse y al confirmar la clienta.",
+        "admin_orders_col_code": "Código",
+        "admin_orders_col_date": "Fecha",
+        "admin_orders_col_customer": "Cliente",
+        "admin_orders_col_status": "Estado",
+        "admin_orders_col_total": "Total",
+        "admin_orders_col_actions": "Acciones",
+        "admin_orders_filter_all": "Todos los estados",
+        "admin_orders_status_enviado": "Enviado WA",
+        "admin_orders_status_recibido": "Recibido",
+        "admin_orders_status_en_revision": "En revisión",
+        "admin_orders_status_confirmado": "Confirmado",
+        "admin_orders_status_cancelado": "Cancelado",
+        "admin_orders_btn_confirm": "Confirmar",
+        "admin_orders_btn_review": "En revisión",
+        "admin_orders_btn_cancel": "Cancelar",
+        "admin_orders_empty": "No hay pedidos todavía.",
+        "admin_orders_load_error": "No se pudieron cargar los pedidos.",
+        "admin_orders_msg_updated": "Estado del pedido actualizado.",
+        "admin_orders_lines": "Detalle",
         "admin_list_heading": "Catálogo cargado",
         "admin_search_label": "Buscar por nombre",
         "admin_search_placeholder": "Nombre del artículo…",
@@ -244,6 +294,8 @@ def get_template_context() -> dict:
         "social_instagram_url": _SOCIAL_INSTAGRAM,
         # Contactos: dos canales aclarados
         "contact_bot_number": _WHATSAPP_BOT,
+        "checkout_whatsapp_number": _WHATSAPP_BOT,
+        "site_public_url": _SITE_PUBLIC_URL,
         "contact_bot_label": "Bot WhatsApp",
         "contact_bot_url": f"https://wa.me/{_WHATSAPP_BOT}",
         "contact_asesor_number": _WHATSAPP_ASESOR,

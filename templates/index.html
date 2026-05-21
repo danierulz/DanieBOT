@@ -131,10 +131,12 @@
 
     function urlState() {
       const u = new URL(window.location.href);
+      const sizeRaw = (u.searchParams.get('size_code') || u.searchParams.get('talle') || '').trim().toUpperCase();
       return {
         page: Math.max(1, parseInt(u.searchParams.get('page') || '1', 10) || 1),
         q: (u.searchParams.get('q') || '').trim(),
         cat: (u.searchParams.get('cat') || '').trim().toLowerCase(),
+        size_code: sizeRaw,
         sale: (u.searchParams.get('sale') || '') === '1',
       };
     }
@@ -145,6 +147,7 @@
       else u.searchParams.delete('page');
       if (state.q) u.searchParams.set('q', state.q); else u.searchParams.delete('q');
       if (state.cat && state.cat !== 'todos') u.searchParams.set('cat', state.cat); else u.searchParams.delete('cat');
+      if (state.size_code) u.searchParams.set('size_code', state.size_code); else u.searchParams.delete('size_code');
       if (state.sale) u.searchParams.set('sale', '1'); else u.searchParams.delete('sale');
       window.history.replaceState({}, '', u.pathname + u.search);
     }
@@ -155,6 +158,7 @@
       params.set('per_page', String(PER_PAGE));
       if (state.q) params.set('q', state.q);
       if (state.cat && state.cat !== 'todos') params.set('cat', state.cat);
+      if (state.size_code) params.set('size_code', state.size_code);
       if (state.sale) params.set('sale', '1');
       return '/api/productos?' + params.toString();
     }
@@ -164,6 +168,7 @@
       const chips = [];
       if (state.q) chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Buscar: "${escHtml(state.q)}" <a href="${updateLink({q:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
       if (state.cat && state.cat !== 'todos') chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Categoría: ${escHtml(state.cat)} <a href="${updateLink({cat:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      if (state.size_code) chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Talle: ${escHtml(state.size_code)} <a href="${updateLink({size_code:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
       if (state.sale) chips.push(`<span class="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2.5 py-1 rounded-full">Sale <a href="${updateLink({sale:false})}" class="text-red-500 hover:text-red-900">×</a></span>`);
       if (!chips.length) { box.classList.add('hidden'); box.innerHTML=''; return; }
       box.classList.remove('hidden');

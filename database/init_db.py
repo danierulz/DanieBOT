@@ -1,98 +1,64 @@
 from contextlib import contextmanager
 import os
+import sys
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import sys
-import os
-#from database.models.Order import Order
-#from database.models.OrderItem import OrderItem
-#from database.models.Products import Products
-#from database.models.ProductImages import ProductImages
-
-# Print sys.path to debug module search paths
-#print("sys.path:", sys.path)
-
-# Add the project root directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-#print("Updated sys.path:", sys.path)
-
-# Load environment variables
 load_dotenv()
 
-# Database connection parameters
+from database.db_url import build_database_url  # noqa: E402
+
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
-###############################################################################
-# Para pruebas con main.py ya que se despliega con docker.compose para conectarse a la base de datos,
-#  se levanta whatsapp-bot y el index para pruebas local
-DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
-###############################################################################
+DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")
 
-###############################################################################################
-# Para pruebas con scraper_core.py el HOST debe ser
-#127.0.0.1:5433 -- para probar con .\cloud-sql-proxy.exe --port 5433 laslocaswhatsapp:us-central1:whatsapp-bot-db
-# ya que esa configuracion es para conectarse al proxy local, no a la base directamente.
-###############################################################################################
-# Create the database URL
-#   Para pruebas con scraper_core.py el HOST debe ser
-# #DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@127.0.0.1:5433/{DB_NAME}"
-#  Para pruebas con main.py y docker-compose, el HOST debe ser el definido en DB_HOST_DOCKER
-# y lanzar docker compose up --build en terminal
-DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
+DATABASE_URL = build_database_url()
+# echo SQL solo en desarrollo explícito (evita logs enormes en Cloud Run)
+_engine_echo = os.getenv("DB_ECHO", "").lower() in ("1", "true", "yes")
+engine = create_engine(DATABASE_URL, echo=_engine_echo, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-def initialize_database():
-    print(f"DEBUG: Conectando  base init_db con datos : {DATABASE_URL} ")
+
+def initialize_database() -> None:
+    """
+    Datos de referencia (talles, categorías). El esquema lo gestiona Alembic:
+      python -m alembic upgrade head
+
+    En producción con DB ya existente (sin alembic_version):
+      python -m alembic stamp head
+    """
+    print(f"DEBUG: Conectando base init_db: {DATABASE_URL}")
     try:
-
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
-            print(result.fetchone())
-        # Create the database engine
-        print(f"DEBUG: Conectando con usuario: {DB_USER} a la base {DB_NAME} ")
-        print("Create_engine init_db.py")
-
-        # Registrar modelos (sizes, product_variants, …)
+            conn.execute(text("SELECT 1"))
         import database.models  # noqa: F401
 
-        # Create all tables based on the models
-        Base.metadata.create_all(engine)
-        print("Database and tables created successfully.")
-
-        _migrate_home_banners_columns()
-        _seed_sizes_if_empty()
-        _seed_categories_if_empty()
-
-    except Exception as e:
-         print(f"Error initializing database: {e}")
-
-
-def _migrate_home_banners_columns() -> None:
-    """Añade columnas nuevas a home_banners en bases ya existentes."""
-    try:
-        with engine.connect() as conn:
-            conn.execute(
-                text(
-                    "ALTER TABLE home_banners "
-                    "ADD COLUMN IF NOT EXISTS media_type VARCHAR(16) NOT NULL DEFAULT 'image'"
-                )
+        run_schema = os.getenv("RUN_DB_CREATE_ALL", "").lower() in ("1", "true", "yes")
+        if run_schema:
+            print(
+                "AVISO: RUN_DB_CREATE_ALL activo — create_all omitido; usá Alembic. "
+                "Solo se ejecutan seeds."
             )
-            conn.commit()
-            print("Migración home_banners (media_type) aplicada o ya existente.")
+        seed_reference_data()
     except Exception as e:
-        print(f"Nota migración home_banners: {e}")
+        print(f"Error initializing database: {e}")
+
+
+def seed_reference_data() -> None:
+    """Talles y categorías base (idempotente). No altera el esquema."""
+    _seed_sizes_if_empty()
+    _seed_categories_if_empty()
 
 
 def _seed_sizes_if_empty() -> None:
-    """Talles base para variantes (ropa). Idempotente."""
     from database.models.Size import Size
 
     session = SessionLocal()
@@ -120,7 +86,6 @@ def _seed_sizes_if_empty() -> None:
 
 
 def _seed_categories_if_empty() -> None:
-    """Categorías base de prendas. Idempotente."""
     from database.models.Category import Category
 
     session = SessionLocal()
@@ -149,27 +114,28 @@ def _seed_categories_if_empty() -> None:
     finally:
         session.close()
 
+
 @contextmanager
 def get_db_session():
-        """Generador de sesiones que se cierran solas."""
-        session = SessionLocal()
-        try:
-            yield session
-            session.commit() # Si todo sale bien, guarda
-        except Exception as e:
-            session.rollback() # Si hay error, deshace
-            print(f"❌ Error en la DB get_db_session: {e}")
-            raise
-        finally:
-            session.close() # Siempre cierra la conexión
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error en la DB get_db_session: {e}")
+        raise
+    finally:
+        session.close()
 
-# 5. Función de ayuda (Dependency) para usar en las rutas de FastAPI
+
 def get_db_fastApi():
     session = SessionLocal()
     try:
         yield session
     finally:
         session.close()
+
 
 if __name__ == "__main__":
     initialize_database()

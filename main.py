@@ -6,8 +6,6 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, Request, Response, 
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
 from auth.auth import create_access_token, get_current_user, get_optional_user, ADMIN_USER
-from pywa import WhatsApp
-from pywa.types import Message, CallbackButton, SectionRow, SectionList, Button
 import os
 import json
 import traceback
@@ -20,7 +18,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session, joinedload
 from sqlalchemy import create_engine, inspect
 from database.init_db import Base
 from database.schemas.ProductCreate import ProductCreate, ProductOut
-from gcs.GCSUploader import GCSUploader
+from gcs.storage_factory import create_uploader
 from provider_importers.registry import detect_provider, fetch_product
 from provider_importers.types import ImportedProduct, ProviderImportError
 from scraper_locas.constants import BUCKET_NAME
@@ -40,6 +38,8 @@ from sqlalchemy import or_
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context
+from routes.orders import router as orders_router
+from whatsapp.bot import init_whatsapp
 
 
 DB_USER = os.getenv("DB_USER")
@@ -69,10 +69,12 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")  # For Docker connectivity
 
 # Configura el logging para ver todo en Cloud Run
 logging.basicConfig(level=logging.INFO)
-uploader = GCSUploader(bucket_name="bucket_laslocas_prod")
+uploader = create_uploader()
 
 
 app = FastAPI()
+app.include_router(orders_router)
+init_whatsapp(app)
 # Montar la carpeta static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -152,22 +154,9 @@ def _list_variant_summary(variants: List[ProductVariant]) -> dict:
 
 
 def _compute_pricing(price: Optional[int], is_sale: bool, discount_percent: Optional[int]) -> dict:
-    """Devuelve precio_original, precio_final, descuento_porcentaje y is_sale efectivo."""
-    base = int(price) if price is not None else 0
-    pct = int(discount_percent) if (is_sale and discount_percent and discount_percent > 0) else 0
-    if pct > 95:
-        pct = 95
-    final = base
-    on_sale_effective = False
-    if pct > 0 and base > 0:
-        final = int(round(base * (100 - pct) / 100))
-        on_sale_effective = True
-    return {
-        "precio_original": base,
-        "precio_final": final,
-        "descuento_porcentaje": pct,
-        "is_sale": on_sale_effective,
-    }
+    from services.pricing import compute_pricing
+
+    return compute_pricing(price, is_sale, discount_percent)
 
 
 def _category_public(cat: Optional[Category]) -> Optional[dict]:
@@ -203,132 +192,11 @@ def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
     return out
 
 
-# --- Configuración de PyWa (¡IMPORTANTE! Usa variables de entorno) ---
-# Estas variables se inyectarán en Cloud Run, NO las hardcodees aquí en producción.
-# Para pruebas locales, puedes definirlas directamente o usar un .env
-PYWA_VERIFY_TOKEN = os.getenv("PYWA_VERIFY_TOKEN", "TU_TOKEN_DE_VERIFICACION_SECRETO")
-PYWA_AUTH_TOKEN = os.getenv("PYWA_AUTH_TOKEN", "TU_TOKEN_DE_AUTENTICACION_DE_META")
-# El ID del número de teléfono de WhatsApp Business
-PYWA_PHONE_ID = os.getenv("PYWA_PHONE_ID", "TU_ID_DE_NUMERO_DE_TELEFONO")
-APP_SECRET = os.getenv("APP_SECRET", "f173398d2e1be14ff8fbbb8b29fe16a0")
-APP_ID = os.getenv("APP_ID", "26438378279080977")
-
-if PYWA_PHONE_ID and PYWA_AUTH_TOKEN and PYWA_VERIFY_TOKEN:
-    try:
-        wa = WhatsApp(
-            phone_id=PYWA_PHONE_ID,
-            token=PYWA_AUTH_TOKEN,
-            app_secret=APP_SECRET,
-            app_id=APP_ID,
-            server=app,
-            webhook_endpoint="/webhook/",
-            verify_token=PYWA_VERIFY_TOKEN
-#            callback_url="/webhook" # Esta es la ruta donde WhatsApp enviará los mensajes
-        )
-        print("PyWa configurado correctamente")
-    except Exception as e:
-        print(f"Error al configurar PyWa: {e}")
-else:
-    print("Error: Asegúrate de definir las variables de entorno PYWA_VERIFY_TOKEN, PYWA_AUTH_TOKEN y PYWA_PHONE_ID")
-
 # --- Rutas de FastAPI ---
 
 @app.get("/healt")
 def health_check():
     return {"status": "ok", "message": "Bot de WhatsApp funcionando en Cloud Run"}
-
-@app.get("/webhook")
-async def verify_webhook(request: Request):
-    """
-    Ruta para la verificación del webhook de WhatsApp.
-    Meta enviará una solicitud GET a esta URL para verificarla.
-    """
-    mode = request.query_params.get("hub.mode")
-    token = request.query_params.get("hub.verify_token")
-    challenge = request.query_params.get("hub.challenge")
-
-    if mode == "subscribe" and token == PYWA_VERIFY_TOKEN:
-        print("Webhook verificado correctamente por Meta")
-        return Response(content=challenge, media_type="text/plain")
-    
-    print("Fallo la verificación del webhook")
-    raise HTTPException(status_code=403, detail="Error de verificación")
-
-@app.post("/webhook")
-async def handle_webhook_events(request: Request):
-    """
-    Ruta donde WhatsApp enviará los eventos de mensajes.
-    PyWa se encargará de procesarlos.
-    """
-    body = await request.json()
-    logging.info(f"PAYLOAD RECIBIDO: {body}")
-    # PyWa se encarga de procesar el JSON y disparar los handlers
-    wa.handle_update(await request.json())
-    return {"status": "success"}
-
-# --- Handlers de PyWa (ejemplos) ---
-
-@wa.on_message()
-def handle_message(client: WhatsApp, message: Message):
-    #logging.info(f"Escuché: {message.text}. Intentando responder...")
-    print("Escuche: ", message.text)
-    print("Mensaje completo: ", message)
-    # Usá el método más simple posible
-    try:
-        print("Intentando responder a: ", message.from_user.wa_id)
-#        logging.info(f"Intentando responder a: {message.from_user.wa_id}")
-        # Intentá la respuesta más simple posible para probar
-        message.reply_text(text="¡Te escucho!")
-    except Exception:
-        # Esto imprimirá el error real (Traceback) en tus logs
-        logging.error(f"ERROR DETALLADO EN HANDLE_MESSAGE: \n{traceback.format_exc()}")
-    try:
-        logging.info(f"PAYLOAD CRUDO DE META: {message}")
-        """Cuando recibes un mensaje de texto"""
-        try:
-            logging.info(f"DETALLES DEL MENSAJE: {json.dumps(asdict(message), indent=2, default=str)}")
-        except:
-            logging.info(f"DICCIONARIO DEL MENSAJE: {message.__dict__}")
-
-
-        print(f"Mensaje recibido de {message.from_user.name}: {message.text}")
-        client.send_message(
-            to=message.from_user.wa_id,
-            text=f"¡Hola {message.from_user.name}! Recibí tu mensaje: '{message.text}'. ¿Cómo puedo ayudarte con tu pedido de ropa?",
-            # Puedes añadir botones aquí, por ejemplo:
-            buttons=[Button(title="Ver Catálogo", callback_data="CATALOGO"), Button(title="Hablar con un asesor", callback_data="ASESOR")]
-        )
-    except Exception as e:
-        logging.error(f"Error al manejar el mensaje de {message.from_user.name}: {e}")
-
-@wa.on_callback_button()
-def handle_button_callback(client: WhatsApp, cb: CallbackButton):
-    """Cuando el usuario presiona un botón"""
-    print(f"Botón presionado por {cb.from_user.name}: {cb.data}")
-    if cb.data == "CATALOGO":
-        client.send_message(
-            to=cb.from_user.wa_id,
-            text="¡Claro! Aquí tienes nuestro catálogo de ropa:",
-            # Aquí podrías enviar un link a un PDF o una lista de productos
-        )
-    elif cb.data == "ASESOR":
-        client.send_message(
-            to=cb.from_user.wa_id,
-            text="Un asesor se pondrá en contacto contigo a la brevedad."
-        )
-
-# Agrega más handlers según necesites (on_list_response, on_reaction, etc.)
-@wa.on_message()
-def handle_all_messages(client, msg):
-    try:
-        print(f"¡Llegó algo! De: {msg.from_user.wa_id} - Texto: {msg.text}",flush=True)
-        msg.reply_text(f"Hola {msg.from_user.name}, recibí tu mensaje: {msg.text}")
-        print("Respuesta enviada correctamente")
-#        logging.info("Respuesta enviada correctamente")
-    except Exception as e:
-        print(f"Error al manejar mensaje de {msg.from_user.wa_id}: {e}", flush=True)
-#        logging.error(f"Error al manejar mensaje de {msg.from_user.wa_id}: {e}", exc_info=True)
-
 
 
 @app.get("/debug")

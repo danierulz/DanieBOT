@@ -14,12 +14,10 @@
 
 | Ítem | Detalle |
 |------|---------|
-| **Router de pedidos no montado** | `routes/orders.py` no se registra con `app.include_router` en `main.py`; endpoint `POST /api/whatsapp/pedido` no está expuesto. |
-| **Definición duplicada** | Misma ruta `crear_pedido` declarada dos veces en `routes/orders.py`; consolidar en una implementación. |
-| **Dependencia DB** | El router usa `get_db`; en `init_db.py` solo existe `get_db_fastApi`. Corregir nombre o alias. |
-| **Constante faltante** | Segunda definición retorna `BUSINESS_WHATSAPP_NUMBER` — verificar que exista en el módulo. |
-| **Total en mensaje WhatsApp (JS)** | En `confirmarPedido`, el total usa `reduce` sobre `p.precio` sin multiplicar por `cantidad`; inconsistente con `renderCarrito`. Alinear con spec: total = Σ(precio × cantidad). |
-| **Número WhatsApp en front** | Hardcodeado en `shoppingCart.js`; externalizar (config servidor o build-time env). |
+| **Email marketing** | Consent en DB; integración SendGrid/Resend pendiente (ver `09-marketing-email-compliance.md`). |
+| **Aviso asesor WA** | Requiere que el asesor haya escrito al número del negocio en las últimas 24h (reglas Meta); si falla, ver logs Cloud Run. |
+| **Alembic en prod** | Primera vez en Cloud SQL: `python -m alembic stamp head` (ver [10-alembic-migraciones.md](./10-alembic-migraciones.md)). |
+| **CI migrate** | Opcional: `alembic upgrade head` en Cloud Build antes del deploy. |
 | **Health check** | Ruta `/healt` con typo; opcional normalizar a `/health`. |
 | **Endpoint `/debug`** | Lista archivos del contenedor — riesgo en producción; proteger o eliminar. |
 | **Auth admin** | Credenciales y `SECRET_KEY` en código; migrar a secretos y hash de contraseña. |

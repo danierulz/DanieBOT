@@ -33,8 +33,17 @@
 
 ## docker-compose (desarrollo)
 
-- Servicio `app`: puerto host `5000` → `8080` del contenedor, `env_file: .env`.
-- Servicio `ngrok`: túnel HTTP hacia `app:8080`, puerto `4040` para inspeccionar requests (útil para webhook WhatsApp en local).
+- **`env_file: .env.dev`** — Postgres local en el servicio `db`; no usar el `.env` de producción con compose por defecto.
+- Servicio `db`: PostgreSQL 16, puerto `5432`, datos en volumen `daniebot_pgdata`.
+- Servicio `app`: puerto host `5000` → `8080`, depende de `db` (healthcheck).
+- Servicio `ngrok` (perfil `whatsapp`): túnel hacia `app:8080`, puerto `4040`.
+
+Guía paso a paso: [11-desarrollo-local.md](./11-desarrollo-local.md).
+
+```powershell
+.\scripts\dev-init.ps1    # migraciones + seeds
+docker compose up app
+```
 
 ## Variables de entorno (referencia)
 
@@ -46,7 +55,23 @@
 | `GOOGLE_CLOUD_PROJECT` | Integraciones GCP (compose/local) |
 | `LOGIN_EMAIL`, `LOGIN_PASS` | Login mayorista Las Locas (import por URL) |
 
-No commitear valores reales; usar `.env` local y Secret Manager en GCP.
+No commitear valores reales de producción; usar `.env` (gitignored) o Secret Manager en GCP. Desarrollo Docker: `.env.dev` (credenciales de Postgres solo local).
+
+## Migraciones de base de datos (Alembic)
+
+Antes o durante un deploy que cambie modelos en `database/models/`:
+
+```bash
+python -m alembic upgrade head
+```
+
+Si la base de producción **ya tiene** el esquema completo y es la primera vez con Alembic:
+
+```bash
+python -m alembic stamp head
+```
+
+Detalle: [10-alembic-migraciones.md](./10-alembic-migraciones.md).
 
 ## Checklist pre-deploy
 

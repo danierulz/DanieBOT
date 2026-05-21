@@ -34,7 +34,7 @@
 2. **PyWa** procesa mensajes y callbacks (botones).
 3. **Estado deseado en roadmap:** interpretar pedidos entrantes, confirmar stock, notificar al admin, o enlazar con `Order` en base de datos.
 
-**Estado actual:** configuración operativa en GCP con respuestas automáticas limitadas (ej. saludo, botones de catálogo/asesor).
+**Estado actual:** bot con flujo guiado «Ver tienda» (categoría + talle → URL filtrada en la web), registro de pedidos por código y FAQ (envío, tiendas, asesor). Ver [12-bot-whatsapp-conversacion.md](./12-bot-whatsapp-conversacion.md).
 
 ## 5. Administración (web)
 

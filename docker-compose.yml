@@ -1,24 +1,58 @@
+# Desarrollo local: Postgres + app (sin tocar producción).
+#   docker compose up -d db app
+#   .\scripts\dev-init.ps1   (migraciones + seeds)
+# Webhook WhatsApp con túnel:
+#   docker compose --profile whatsapp up
+#
+# Producción / Cloud SQL: no uses este compose con .env de prod salvo que pases
+#   docker compose --env-file .env ...
+
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: daniebot_db
+    env_file:
+      - .env.dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - daniebot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
   app:
     build: .
     container_name: daniebot_app
     ports:
       - "5000:8080"
-    volumes:
-    # Montamos la carpeta de configuración de gcloud dentro del contenedor
-      - C:\Users\danie\AppData\Roaming\gcloud:/root/.config/gcloud:ro
-    environment:
-      - GOOGLE_CLOUD_PROJECT=784310446531
-    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
     env_file:
-      - .env
+      - .env.dev
+    environment:
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-local-dev}
+    restart: unless-stopped
+    volumes:
+      - ./static/uploads:/DANIEBOT/static/uploads
+
   ngrok:
+    profiles:
+      - whatsapp
     image: ngrok/ngrok:latest
     container_name: daniebot_ngrok
     depends_on:
       - app
     command: http app:8080
     ports:
-      - "4040:4040"   # interfaz web de ngrok para ver las requests
+      - "4040:4040"
     env_file:
-      - .env
+      - .env.dev
+
+volumes:
+  daniebot_pgdata:

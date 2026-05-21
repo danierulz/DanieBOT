@@ -40,15 +40,15 @@ Convención base: JSON salvo donde se indique `multipart/form-data` o HTML.
 | POST | `/api/proveedores/sochic/importar` | Alias de `/api/proveedores/importar` (compatibilidad). |
 | POST | `/upload-photos` | Sube fotos y devuelve URLs (`uploaded_urls`). |
 
-## Pedidos (código en `routes/orders.py` — ver backlog)
+## Pedidos (`routes/orders.py`)
 
-**Objetivo:** persistir pedido y líneas, validar stock, devolver mensaje formateado para WhatsApp.
+| Método | Ruta | Body (JSON) | Respuesta |
+|--------|------|-------------|-----------|
+| POST | `/api/whatsapp/pedido` | `items[]` `{ id, titulo, precio, cantidad, variant_id? }`, opcional `customer_name`, `customer_phone`, `note`, `cart_snapshot` | `status`, `order_id`, `order_code`, `mensaje`, `whatsapp_number` |
+| GET | `/api/admin/pedidos` | Query `status`, `limit`, `offset` | JWT admin — lista pedidos |
+| PATCH | `/api/admin/pedidos/{order_id}` | `{ "status": "..." }` | JWT admin — cambia estado |
 
-| Método | Ruta | Body (JSON) | Respuesta esperada |
-|--------|------|-------------|----------------------|
-| POST | `/api/whatsapp/pedido` | `PedidoIn`: `items[]` con `{ id, titulo, precio, cantidad }`, opcional `customer_name`, `customer_phone`, `note` | `status`, `order_id`, `mensaje`, (opcional) `whatsapp_number` |
-
-**Estado:** el router **no está incluido** en `main.py`; además el archivo define la misma ruta **dos veces** y referencia dependencias a revisar (`get_db`, `BUSINESS_WHATSAPP_NUMBER`). Tratar como **especificación objetivo** hasta integrar y limpiar.
+**Webhook WhatsApp:** PyWa en `/webhook` (sin rutas manuales duplicadas). Handlers en `whatsapp/handlers.py`.
 
 ## Autenticación
 

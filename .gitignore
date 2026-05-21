@@ -65,6 +65,11 @@ __pypackages__/
 
 # Environment
 .env
+# .env.dev se commitea (solo credenciales locales de Postgres); secretos Meta/ngrok van vacíos
+
+# Uploads locales (STORAGE_BACKEND=local)
+static/uploads/*
+!static/uploads/.gitkeep
 .venv
 env/
 venv/

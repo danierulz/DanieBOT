@@ -15,7 +15,7 @@
 | **Order** | Pedido: cliente, total, estado (`pendiente`, etc.), nota. |
 | **OrderItem** | Líneas de pedido: producto, cantidades, precios unitarios, subtotales. |
 
-Los campos exactos están en `database/models/`; al cambiar el modelo, actualizar este documento y migraciones si se adoptan (Alembic recomendado a futuro).
+Los campos exactos están en `database/models/`. **Cambios de esquema:** usar Alembic — ver [10-alembic-migraciones.md](./10-alembic-migraciones.md).
 
 ## Google Cloud Storage
 

@@ -160,13 +160,14 @@
       <span class="font-semibold">{{ cart_total_label }}</span>
       <span class="text-xl font-bold text-gray-900">$<span id="carrito-total">0</span></span>
     </div>
-    <button type="button" id="btn-confirmar" onclick="confirmarPedido()" class="w-full bg-green-600 text-white py-3 rounded-full font-bold hover:bg-green-700 transition min-h-[48px]">
+    <button type="button" id="btn-confirmar" onclick="confirmarPedido()" data-label="{{ cart_btn_whatsapp }}" class="w-full bg-green-600 text-white py-3 rounded-full font-bold hover:bg-green-700 transition min-h-[48px]">
       {{ cart_btn_whatsapp }}
     </button>
   </div>
 </aside>
 
 <script>
+  const CHECKOUT_WHATSAPP_NUMBER = {{ checkout_whatsapp_number | tojson }};
   const NAV_LOGIN = {{ nav_login | tojson }};
   const NAV_LOGOUT = {{ nav_logout | tojson }};
 

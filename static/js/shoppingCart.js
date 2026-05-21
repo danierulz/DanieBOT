@@ -157,31 +157,53 @@ function eliminarDelCarrito(index) {
   renderCarrito();
 }
 
-function confirmarPedido() {
+async function confirmarPedido() {
   if (!carrito.length) return;
-  let mensaje = '🛒 Pedido:\n';
-  carrito.forEach((p, i) => {
-    const talle = p.talle_label || p.size_label || '';
-    const modo = modoLabel(p);
-    mensaje += `${i + 1}. ${p.titulo}`;
-    if (talle) mensaje += ` — Talle: ${talle}`;
-    if (modo) mensaje += ` (${modo})`;
-    mensaje += ` — $${formatMoney(p.precio)} x ${p.cantidad}`;
-    if (p.is_sale && p.precio_original && p.precio_original > p.precio) {
-      mensaje += ` (precio sale, antes $${formatMoney(p.precio_original)})`;
+  const btn = document.getElementById('btn-confirmar');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Preparando pedido…';
+  }
+
+  const payload = {
+    items: carrito.map((p) => ({
+      id: p.id,
+      titulo: p.titulo,
+      precio: Number(p.precio) || 0,
+      cantidad: p.cantidad || 1,
+      variant_id: p.variant_id || null,
+    })),
+    cart_snapshot: carrito,
+  };
+
+  try {
+    const res = await fetch('/api/whatsapp/pedido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.detail || 'No se pudo registrar el pedido. Intentá de nuevo.');
+      return;
     }
-    mensaje += `\n`;
-  });
-
-  const total = carrito.reduce((acc, p) => acc + (Number(p.precio) || 0) * (p.cantidad || 1), 0);
-  const totalOrig = carrito.reduce((acc, p) => acc + (Number(p.precio_original) || Number(p.precio) || 0) * (p.cantidad || 1), 0);
-  const ahorro = Math.max(0, totalOrig - total);
-  if (ahorro > 0) mensaje += `\nAhorrás: $${formatMoney(ahorro)}`;
-  mensaje += `\nTotal: $${formatMoney(total)}\n`;
-
-  const mensajeCodificado = encodeURIComponent(mensaje);
-  const numeroDestino = '5491125298412';
-  window.open(`https://wa.me/${numeroDestino}?text=${mensajeCodificado}`, '_blank');
+    const numero =
+      data.whatsapp_number ||
+      (typeof CHECKOUT_WHATSAPP_NUMBER !== 'undefined' ? CHECKOUT_WHATSAPP_NUMBER : '');
+    const mensaje = data.mensaje || '';
+    if (!numero || !mensaje) {
+      alert('Pedido registrado pero falta configuración de WhatsApp.');
+      return;
+    }
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+  } catch (e) {
+    alert('Error de conexión. Revisá tu internet e intentá de nuevo.');
+  } finally {
+    if (btn) {
+      btn.disabled = !carrito.length;
+      btn.textContent = btn.dataset.label || 'Confirmar y enviar por WhatsApp';
+    }
+  }
 }
 
 window.addEventListener('load', () => {

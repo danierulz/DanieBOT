@@ -2,7 +2,9 @@ from .Category import Category
 from .HomeBanner import HomeBanner
 from .Products import Products
 from .ProductImages import ProductImages
+from .Customer import Customer
 from .Order import Order
 from .OrderItem import OrderItem
+from .OrderEvent import OrderEvent
 from .Size import Size
 from .ProductVariant import ProductVariant
