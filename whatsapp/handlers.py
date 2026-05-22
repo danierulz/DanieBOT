@@ -1,5 +1,4 @@
 import logging
-import re
 
 from pywa import WhatsApp, filters, types
 
@@ -22,14 +21,12 @@ from whatsapp.conversation import (
     route_text_message,
     reply_to_pywa_buttons,
 )
+from whatsapp import email_flow
 from whatsapp.shop_flow import handle_callback as shop_handle_callback
 from whatsapp.shop_flow import handle_text as shop_handle_text
 from whatsapp.shop_flow import is_shop_callback
 
 logger = logging.getLogger(__name__)
-
-_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-_pending_email: dict[str, str] = {}
 
 
 def _send_reply(msg_or_cb, reply) -> None:
@@ -41,13 +38,31 @@ def _send_reply(msg_or_cb, reply) -> None:
 
 
 def register_handlers(client) -> None:
+    def _on_email_timeout(wa_id: str) -> None:
+        try:
+            client.send_message(
+                to=wa_id,
+                text="Tardaste mucho en responder. Podés escribir tu email cuando quieras.",
+            )
+        except Exception:
+            logger.exception("No se pudo enviar timeout de email a %s", wa_id)
+
+    email_flow.set_timeout_callback(_on_email_timeout)
+
     @client.on_callback_button()
     def on_button(_: WhatsApp, cb: types.CallbackButton):
+        if email_flow.is_callback_duplicate(cb.id):
+            logger.info("Callback duplicado ignorado: %s", cb.id)
+            return
+
         data = (cb.data or "").strip()
         if data in (CB_EMAIL_SI, CB_EMAIL_NO, CB_EMAIL_CONSENT_SI, CB_EMAIL_CONSENT_NO):
+            wa_id = cb.from_user.wa_id
             if data == CB_EMAIL_SI:
-                _ask_email(cb)
+                if email_flow.start_email_collection(wa_id):
+                    cb.reply_text("Escribí tu email:")
             elif data == CB_EMAIL_NO:
+                email_flow.clear_email_flow(wa_id)
                 cb.reply_text("¡Perfecto! Cualquier consulta, escribinos por acá.")
             elif data == CB_EMAIL_CONSENT_SI:
                 _save_email_from_context(cb, marketing_consent=True)
@@ -73,6 +88,27 @@ def register_handlers(client) -> None:
             text[:120],
         )
         try:
+            wa_id = msg.from_user.wa_id
+
+            email_result = email_flow.handle_email_text(wa_id, text)
+            if email_result is not None:
+                reply_text, ask_consent = email_result
+                if reply_text:
+                    msg.reply_text(reply_text)
+                elif ask_consent:
+                    msg.reply_text(
+                        "¿Aceptás recibir novedades y promociones por email?",
+                        buttons=[
+                            types.Button(title="Sí, acepto", callback_data=CB_EMAIL_CONSENT_SI),
+                            types.Button(title="Solo seguimiento", callback_data=CB_EMAIL_CONSENT_NO),
+                        ],
+                    )
+                return
+
+            if email_flow.is_awaiting_consent(wa_id):
+                msg.reply_text("Elegí una opción con los botones de arriba.")
+                return
+
             order_code = extract_order_code(text)
             if order_code:
                 _handle_order_message(msg, order_code)
@@ -85,7 +121,6 @@ def register_handlers(client) -> None:
                     _handle_status_query(msg, code)
                     return
 
-            wa_id = msg.from_user.wa_id
             name = msg.from_user.name or ""
             shop_reply = shop_handle_text(wa_id, text, name)
             if shop_reply is not None:
@@ -122,6 +157,7 @@ def _handle_order_message(msg: types.Message, order_code: str):
         link_order_to_whatsapp(db, order, customer, msg.from_user.wa_id)
         summary = format_order_summary_for_bot(order)
         msg.reply_text(get_order_confirmation_reply(msg.from_user.name, summary))
+        email_flow.clear_email_flow(msg.from_user.wa_id)
         msg.reply_text(
             "¿Querés dejarnos tu email para novedades y seguimiento?",
             buttons=[
@@ -151,30 +187,8 @@ def _handle_status_query(msg: types.Message, order_code: str):
         db.close()
 
 
-def _ask_email(cb: types.CallbackButton):
-    try:
-        sent = cb.reply_text("Escribí tu email:")
-        reply = sent.wait_for_reply(filters=filters.text, timeout=300)
-        email = (reply.text or "").strip()
-        if not _EMAIL_RE.match(email):
-            reply.reply_text("El email no parece válido. Podés escribirlo de nuevo cuando quieras.")
-            return
-        _pending_email[cb.from_user.wa_id] = email
-        reply.reply_text(
-            "¿Aceptás recibir novedades y promociones por email?",
-            buttons=[
-                types.Button(title="Sí, acepto", callback_data=CB_EMAIL_CONSENT_SI),
-                types.Button(title="Solo seguimiento", callback_data=CB_EMAIL_CONSENT_NO),
-            ],
-        )
-    except types.ListenerCanceled:
-        cb.reply_text("No hay problema. Si querés dejar tu email más tarde, escribinos.")
-    except types.ListenerTimeout:
-        cb.reply_text("Tardaste mucho en responder. Podés escribir tu email cuando quieras.")
-
-
 def _save_email_from_context(cb: types.CallbackButton, *, marketing_consent: bool):
-    email = _pending_email.pop(cb.from_user.wa_id, None)
+    email = email_flow.pop_pending_email(cb.from_user.wa_id)
     if not email:
         cb.reply_text("No tengo tu email guardado. Tocá «Sí» y escribilo en un mensaje.")
         return
