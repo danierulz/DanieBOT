@@ -11,6 +11,8 @@ import os
 from fastapi import FastAPI, Request, Response
 from pywa import WhatsApp
 
+from whatsapp.webhook_payload import log_webhook_payload_summary
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +42,7 @@ def register_webhook_compat_routes(app: FastAPI, wa: WhatsApp) -> None:
             len(body),
             "presente" if hmac_header else "ausente",
         )
+        log_webhook_payload_summary(body)
         content, status_code = wa.webhook_update_handler(
             update=body,
             hmac_header=hmac_header,
@@ -51,7 +54,7 @@ def register_webhook_compat_routes(app: FastAPI, wa: WhatsApp) -> None:
                 content,
             )
         else:
-            logger.info("Webhook POST /webhook procesado OK")
+            logger.info("Webhook POST /webhook procesado OK (revisá avisos filter_updates arriba)")
         return Response(content=content, status_code=status_code, media_type="text/plain")
 
     logger.info("Webhook compat registrado: GET/POST /webhook (PyWa principal en /webhook/)")
