@@ -35,12 +35,23 @@ def register_webhook_compat_routes(app: FastAPI, wa: WhatsApp) -> None:
     async def handle_webhook_compat(request: Request) -> Response:
         body = await request.body()
         hmac_header = request.headers.get("X-Hub-Signature-256", "")
+        logger.info(
+            "Webhook POST /webhook (%d bytes, signature=%s)",
+            len(body),
+            "presente" if hmac_header else "ausente",
+        )
         content, status_code = wa.webhook_update_handler(
             update=body,
             hmac_header=hmac_header,
         )
-        if status_code != 200:
-            logger.warning("Webhook POST /webhook respondió %s", status_code)
+        if status_code != 200 or content != "ok":
+            logger.warning(
+                "Webhook POST /webhook no procesó el evento: status=%s body=%r",
+                status_code,
+                content,
+            )
+        else:
+            logger.info("Webhook POST /webhook procesado OK")
         return Response(content=content, status_code=status_code, media_type="text/plain")
 
     logger.info("Webhook compat registrado: GET/POST /webhook (PyWa principal en /webhook/)")
