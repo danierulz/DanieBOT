@@ -39,7 +39,7 @@ from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context
 from routes.orders import router as orders_router
-from whatsapp.bot import init_whatsapp
+from whatsapp.bot import get_wa_client, init_whatsapp
 
 
 DB_USER = os.getenv("DB_USER")
@@ -196,7 +196,15 @@ def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
 
 @app.get("/healt")
 def health_check():
-    return {"status": "ok", "message": "Bot de WhatsApp funcionando en Cloud Run"}
+    wa = get_wa_client()
+    return {
+        "status": "ok",
+        "message": "Bot de WhatsApp funcionando en Cloud Run",
+        "whatsapp": {
+            "configured": wa is not None,
+            "webhook_paths": ["/webhook", "/webhook/"],
+        },
+    }
 
 
 @app.get("/debug")

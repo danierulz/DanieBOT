@@ -13,10 +13,12 @@ Convención base: JSON salvo donde se indique `multipart/form-data` o HTML.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/webhook` | Verificación Meta (`hub.mode`, `hub.verify_token`, `hub.challenge`). |
-| POST | `/webhook` | Eventos entrantes; el cuerpo se delega a PyWa (`wa.handle_update`). |
+| GET | `/webhook` | Verificación Meta (ruta compat; la que suele configurarse en Meta Developer). |
+| POST | `/webhook` | Eventos entrantes (compat; delega en PyWa). |
+| GET | `/webhook/` | Verificación Meta (registrada por PyWa). |
+| POST | `/webhook/` | Eventos entrantes (PyWa). |
 
-**Variables de entorno:** `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, más `APP_SECRET` y `APP_ID` según configuración PyWa.
+**Variables de entorno:** `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID` (ID numérico de Meta, sin `+`), más `APP_SECRET` y `APP_ID` según configuración PyWa.
 
 ## Web (HTML)
 
