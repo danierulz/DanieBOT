@@ -13,7 +13,9 @@
    - `--no-allow-unauthenticated` (invocación autenticada; el webhook de Meta debe poder alcanzar la URL — revisar configuración IAM/ingress según doc Meta)
    - **VPC connector:** `whatsapp-bot-vpc-connecto` (acceso a Cloud SQL u otros recursos privados)
    - **Secrets** montados como env (Secret Manager):  
-     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `APP_ID`, `APP_SECRET`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
+     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
+
+   `APP_ID` y `APP_SECRET` están hoy como **variables de entorno literales** en Cloud Run (no Secret Manager). No incluirlos en `--set-secrets` del deploy: gcloud falla si cambiás el tipo. Para migrarlos a secretos: borrar esas env vars en la consola y agregarlas a `--set-secrets`.
 
 ### Cloud Run
 
