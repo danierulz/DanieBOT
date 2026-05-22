@@ -70,7 +70,18 @@ def init_whatsapp(app: FastAPI) -> Optional[WhatsApp]:
         if app_id:
             kwargs["app_id"] = int(app_id)
         _wa = WhatsApp(**kwargs)
-        logger.info("PyWa configurado (webhook /webhook/ + compat /webhook)")
+        logger.info(
+            "PyWa configurado (webhook /webhook/ + compat /webhook, "
+            "APP_SECRET=%s, APP_ID=%s)",
+            "set" if app_secret else "missing",
+            app_id or "missing",
+        )
+        if not app_secret:
+            logger.warning(
+                "APP_SECRET no configurado: validación de firma del webhook desactivada"
+            )
+        elif not app_id:
+            logger.warning("APP_ID no configurado en el entorno de Cloud Run")
 
         from whatsapp.handlers import register_handlers
         from whatsapp.webhook_routes import register_webhook_compat_routes

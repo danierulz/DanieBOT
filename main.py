@@ -197,12 +197,15 @@ def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
 @app.get("/healt")
 def health_check():
     wa = get_wa_client()
+    app_secret = os.getenv("APP_SECRET")
     return {
         "status": "ok",
         "message": "Bot de WhatsApp funcionando en Cloud Run",
         "whatsapp": {
             "configured": wa is not None,
             "webhook_paths": ["/webhook", "/webhook/"],
+            "signature_validation": bool(app_secret),
+            "app_id_set": bool(os.getenv("APP_ID")),
         },
     }
 

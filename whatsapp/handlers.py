@@ -65,26 +65,41 @@ def register_handlers(client) -> None:
         if not text:
             return
 
-        order_code = extract_order_code(text)
-        if order_code:
-            _handle_order_message(msg, order_code)
-            return
-
-        lower = text.lower()
-        if lower.startswith("estado"):
-            code = extract_order_code(text[6:]) or extract_order_code(text)
-            if code:
-                _handle_status_query(msg, code)
+        logger.info(
+            "WA mensaje texto de %s (%s): %s",
+            msg.from_user.wa_id,
+            msg.from_user.name or "?",
+            text[:120],
+        )
+        try:
+            order_code = extract_order_code(text)
+            if order_code:
+                _handle_order_message(msg, order_code)
                 return
 
-        wa_id = msg.from_user.wa_id
-        name = msg.from_user.name or ""
-        shop_reply = shop_handle_text(wa_id, text, name)
-        if shop_reply is not None:
-            _send_reply(msg, shop_reply)
-            return
+            lower = text.lower()
+            if lower.startswith("estado"):
+                code = extract_order_code(text[6:]) or extract_order_code(text)
+                if code:
+                    _handle_status_query(msg, code)
+                    return
 
-        _send_reply(msg, route_text_message(text, name, wa_id))
+            wa_id = msg.from_user.wa_id
+            name = msg.from_user.name or ""
+            shop_reply = shop_handle_text(wa_id, text, name)
+            if shop_reply is not None:
+                _send_reply(msg, shop_reply)
+                return
+
+            _send_reply(msg, route_text_message(text, name, wa_id))
+        except Exception:
+            logger.exception("Error respondiendo mensaje WA de %s", msg.from_user.wa_id)
+            try:
+                msg.reply_text(
+                    "Hubo un problema al procesar tu mensaje. Intentá de nuevo en un momento."
+                )
+            except Exception:
+                logger.exception("No se pudo enviar mensaje de error al usuario %s", msg.from_user.wa_id)
 
 
 def _handle_order_message(msg: types.Message, order_code: str):

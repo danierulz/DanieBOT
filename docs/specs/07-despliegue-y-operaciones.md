@@ -13,7 +13,7 @@
    - `--no-allow-unauthenticated` (invocación autenticada; el webhook de Meta debe poder alcanzar la URL — revisar configuración IAM/ingress según doc Meta)
    - **VPC connector:** `whatsapp-bot-vpc-connecto` (acceso a Cloud SQL u otros recursos privados)
    - **Secrets** montados como env (Secret Manager):  
-     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
+     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `APP_ID`, `APP_SECRET`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
 
 ### Cloud Run
 
@@ -28,7 +28,8 @@
 - PyWa también registra `/webhook/`; ambas rutas están soportadas vía `whatsapp/webhook_routes.py`.
 - `PYWA_PHONE_ID` debe ser el **Phone number ID** numérico de Meta (API Setup), **no** el número de teléfono con `+54`.
 - Mantener `PYWA_VERIFY_TOKEN` alineado con el configurado en Meta.
-- Tras deploy, `GET /healt` incluye `whatsapp.configured` y `webhook_paths`.
+- Tras deploy, `GET /healt` incluye `whatsapp.configured`, `webhook_paths` y `signature_validation`.
+- **`APP_SECRET`** debe coincidir con el *App Secret* de Meta (Basic settings). Si no coincide, el webhook responde `200` con `Unmatching signature` y **el bot ignora el mensaje** sin error visible para Meta.
 
 ## Docker local
 
