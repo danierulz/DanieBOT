@@ -23,8 +23,12 @@
 
 ### Meta / WhatsApp
 
-- Configurar en la app de Meta la URL del webhook HTTPS que apunta al servicio Cloud Run (ruta `/webhook` y verificación GET).
+- Configurar en la app de Meta la URL del webhook HTTPS que apunta al servicio Cloud Run.
+- **Callback URL:** `https://<tu-dominio>/webhook` (sin barra final; es la ruta que usaba el proyecto antes del refactor).
+- PyWa también registra `/webhook/`; ambas rutas están soportadas vía `whatsapp/webhook_routes.py`.
+- `PYWA_PHONE_ID` debe ser el **Phone number ID** numérico de Meta (API Setup), **no** el número de teléfono con `+54`.
 - Mantener `PYWA_VERIFY_TOKEN` alineado con el configurado en Meta.
+- Tras deploy, `GET /healt` incluye `whatsapp.configured` y `webhook_paths`.
 
 ## Docker local
 
