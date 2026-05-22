@@ -53,6 +53,18 @@ def get_bot_welcome_text(user_name: str) -> str:
         "Usá los botones o escribí *jeans*, *talles*, *envío* o *asesor*."
     )
 
+
+def get_order_confirmation_reply(user_name: str | None, order_summary: str) -> str:
+    """Respuesta del bot cuando la clienta envía el pedido por WhatsApp."""
+    who = (user_name or "").strip() or "Gracias"
+    greeting = f"¡{who}, gracias por comprar en *{_BRAND}*!" if user_name else f"¡Gracias por comprar en *{_BRAND}*!"
+    return (
+        f"{greeting} 🛍️\n\n"
+        "Recibimos tu pedido y *ya lo estamos preparando*.\n\n"
+        f"{order_summary}\n\n"
+        "Un asesor te va a confirmar stock, envío y forma de pago a la brevedad."
+    )
+
 # Sucursales (puntos de venta con retiro confirmado)
 _STORES = [
     {
