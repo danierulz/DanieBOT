@@ -3,6 +3,7 @@ import re
 
 from pywa import WhatsApp, filters, types
 
+from config import get_order_confirmation_reply
 from database.init_db import SessionLocal
 from services.customer_service import get_or_create_customer_by_wa_id, save_customer_email
 from services.order_code import extract_order_code
@@ -120,10 +121,7 @@ def _handle_order_message(msg: types.Message, order_code: str):
         )
         link_order_to_whatsapp(db, order, customer, msg.from_user.wa_id)
         summary = format_order_summary_for_bot(order)
-        msg.reply_text(
-            f"¡Gracias {msg.from_user.name or ''}! Registramos tu pedido:\n\n{summary}\n\n"
-            "Un asesor te confirmará stock, envío y forma de pago."
-        )
+        msg.reply_text(get_order_confirmation_reply(msg.from_user.name, summary))
         msg.reply_text(
             "¿Querés dejarnos tu email para novedades y seguimiento?",
             buttons=[
