@@ -223,6 +223,7 @@ def get_template_context() -> dict:
         "admin_orders_empty": "No hay pedidos todavía.",
         "admin_orders_load_error": "No se pudieron cargar los pedidos.",
         "admin_orders_msg_updated": "Estado del pedido actualizado.",
+        "admin_orders_note_saved": "Nota del pedido guardada.",
         "admin_orders_lines": "Detalle",
         "admin_list_heading": "Catálogo cargado",
         "admin_search_label": "Buscar por nombre",
