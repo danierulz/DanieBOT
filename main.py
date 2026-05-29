@@ -85,10 +85,11 @@ uploader = create_uploader()
 
 @asynccontextmanager
 async def _app_lifespan(_app: FastAPI):
-    """Respaldo si el contenedor arranca sin entrypoint (p. ej. uvicorn local)."""
-    from database.run_migrations import apply_migrations_and_seed
+    """Migraciones solo si no corrieron en docker_entrypoint (uvicorn local)."""
+    if not os.getenv("DB_MIGRATIONS_DONE"):
+        from database.run_migrations import apply_migrations_and_seed
 
-    apply_migrations_and_seed()
+        apply_migrations_and_seed()
     yield
 
 

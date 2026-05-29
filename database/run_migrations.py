@@ -1,14 +1,15 @@
 """
 Aplica migraciones Alembic al arrancar el contenedor (Cloud Run / Docker).
 
-Usa un advisory lock de PostgreSQL para que varias instancias en frío no
-corran upgrade en paralelo. Idempotente: si ya está en head, no hace nada.
+Idempotente: si ya está en head, sale en segundos. Timeouts cortos para no
+bloquear el arranque de Cloud Run.
 """
 from __future__ import annotations
 
 import logging
 import os
 import sys
+import time
 
 from alembic import command
 from alembic.config import Config
@@ -20,14 +21,14 @@ from database.db_url import build_database_url
 
 logger = logging.getLogger(__name__)
 
-# Lock estable para migraciones (evitar colisiones entre réplicas Cloud Run)
 _MIGRATION_LOCK_ID = 73482901
+_LOCK_WAIT_SECONDS = 120
+_CONNECT_TIMEOUT = 30
 
 
 def _migrations_disabled() -> bool:
     if os.getenv("SKIP_DB_MIGRATIONS", "").lower() in ("1", "true", "yes"):
         return True
-    # Tests unitarios usan SQLite en memoria; no aplicar Alembic contra Postgres ficticio
     if "unittest" in sys.modules and not os.getenv("FORCE_DB_MIGRATIONS"):
         return True
     return False
@@ -38,8 +39,23 @@ def _current_revision(connection) -> str | None:
     return context.get_current_revision()
 
 
+def _acquire_migration_lock(connection) -> bool:
+    """Intenta tomar el lock con reintentos (varias instancias en frío en deploy)."""
+    deadline = time.monotonic() + _LOCK_WAIT_SECONDS
+    while time.monotonic() < deadline:
+        got = connection.execute(
+            text("SELECT pg_try_advisory_lock(:id)"),
+            {"id": _MIGRATION_LOCK_ID},
+        ).scalar()
+        if got:
+            return True
+        logger.info("Esperando lock de migración (otra instancia migrando)...")
+        time.sleep(2)
+    return False
+
+
 def apply_pending_migrations() -> None:
-    """Ejecuta `alembic upgrade head` si hace falta. Seguro llamar en cada deploy."""
+    """Ejecuta `alembic upgrade head` si hace falta."""
     if _migrations_disabled():
         logger.info("SKIP_DB_MIGRATIONS activo — no se aplican migraciones.")
         return
@@ -54,7 +70,12 @@ def apply_pending_migrations() -> None:
     script = ScriptDirectory.from_config(cfg)
     head = script.get_current_head()
 
-    engine = create_engine(url, pool_pre_ping=True)
+    engine = create_engine(
+        url,
+        pool_pre_ping=True,
+        connect_args={"timeout": _CONNECT_TIMEOUT},
+    )
+    locked = False
     try:
         with engine.connect() as conn:
             current = _current_revision(conn)
@@ -67,22 +88,32 @@ def apply_pending_migrations() -> None:
                 current or "(sin alembic_version)",
                 head,
             )
-            # Bloqueo: si varias instancias arrancan a la vez, una migra y el resto espera
-            conn.execute(
-                text("SELECT pg_advisory_lock(:id)"),
-                {"id": _MIGRATION_LOCK_ID},
-            )
-            conn.commit()
+
+            locked = _acquire_migration_lock(conn)
+            if not locked:
+                raise RuntimeError(
+                    f"No se pudo obtener el lock de migración en {_LOCK_WAIT_SECONDS}s"
+                )
+
             try:
                 command.upgrade(cfg, "head")
-                logger.info("Migraciones Alembic aplicadas correctamente (head=%s).", head)
+                logger.info("Migraciones Alembic aplicadas (head=%s).", head)
             finally:
                 conn.execute(
                     text("SELECT pg_advisory_unlock(:id)"),
                     {"id": _MIGRATION_LOCK_ID},
                 )
-                conn.commit()
+                locked = False
     finally:
+        if locked:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text("SELECT pg_advisory_unlock(:id)"),
+                        {"id": _MIGRATION_LOCK_ID},
+                    )
+            except Exception as e:
+                logger.warning("No se pudo liberar lock de migración: %s", e)
         engine.dispose()
 
 

@@ -87,7 +87,7 @@ Las migraciones se aplican **al arrancar cada revisión en Cloud Run** (ver abaj
 
 Cada revisión nueva en Cloud Run ejecuta, **antes de Uvicorn**:
 
-1. `scripts/docker-entrypoint.sh` → `apply_migrations_and_seed()` (`database/run_migrations.py`)
+1. `scripts/docker_entrypoint.py` → `apply_migrations_and_seed()` (`database/run_migrations.py`)
 2. `alembic upgrade head` solo si la revisión actual no es `head` (idempotente)
 3. `seed_reference_data()` (talles, colores, categorías si faltan)
 
