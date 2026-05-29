@@ -9,11 +9,13 @@ steps:
     id: push
     args: ['push', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA']
 
-  # Paso 3: Migraciones Alembic (misma imagen y DB que Cloud Run; requiere VPC + secretos)
+  # Paso 3: Migraciones Alembic antes del deploy (el contenedor también migra al arrancar)
   - name: 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
     id: migrate
+    waitFor: ['push']
+    dir: /DANIEBOT
     entrypoint: python
-    args: ['-m', 'alembic', 'upgrade', 'head']
+    args: ['-c', 'from database.run_migrations import apply_migrations_and_seed; apply_migrations_and_seed()']
     secretEnv:
       - DB_USER
       - DB_PASSWORD

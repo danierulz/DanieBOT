@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import List, Optional
 
 from math import ceil
@@ -82,7 +83,16 @@ logging.basicConfig(level=logging.INFO)
 uploader = create_uploader()
 
 
-app = FastAPI()
+@asynccontextmanager
+async def _app_lifespan(_app: FastAPI):
+    """Respaldo si el contenedor arranca sin entrypoint (p. ej. uvicorn local)."""
+    from database.run_migrations import apply_migrations_and_seed
+
+    apply_migrations_and_seed()
+    yield
+
+
+app = FastAPI(lifespan=_app_lifespan)
 app.include_router(orders_router)
 init_whatsapp(app)
 # Montar la carpeta static

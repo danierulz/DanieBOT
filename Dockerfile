@@ -16,7 +16,8 @@ COPY . .
 # Expone el puerto 8080 (Cloud Run espera que tu app escuche en este puerto)
 EXPOSE 8080
 
-# Comando para iniciar la aplicación con Uvicorn
-# main:app asume que tienes un archivo main.py y una instancia de FastAPI llamada app
+# Migraciones Alembic + seed antes de Uvicorn (cada revisión nueva en Cloud Run)
+RUN chmod +x /DANIEBOT/scripts/docker-entrypoint.sh
+ENTRYPOINT ["/DANIEBOT/scripts/docker-entrypoint.sh"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 #CMD ["python", "test_db_connection.py"]

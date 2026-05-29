@@ -89,6 +89,16 @@ En cada deploy, `cloudbuild.yaml` ejecuta (después de `docker push`, antes de `
 
 Usa los secretos `DB_*` de Secret Manager y el conector VPC `whatsapp-bot-vpc-connecto` (misma red que Cloud Run).
 
+## Arranque del contenedor (automático)
+
+Cada revisión nueva en Cloud Run ejecuta, **antes de Uvicorn**:
+
+1. `scripts/docker-entrypoint.sh` → `apply_migrations_and_seed()` (`database/run_migrations.py`)
+2. `alembic upgrade head` solo si la revisión actual no es `head` (idempotente)
+3. `seed_reference_data()` (talles, colores, categorías si faltan)
+
+Así, aunque falle el paso de Cloud Build, el servicio aplica el esquema al iniciar. Variable opcional: `SKIP_DB_MIGRATIONS=1` (tests locales).
+
 ## Troubleshooting
 
 | Síntoma | Acción |
