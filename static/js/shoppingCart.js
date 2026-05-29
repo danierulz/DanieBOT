@@ -23,7 +23,10 @@ function agregarAlCarrito(producto) {
   const precioUnit = Number(producto.precio_final ?? producto.precio) || 0;
   const precioOrig = Number(producto.precio_original ?? producto.precio) || precioUnit;
   const idx = carrito.findIndex(
-    (x) => x.id === producto.id && x.variant_id === producto.variant_id
+    (x) =>
+      x.id === producto.id &&
+      x.variant_id === producto.variant_id &&
+      (x.color_id || null) === (producto.color_id || null)
   );
   if (idx >= 0) {
     carrito[idx].cantidad += 1;

@@ -368,7 +368,6 @@
       ordersReview: {{ admin_orders_btn_review | tojson }},
       ordersCancel: {{ admin_orders_btn_cancel | tojson }},
       ordersLines: {{ admin_orders_lines | tojson }},
-      ordersNoteSaved: {{ admin_orders_note_saved | tojson }},
     };
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
@@ -830,6 +829,7 @@
       const form = document.getElementById('producto-form');
       const formData = new FormData(form);
       formData.append('variants_json', collectVariants());
+      formData.append('colors_json', JSON.stringify(collectProductColorIds()));
 
       try {
         const resp = await fetch('/api/productos', {

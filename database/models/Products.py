@@ -32,6 +32,11 @@ class Products(Base):
         back_populates="product",
         cascade="all, delete-orphan",
     )
+    product_colors = relationship(
+        "ProductColor",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
     category = relationship("Category", back_populates="products")
 
 
