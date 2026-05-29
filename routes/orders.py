@@ -19,6 +19,7 @@ class ItemIn(BaseModel):
     precio: float
     cantidad: int = Field(ge=1)
     variant_id: Optional[int] = None
+    color_id: Optional[int] = None
 
 
 class PedidoIn(BaseModel):

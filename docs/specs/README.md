@@ -17,6 +17,7 @@ Documentación viva del producto y del sistema. **Versión inicial** generada a 
 | [10-alembic-migraciones.md](./10-alembic-migraciones.md) | Migraciones de esquema con Alembic (`upgrade`, `stamp` en prod) |
 | [11-desarrollo-local.md](./11-desarrollo-local.md) | Docker Compose, Postgres local, `.env.dev`, ngrok |
 | [12-bot-whatsapp-conversacion.md](./12-bot-whatsapp-conversacion.md) | Intents, copy del bot, tests sin Meta |
+| [13-colores-catalogo-y-checkout.md](./13-colores-catalogo-y-checkout.md) | Catálogo de colores, admin, tienda, pedido y WhatsApp |
 
 ## Cómo mantener estos specs
 

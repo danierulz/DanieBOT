@@ -32,12 +32,22 @@ from database.models.Products import Products
 from database.models.ProductImages import ProductImages
 from database.models.Size import Size
 from database.models.ProductVariant import ProductVariant
+from database.models.ProductColor import ProductColor
+from database.models.Color import Color
 from database.models.Category import Category
 from database.models.HomeBanner import HomeBanner
 from sqlalchemy import or_
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context
+from services.colors import (
+    color_to_public,
+    create_color,
+    list_colors_public,
+    normalize_color_code,
+    parse_colors_json,
+    sync_product_colors,
+)
 from routes.orders import router as orders_router
 from whatsapp.bot import get_wa_client, init_whatsapp
 
@@ -299,6 +309,7 @@ def obtener_producto(
         db.query(Products)
         .options(
             joinedload(Products.variants).joinedload(ProductVariant.size),
+            joinedload(Products.product_colors).joinedload(ProductColor.color),
             joinedload(Products.images),
             joinedload(Products.category),
         )
@@ -343,6 +354,11 @@ def obtener_producto(
         "stock": getattr(producto, "stock", None),
         "imagenes": imagenes,
         "variantes": _variants_public_list(vars_sorted),
+        "colores": [
+            color_to_public(pc.color)
+            for pc in (producto.product_colors or [])
+            if pc.activo and pc.color
+        ],
         "categoria": _category_public(producto.category),
     }
 
@@ -352,6 +368,46 @@ def listar_talles(db: Session = Depends(get_db_fastApi)):
     rows = db.query(Size).order_by(Size.sort_order.asc(), Size.code.asc()).all()
     return [{"size_id": s.size_id, "code": s.code, "label": s.label} for s in rows]
 
+
+
+
+@app.get("/api/colors")
+def listar_colores(db: Session = Depends(get_db_fastApi)):
+    return list_colors_public(db)
+
+
+class ColorCreateIn(BaseModel):
+    label: str
+    hex: Optional[str] = None
+
+
+@app.post("/api/admin/colors")
+def admin_crear_color(
+    body: ColorCreateIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    row = create_color(db, label=body.label, hex_value=body.hex)
+    db.commit()
+    db.refresh(row)
+    return {"ok": True, "color": color_to_public(row), "created": True}
+
+
+def _match_import_color_ids(db: Session, color_names: List[str]) -> List[int]:
+    if not color_names:
+        return []
+    ids: List[int] = []
+    for name in color_names:
+        label = (name or "").strip()
+        if not label:
+            continue
+        code = normalize_color_code(label)
+        row = db.query(Color).filter(Color.code == code).first()
+        if not row:
+            row = create_color(db, label=label)
+        if row.color_id not in ids:
+            ids.append(row.color_id)
+    return ids
 
 @app.get("/api/categories")
 def listar_categorias(db: Session = Depends(get_db_fastApi)):
@@ -853,6 +909,9 @@ def _persist_imported_product(
             }
         ],
     )
+    import_color_ids = _match_import_color_ids(db, imported.colors)
+    if import_color_ids:
+        sync_product_colors(db, nuevo.product_id, import_color_ids)
     db.commit()
     db.refresh(nuevo)
     return {
@@ -1012,6 +1071,9 @@ def eliminar_producto(
             synchronize_session=False
         )
         db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete(
+            synchronize_session=False
+        )
+        db.query(ProductColor).filter(ProductColor.product_id == product_id).delete(
             synchronize_session=False
         )
         db.delete(producto)

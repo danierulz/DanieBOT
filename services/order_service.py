@@ -3,8 +3,18 @@ from sqlalchemy.orm import Session, joinedload
 
 from database.models import Customer, Order, OrderEvent, OrderItem, ProductVariant, Products
 from services.advisor_notify import notify_advisor_new_web_order, notify_advisor_order_received
+from services.colors import product_requires_color, validate_line_color
 from services.order_code import generate_order_code
 from services.pricing import unit_price_for_product
+
+
+def _line_option_parts(line: dict) -> str:
+    parts = []
+    if line.get("size_label_snapshot"):
+        parts.append(f"Talle {line['size_label_snapshot']}")
+    if line.get("color_label_snapshot"):
+        parts.append(f"Color {line['color_label_snapshot']}")
+    return " — ".join(parts)
 
 
 def _validate_line(db: Session, item: dict) -> dict:
@@ -18,9 +28,11 @@ def _validate_line(db: Session, item: dict) -> dict:
         )
 
     variant_id = item.get("variant_id")
+    size_label_snapshot = None
     if variant_id:
         variant = (
             db.query(ProductVariant)
+            .options(joinedload(ProductVariant.size))
             .filter(
                 ProductVariant.variant_id == variant_id,
                 ProductVariant.product_id == product.product_id,
@@ -37,6 +49,8 @@ def _validate_line(db: Session, item: dict) -> dict:
                 status_code=400,
                 detail=f"Stock insuficiente para {item.get('titulo', product.item_title)}",
             )
+        if variant.size:
+            size_label_snapshot = variant.size.label
     else:
         stock_int = 0
         for v in product.variants or []:
@@ -65,9 +79,22 @@ def _validate_line(db: Session, item: dict) -> dict:
     subtotal = round(unit_price * qty, 2)
     title = item.get("titulo") or product.item_title or product.name or f"Producto {product.product_id}"
 
+    color_row = validate_line_color(db, product.product_id, item.get("color_id"))
+    color_id = color_row.color_id if color_row else None
+    color_label_snapshot = color_row.label if color_row else None
+
+    if product_requires_color(db, product.product_id) and not variant_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Seleccioná un talle para {title}.",
+        )
+
     return {
         "product_id": product.product_id,
         "variant_id": variant_id,
+        "color_id": color_id,
+        "size_label_snapshot": size_label_snapshot,
+        "color_label_snapshot": color_label_snapshot,
         "title_snapshot": title,
         "quantity": qty,
         "unit_price": unit_price,
@@ -83,8 +110,12 @@ def build_whatsapp_message(order_code: str, lines: list[dict], total: float, not
         "Detalle:",
     ]
     for i, line in enumerate(lines, 1):
+        opts = _line_option_parts(line)
+        head = f"{i}. {line['title_snapshot']}"
+        if opts:
+            head += f" — {opts}"
         parts.append(
-            f"{i}. {line['title_snapshot']} — ${line['subtotal']:,.0f} "
+            f"{head} — ${line['subtotal']:,.0f} "
             f"(${line['unit_price']:,.0f} x {line['quantity']})"
         )
     parts.append("")

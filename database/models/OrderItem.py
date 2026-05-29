@@ -15,6 +15,13 @@ class OrderItem(Base):
         ForeignKey("product_variants.variant_id", ondelete="SET NULL"),
         nullable=True,
     )
+    color_id = Column(
+        Integer,
+        ForeignKey("colors.color_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    size_label_snapshot = Column(String(64), nullable=True)
+    color_label_snapshot = Column(String(64), nullable=True)
     title_snapshot = Column(String(255), nullable=True)
     quantity = Column(Integer, nullable=False, default=1)
     unit_price = Column(Float, nullable=False)

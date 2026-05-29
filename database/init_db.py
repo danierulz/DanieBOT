@@ -53,8 +53,9 @@ def initialize_database() -> None:
 
 
 def seed_reference_data() -> None:
-    """Talles y categorías base (idempotente). No altera el esquema."""
+    """Talles, colores y categorías base (idempotente). No altera el esquema."""
     _seed_sizes_if_empty()
+    _seed_colors_if_empty()
     _seed_categories_if_empty()
 
 

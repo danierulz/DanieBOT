@@ -7,4 +7,6 @@ from .Order import Order
 from .OrderItem import OrderItem
 from .OrderEvent import OrderEvent
 from .Size import Size
+from .Color import Color
+from .ProductColor import ProductColor
 from .ProductVariant import ProductVariant

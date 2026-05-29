@@ -282,6 +282,7 @@
         variantMap = {};
         (p.variantes || []).forEach(v => { variantMap[v.variant_id] = v; });
         renderSizeChips();
+        renderColorChips();
         updateVariantHint();
         updateCtaState();
 
