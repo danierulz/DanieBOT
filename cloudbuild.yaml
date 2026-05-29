@@ -9,23 +9,12 @@ steps:
     id: push
     args: ['push', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA']
 
-  # Paso 3: Migraciones Alembic antes del deploy (el contenedor también migra al arrancar)
-  - name: 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
-    id: migrate
-    waitFor: ['push']
-    dir: /DANIEBOT
-    entrypoint: python
-    args: ['-c', 'from database.run_migrations import apply_migrations_and_seed; apply_migrations_and_seed()']
-    secretEnv:
-      - DB_USER
-      - DB_PASSWORD
-      - DB_NAME
-      - DB_HOST
-      - DB_PORT
-
-  # Paso 4: Desplegar en Cloud Run
+  # Paso 3: Desplegar en Cloud Run
+  # Las migraciones Alembic corren al arrancar el contenedor (docker-entrypoint.sh),
+  # con el mismo conector VPC que la app — no hace falta migrar desde Cloud Build.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
+    waitFor: ['push']
     entrypoint: gcloud
     args:
       - 'run'
@@ -41,25 +30,8 @@ steps:
       - '--set-secrets'
       - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,PYWA_PHONE_ID=PYWA_PHONE_ID:latest,DB_USER=DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_NAME=DB_NAME:latest,DB_HOST=DB_HOST:latest,DB_PORT=DB_PORT:latest,LOGIN_EMAIL=LOGIN_EMAIL:latest,LOGIN_PASS=LOGIN_PASS:latest'
 
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/DB_USER/versions/latest
-      env: DB_USER
-    - versionName: projects/$PROJECT_ID/secrets/DB_PASSWORD/versions/latest
-      env: DB_PASSWORD
-    - versionName: projects/$PROJECT_ID/secrets/DB_NAME/versions/latest
-      env: DB_NAME
-    - versionName: projects/$PROJECT_ID/secrets/DB_HOST/versions/latest
-      env: DB_HOST
-    - versionName: projects/$PROJECT_ID/secrets/DB_PORT/versions/latest
-      env: DB_PORT
-
 options:
   logging: CLOUD_LOGGING_ONLY
-  # Mismo acceso privado a Cloud SQL que Cloud Run (conector VPC)
-  vpcAccess:
-    connector: projects/$PROJECT_ID/locations/us-central1/connectors/whatsapp-bot-vpc-connecto
-    egress: PRIVATE_RANGES_ONLY
 
 images:
   - 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'

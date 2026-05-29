@@ -79,15 +79,9 @@ No usar `RUN_DB_CREATE_ALL`; el esquema es responsabilidad de Alembic.
 
 ## CI / Cloud Build
 
-En cada deploy, `cloudbuild.yaml` ejecuta (después de `docker push`, antes de `gcloud run deploy`):
+`cloudbuild.yaml` **no** ejecuta migraciones: el build estándar de Google no admite `vpcAccess` al conector Serverless sin un *private pool* aparte.
 
-```yaml
-- name: 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
-  entrypoint: python
-  args: ['-m', 'alembic', 'upgrade', 'head']
-```
-
-Usa los secretos `DB_*` de Secret Manager y el conector VPC `whatsapp-bot-vpc-connecto` (misma red que Cloud Run).
+Las migraciones se aplican **al arrancar cada revisión en Cloud Run** (ver abajo), usando el mismo `--vpc-connector` que la app.
 
 ## Arranque del contenedor (automático)
 
