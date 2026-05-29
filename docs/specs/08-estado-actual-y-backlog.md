@@ -16,8 +16,8 @@
 |------|---------|
 | **Email marketing** | Consent en DB; integración SendGrid/Resend pendiente (ver `09-marketing-email-compliance.md`). |
 | **Aviso asesor WA** | Requiere que el asesor haya escrito al número del negocio en las últimas 24h (reglas Meta); si falla, ver logs Cloud Run. |
-| **Alembic en prod** | Primera vez en Cloud SQL: `python -m alembic stamp head` (ver [10-alembic-migraciones.md](./10-alembic-migraciones.md)). |
-| **CI migrate** | Opcional: `alembic upgrade head` en Cloud Build antes del deploy. |
+| **Alembic en prod** | Si la base existía antes de Alembic: `python -m alembic stamp head` una sola vez (ver [10-alembic-migraciones.md](./10-alembic-migraciones.md)). |
+| **CI migrate** | Cloud Build ejecuta `alembic upgrade head` antes de cada deploy (`cloudbuild.yaml`). |
 | **Health check** | Ruta `/healt` con typo; opcional normalizar a `/health`. |
 | **Endpoint `/debug`** | Lista archivos del contenedor — riesgo en producción; proteger o eliminar. |
 | **Auth admin** | Credenciales y `SECRET_KEY` en código; migrar a secretos y hash de contraseña. |

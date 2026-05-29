@@ -77,17 +77,17 @@ No usar `RUN_DB_CREATE_ALL`; el esquema es responsabilidad de Alembic.
 - `database/migrations/*.sql` — histórico; no usar para cambios nuevos.
 - Migraciones manuales `_migrate_*` — eliminadas de `initialize_database()`.
 
-## CI / Cloud Build (opcional)
+## CI / Cloud Build
 
-Añadir un paso antes del deploy:
+En cada deploy, `cloudbuild.yaml` ejecuta (después de `docker push`, antes de `gcloud run deploy`):
 
 ```yaml
-# ejemplo
-- name: migrate
-  run: python -m alembic upgrade head
+- name: 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
+  entrypoint: python
+  args: ['-m', 'alembic', 'upgrade', 'head']
 ```
 
-Requiere acceso de red a Cloud SQL (VPC connector) y las mismas variables `DB_*`.
+Usa los secretos `DB_*` de Secret Manager y el conector VPC `whatsapp-bot-vpc-connecto` (misma red que Cloud Run).
 
 ## Troubleshooting
 
