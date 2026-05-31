@@ -6,14 +6,14 @@ import sys
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 # Raíz del proyecto en sys.path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from database.db_url import build_database_url
+from database.db_url import build_database_url, get_sqlalchemy_connect_args
 from database.init_db import Base
 
 # Registrar todos los modelos en Base.metadata
@@ -41,10 +41,10 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_engine(
+        build_database_url(),
         poolclass=pool.NullPool,
+        connect_args=get_sqlalchemy_connect_args(),
     )
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
