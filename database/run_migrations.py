@@ -17,7 +17,7 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 
-from database.db_url import build_database_url
+from database.db_url import build_database_url, get_sqlalchemy_connect_args
 
 logger = logging.getLogger(__name__)
 
@@ -70,11 +70,9 @@ def apply_pending_migrations() -> None:
     script = ScriptDirectory.from_config(cfg)
     head = script.get_current_head()
 
-    engine = create_engine(
-        url,
-        pool_pre_ping=True,
-        connect_args={"timeout": _CONNECT_TIMEOUT},
-    )
+    connect_args = get_sqlalchemy_connect_args()
+    connect_args.setdefault("timeout", _CONNECT_TIMEOUT)
+    engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
     locked = False
     try:
         with engine.connect() as conn:

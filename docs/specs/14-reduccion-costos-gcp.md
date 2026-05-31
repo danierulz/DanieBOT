@@ -16,11 +16,15 @@ Instancia Cloud SQL: `laslocaswhatsapp:us-central1:laslocas-dbng`
 - Si el trigger de Cloud Build está en `main`, el deploy corre solo.
 - Si no: en la consola GCP → **Cloud Build** → **Historial** → **Ejecutar** el último commit de `main`.
 
-### 2. Permiso Cloud SQL (una vez, si el deploy falla al conectar)
+### 2. Permiso Cloud SQL (obligatorio si el deploy falla al arrancar)
+
+Si Cloud Build termina con *"container failed to start"* o *"listen on PORT=8080"*, casi siempre es la **base de datos** en el arranque (migraciones), no el puerto.
 
 Cloud Run → servicio `deploy-whatsapp-cloudbuild` → pestaña **Seguridad** → copiá el **correo de la cuenta de servicio** (termina en `@...gserviceaccount.com`).
 
 IAM → **Conceder acceso** → principal = esa cuenta → rol **Cloud SQL Client** → Guardar.
+
+Volvé a ejecutar el build o redeploy.
 
 ### 3. Probar (2 minutos)
 

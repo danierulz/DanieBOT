@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 load_dotenv()
 
-from database.db_url import build_database_url  # noqa: E402
+from database.db_url import build_database_url, get_sqlalchemy_connect_args  # noqa: E402
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -22,7 +22,12 @@ DB_HOST_DOCKER = os.getenv("DB_HOST_DOCKER")
 DATABASE_URL = build_database_url()
 # echo SQL solo en desarrollo explícito (evita logs enormes en Cloud Run)
 _engine_echo = os.getenv("DB_ECHO", "").lower() in ("1", "true", "yes")
-engine = create_engine(DATABASE_URL, echo=_engine_echo, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=_engine_echo,
+    pool_pre_ping=True,
+    connect_args=get_sqlalchemy_connect_args(),
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
