@@ -20,6 +20,10 @@ Instancia Cloud SQL: `laslocaswhatsapp:us-central1:laslocas-dbng`
 
 Si Cloud Build termina con *"container failed to start"* o *"listen on PORT=8080"*, casi siempre es la **base de datos** en el arranque (migraciones), no el puerto.
 
+En los logs del contenedor buscá:
+- `Socket Cloud SQL ausente` → falta `--add-cloudsql-instances` o permiso IAM.
+- `Fallo al migrar` → credenciales `DB_*` o instancia SQL apagada.
+
 Cloud Run → servicio `deploy-whatsapp-cloudbuild` → pestaña **Seguridad** → copiá el **correo de la cuenta de servicio** (termina en `@...gserviceaccount.com`).
 
 IAM → **Conceder acceso** → principal = esa cuenta → rol **Cloud SQL Client** → Guardar.

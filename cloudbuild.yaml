@@ -9,12 +9,32 @@ steps:
     id: push
     args: ['push', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA']
 
+  # Paso 2b: Cloud SQL Client en la cuenta de servicio de Cloud Run (idempotente)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: grant-cloudsql-client
+    waitFor: ['push']
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        SA="$(gcloud run services describe deploy-whatsapp-cloudbuild \
+          --region=us-central1 \
+          --project="$PROJECT_ID" \
+          --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)"
+        if [ -z "$$SA" ]; then
+          PN="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+          SA="$${PN}-compute@developer.gserviceaccount.com"
+        fi
+        echo "Otorgando roles/cloudsql.client a $$SA"
+        gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+          --member="serviceAccount:$$SA" \
+          --role="roles/cloudsql.client" \
+          --quiet || echo "IAM binding ya existente o sin permiso (asignar manualmente en consola)"
+
   # Paso 3: Desplegar en Cloud Run
-  # Las migraciones Alembic corren al arrancar el contenedor (docker-entrypoint.sh),
-  # con socket Cloud SQL (--add-cloudsql-instances); migraciones en docker_entrypoint.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
-    waitFor: ['push']
+    waitFor: ['grant-cloudsql-client']
     entrypoint: gcloud
     args:
       - 'run'

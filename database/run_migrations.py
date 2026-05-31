@@ -71,7 +71,7 @@ def apply_pending_migrations() -> None:
     head = script.get_current_head()
 
     connect_args = get_sqlalchemy_connect_args()
-    connect_args.setdefault("timeout", _CONNECT_TIMEOUT)
+    connect_args.setdefault("connect_timeout", _CONNECT_TIMEOUT)
     engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
     locked = False
     try:

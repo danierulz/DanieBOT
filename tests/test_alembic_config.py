@@ -68,11 +68,11 @@ class AlembicConfigTest(unittest.TestCase):
             os.environ["DB_PASSWORD"] = "secret"
             os.environ["DB_NAME"] = "laslocas_dbng"
             url = db_url.build_database_url()
-            args = db_url.get_sqlalchemy_connect_args()
-            self.assertIn("@/laslocas_dbng", url)
+            self.assertIn("postgresql+psycopg2", url)
+            self.assertIn("laslocas_dbng", url)
+            self.assertIn("cloudsql", url)
+            self.assertIn("laslocaswhatsapp", url)
             self.assertNotIn("10.0.0.1", url)
-            self.assertIn("unix_sock", args)
-            self.assertIn("laslocaswhatsapp:us-central1:laslocas-dbng", args["unix_sock"])
         finally:
             for k, v in old.items():
                 if v is None:
