@@ -11,7 +11,7 @@
    - Región: `us-central1`
    - Imagen: la del paso anterior
    - `--no-allow-unauthenticated` (invocación autenticada; el webhook de Meta debe poder alcanzar la URL — revisar configuración IAM/ingress según doc Meta)
-   - **VPC connector:** `whatsapp-bot-vpc-connecto` (acceso a Cloud SQL u otros recursos privados)
+   - **Cloud SQL** (sin VPC connector): `--add-cloudsql-instances=laslocaswhatsapp:us-central1:laslocas-dbng` y env `CLOUD_SQL_CONNECTION_NAME` (socket Unix en `/cloudsql/...`; ver `database/db_url.py`)
    - **Secrets** montados como env (Secret Manager):  
      `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
 
@@ -83,7 +83,7 @@ Detalle: [10-alembic-migraciones.md](./10-alembic-migraciones.md).
 ## Checklist pre-deploy
 
 - [ ] Tests manuales webhook GET/POST
-- [ ] Base alcanzable desde Cloud Run (VPC + connector)
+- [ ] Base alcanzable desde Cloud Run (Cloud SQL instance + rol `Cloud SQL Client` en la SA de Run)
 - [ ] Secrets actualizados en Secret Manager
 - [ ] URL pública del servicio registrada en Meta
 - [ ] Revisar que endpoints de debug no expongan información sensible
