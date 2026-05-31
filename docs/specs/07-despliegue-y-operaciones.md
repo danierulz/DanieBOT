@@ -11,7 +11,7 @@
    - Región: `us-central1`
    - Imagen: la del paso anterior
    - `--no-allow-unauthenticated` (invocación autenticada; el webhook de Meta debe poder alcanzar la URL — revisar configuración IAM/ingress según doc Meta)
-   - **Cloud SQL** (sin VPC connector): `--add-cloudsql-instances=laslocaswhatsapp:us-central1:laslocas-dbng` y env `CLOUD_SQL_CONNECTION_NAME` (socket Unix en `/cloudsql/...`; ver `database/db_url.py`)
+   - **VPC connector:** `whatsapp-bot-vpc-connecto` (DB por IP privada en secreto `DB_HOST`). Alternativa sin VPC: ver [14-reduccion-costos-gcp.md](./14-reduccion-costos-gcp.md).
    - **Secrets** montados como env (Secret Manager):  
      `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
 

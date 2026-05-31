@@ -9,32 +9,12 @@ steps:
     id: push
     args: ['push', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA']
 
-  # Paso 2b: Cloud SQL Client en la cuenta de servicio de Cloud Run (idempotente)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: grant-cloudsql-client
-    waitFor: ['push']
-    entrypoint: bash
-    args:
-      - -ceu
-      - |
-        SA="$(gcloud run services describe deploy-whatsapp-cloudbuild \
-          --region=us-central1 \
-          --project="$PROJECT_ID" \
-          --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)"
-        if [ -z "$$SA" ]; then
-          PN="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
-          SA="$${PN}-compute@developer.gserviceaccount.com"
-        fi
-        echo "Otorgando roles/cloudsql.client a $$SA"
-        gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-          --member="serviceAccount:$$SA" \
-          --role="roles/cloudsql.client" \
-          --quiet || echo "IAM binding ya existente o sin permiso (asignar manualmente en consola)"
-
   # Paso 3: Desplegar en Cloud Run
+  # Conexión DB vía IP privada (secret DB_HOST) + VPC connector — estable en este proyecto.
+  # Para quitar el VPC más adelante: rol Cloud SQL Client en la SA de Run + socket (ver docs/specs/14).
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
-    waitFor: ['grant-cloudsql-client']
+    waitFor: ['push']
     entrypoint: gcloud
     args:
       - 'run'
@@ -45,10 +25,10 @@ steps:
       - '--region'
       - 'us-central1'
       - '--no-allow-unauthenticated'
-      - '--add-cloudsql-instances'
-      - 'laslocaswhatsapp:us-central1:laslocas-dbng'
-      - '--update-env-vars'
-      - 'CLOUD_SQL_CONNECTION_NAME=laslocaswhatsapp:us-central1:laslocas-dbng'
+      - '--vpc-connector'
+      - 'whatsapp-bot-vpc-connecto'
+      - '--remove-env-vars'
+      - 'CLOUD_SQL_CONNECTION_NAME'
       - '--set-secrets'
       - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,PYWA_PHONE_ID=PYWA_PHONE_ID:latest,DB_USER=DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_NAME=DB_NAME:latest,DB_HOST=DB_HOST:latest,DB_PORT=DB_PORT:latest,LOGIN_EMAIL=LOGIN_EMAIL:latest,LOGIN_PASS=LOGIN_PASS:latest'
 

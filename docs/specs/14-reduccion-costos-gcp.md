@@ -2,11 +2,20 @@
 
 Instancia Cloud SQL: `laslocaswhatsapp:us-central1:laslocas-dbng`
 
-## Qué hace el código (automático al mergear y desplegar)
+## Estado actual del deploy
 
-- `cloudbuild.yaml` deja de usar el conector VPC `whatsapp-bot-vpc-connecto`.
-- Cloud Run monta el socket de Cloud SQL y define `CLOUD_SQL_CONNECTION_NAME`.
-- `database/db_url.py` conecta por socket Unix (no hace falta IP privada en `DB_HOST` si está la env de conexión).
+**Producción usa de nuevo el VPC connector** `whatsapp-bot-vpc-connecto` y el secreto `DB_HOST` (IP privada). Así la tienda y el bot vuelven a arrancar sin depender del socket Cloud SQL ni de IAM automático en Cloud Build.
+
+## Cómo bajar costos más adelante (socket sin VPC)
+
+Cuando quieras eliminar el conector (~$3–7/mes):
+
+1. En **IAM** (con tu usuario admin, no Cloud Build): cuenta de servicio de Cloud Run → rol **Cloud SQL Client**.
+2. Cambiar `cloudbuild.yaml`: quitar `--vpc-connector`, agregar `--add-cloudsql-instances=laslocaswhatsapp:us-central1:laslocas-dbng` y `--update-env-vars=CLOUD_SQL_CONNECTION_NAME=laslocaswhatsapp:us-central1:laslocas-dbng`.
+3. `database/db_url.py` ya soporta socket con `CLOUD_SQL_CONNECTION_NAME` + psycopg2.
+4. Probar deploy; si funciona, borrar el conector VPC en consola.
+
+Cloud Build **no puede** asignar roles IAM solo (la cuenta de build no tiene `getIamPolicy`); hay que hacerlo en consola.
 
 ## Qué tenés que hacer vos (tablet, pocos pasos)
 
