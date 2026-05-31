@@ -42,6 +42,42 @@ class AlembicConfigTest(unittest.TestCase):
         url = build_database_url()
         self.assertIn("postgresql", url)
 
+    def test_build_database_url_cloud_sql_socket(self):
+        import os
+
+        from database import db_url
+
+        old = {
+            k: os.environ.get(k)
+            for k in (
+                "DATABASE_URL",
+                "CLOUD_SQL_CONNECTION_NAME",
+                "DB_HOST",
+                "DB_USER",
+                "DB_PASSWORD",
+                "DB_NAME",
+            )
+        }
+        try:
+            os.environ.pop("DATABASE_URL", None)
+            os.environ["CLOUD_SQL_CONNECTION_NAME"] = (
+                "laslocaswhatsapp:us-central1:laslocas-dbng"
+            )
+            os.environ["DB_HOST"] = "10.0.0.1"
+            os.environ["DB_USER"] = "bot"
+            os.environ["DB_PASSWORD"] = "secret"
+            os.environ["DB_NAME"] = "laslocas_dbng"
+            url = db_url.build_database_url()
+            self.assertIn("unix_sock=", url)
+            self.assertIn("laslocaswhatsapp%3Aus-central1%3Alaslocas-dbng", url)
+            self.assertNotIn("10.0.0.1", url)
+        finally:
+            for k, v in old.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -81,7 +81,7 @@ No usar `RUN_DB_CREATE_ALL`; el esquema es responsabilidad de Alembic.
 
 `cloudbuild.yaml` **no** ejecuta migraciones: el build estándar de Google no admite `vpcAccess` al conector Serverless sin un *private pool* aparte.
 
-Las migraciones se aplican **al arrancar cada revisión en Cloud Run** (ver abajo), usando el mismo `--vpc-connector` que la app.
+Las migraciones se aplican **al arrancar cada revisión en Cloud Run** (ver abajo), con la misma conexión Cloud SQL (`--add-cloudsql-instances`) que la app.
 
 ## Arranque del contenedor (automático)
 
