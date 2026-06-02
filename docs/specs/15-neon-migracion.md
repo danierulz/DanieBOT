@@ -67,3 +67,30 @@ with e.connect() as c:
     print('tables', c.execute(text(\"SELECT count(*) FROM information_schema.tables WHERE table_schema='public'\")).scalar())
 "
 ```
+
+## Migración de datos (script del repo)
+
+Desde una máquina con acceso a Cloud SQL (ideal: **Google Cloud Shell**):
+
+```bash
+# 1. Variables (no commitear)
+export DATABASE_URL='postgresql+psycopg2://USER:PASS@ep-xxx-pooler....neon.tech/neondb?sslmode=require'
+# Opcional si no usás .env local:
+# export DB_USER=... DB_PASSWORD=... DB_NAME=laslocas_dbng
+
+# 2. Proxy + copia (usa cloud-sql-proxy si DB_HOST no es IP privada alcanzable)
+./scripts/migrate_cloudsql_to_neon.sh pg_dump
+
+# 3. Solo verificar conteos origen vs Neon
+./scripts/migrate_cloudsql_to_neon.sh verify
+```
+
+Alternativa sin `pg_dump` (solo Python/psycopg2):
+
+```bash
+./scripts/migrate_cloudsql_to_neon.sh copy
+```
+
+El script vacía tablas de datos en Neon (mantiene el esquema), copia filas, sincroniza `alembic_version` y ajusta secuencias.
+
+**Nota:** Desde entornos sin VPC (p. ej. CI genérico), la IP privada `10.x` no sirve; usá Cloud Shell o `cloud-sql-proxy` con tu usuario de GCP.
