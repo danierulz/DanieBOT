@@ -129,6 +129,27 @@ def verify(source_url: str, target_url: str) -> int:
     return 0 if mismatches == 0 else 1
 
 
+
+def _table_columns(conn, table: str) -> list[str]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+            ORDER BY ordinal_position
+            """,
+            (table,),
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
+def _common_columns(src, dst, table: str) -> list[str]:
+    """Columnas presentes en origen y destino, en el orden del destino."""
+    src_set = set(_table_columns(src, table))
+    dst_order = _table_columns(dst, table)
+    return [c for c in dst_order if c in src_set]
+
 def _truncate_target(conn) -> None:
     tables_sql = sql.SQL(", ").join(sql.Identifier(t) for t in TRUNCATE_TABLES)
     with conn.cursor() as cur:
@@ -184,10 +205,18 @@ def migrate_copy(source_url: str, target_url: str) -> None:
     try:
         _truncate_target(dst)
         for table in DATA_TABLES:
+            cols = _common_columns(src, dst, table)
+            if not cols:
+                print(f"  {table}: sin columnas comunes, omitida")
+                continue
+            col_list = sql.SQL(", ").join(sql.Identifier(c) for c in cols)
             buf = io.BytesIO()
             try:
                 with src.cursor() as cur:
-                    cur.copy_expert(f'COPY "{table}" TO STDOUT', buf)
+                    q_out = sql.SQL("COPY {} ({}) TO STDOUT").format(
+                        sql.Identifier(table), col_list
+                    )
+                    cur.copy_expert(q_out.as_string(cur), buf)
             except psycopg2.Error as e:
                 src.rollback()
                 print(f"  {table}: omitida en origen ({e.pgerror or e})")
@@ -197,7 +226,10 @@ def migrate_copy(source_url: str, target_url: str) -> None:
                 print(f"  {table}: (vacía)")
                 continue
             with dst.cursor() as cur:
-                cur.copy_expert(f'COPY "{table}" FROM STDIN', buf)
+                q_in = sql.SQL("COPY {} ({}) FROM STDIN").format(
+                    sql.Identifier(table), col_list
+                )
+                cur.copy_expert(q_in.as_string(cur), buf)
             dst.commit()
             with dst.cursor() as cur:
                 cur.execute(
