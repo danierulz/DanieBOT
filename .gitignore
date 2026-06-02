@@ -117,3 +117,7 @@ GitHub.sublime-settings
 .history
 .vscode/settings.json
 .vscode/settings.json
+
+# DB dumps (secrets/data)
+backups/
+*.dump

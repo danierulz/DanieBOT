@@ -1,0 +1,112 @@
+# Migración PostgreSQL: Cloud SQL → Neon
+
+## Conexión desde la app
+
+Neon expone una URL tipo:
+
+```text
+postgresql://USER:PASS@ep-XXXX-pooler.REGION.aws.neon.tech/neondb?sslmode=require
+```
+
+En Cloud Run / local, usá el driver SQLAlchemy de la app:
+
+```text
+DATABASE_URL=postgresql+psycopg2://USER:PASS@ep-XXXX-pooler.REGION.aws.neon.tech/neondb?sslmode=require
+```
+
+- Usá el host **`-pooler`** para Cloud Run (muchas conexiones cortas).
+- Con `DATABASE_URL` definida, la app **no** usa `DB_HOST` ni socket Cloud SQL.
+- Podés quitar `--vpc-connector` y `--add-cloudsql-instances` del deploy cuando la app apunte solo a Neon.
+
+## Bootstrap de esquema (base vacía)
+
+```bash
+export DATABASE_URL='postgresql+psycopg2://...'
+python3 -m alembic upgrade head
+python3 -c "from database.init_db import seed_reference_data; seed_reference_data()"
+```
+
+Revisión Alembic esperada: `20260528_0002` (head).
+
+## Copiar datos desde Cloud SQL
+
+1. Exportar desde GCP (Cloud SQL Auth proxy o IP autorizada):
+
+   ```bash
+   pg_dump -h 127.0.0.1 -U TU_USER -d laslocas_dbng -Fc -f laslocas.dump
+   ```
+
+2. Importar en Neon (misma URL con `sslmode=require`):
+
+   ```bash
+   pg_restore -d "$DATABASE_URL" --no-owner --no-acl -j 4 laslocas.dump
+   ```
+
+3. Si la base en Neon ya tiene tablas vacías del paso anterior, usá `--clean` solo si entendés que borra objetos existentes, o restaurá en un branch/proyecto Neon nuevo.
+
+4. Tras importar con datos viejos, alinear Alembic:
+
+   ```bash
+   python3 -m alembic stamp head
+   ```
+
+## Secret Manager (producción)
+
+Crear o actualizar el secreto `DATABASE_URL` con la URL pooler de Neon. En `cloudbuild.yaml`, inyectar `DATABASE_URL` en Cloud Run y eliminar variables solo-Cloud-SQL si ya no aplican.
+
+## Verificación rápida
+
+```bash
+export DATABASE_URL='postgresql+psycopg2://...'
+python3 -c "
+from sqlalchemy import create_engine, text
+from database.db_url import build_database_url
+e = create_engine(build_database_url())
+with e.connect() as c:
+    print(c.execute(text('SELECT version()')).scalar()[:60])
+    print('tables', c.execute(text(\"SELECT count(*) FROM information_schema.tables WHERE table_schema='public'\")).scalar())
+"
+```
+
+## Migración de datos (script del repo)
+
+Desde una máquina con acceso a Cloud SQL (ideal: **Google Cloud Shell**):
+
+```bash
+# 1. Variables (no commitear)
+export DATABASE_URL='postgresql+psycopg2://USER:PASS@ep-xxx-pooler....neon.tech/neondb?sslmode=require'
+# Opcional si no usás .env local:
+# export DB_USER=... DB_PASSWORD=... DB_NAME=laslocas_dbng
+
+# 2. Proxy + copia (usa cloud-sql-proxy si DB_HOST no es IP privada alcanzable)
+./scripts/migrate_cloudsql_to_neon.sh copy
+
+# 3. Solo verificar conteos origen vs Neon
+./scripts/migrate_cloudsql_to_neon.sh verify
+```
+
+Alternativa sin `pg_dump` (solo Python/psycopg2):
+
+```bash
+./scripts/migrate_cloudsql_to_neon.sh copy
+```
+
+El script vacía tablas de datos en Neon (mantiene el esquema), copia filas, sincroniza `alembic_version` y ajusta secuencias.
+
+**Nota:** Desde entornos sin VPC (p. ej. CI genérico), la IP privada `10.x` no sirve; usá Cloud Shell o `cloud-sql-proxy` con tu usuario de GCP.
+
+
+**Cloud Shell:** Cloud SQL suele ser PostgreSQL 18; el `pg_dump` del sistema (16) falla con *version mismatch*. Usá `copy` (por defecto) o dejá que `pg_dump` haga fallback automático tras `git pull`.
+
+## Después de copiar datos
+
+1. **Alembic:** el origen puede tener una revisión antigua (p. ej. `20260525_0004`) que no está en este repo. En Neon, alinear al head del código:
+
+   ```bash
+   export DATABASE_URL='postgresql+psycopg2://...'
+   python3 -m alembic stamp --purge 20260528_0002
+   ```
+
+2. **`product_colors`:** si el origen no tenía esa tabla, quedará vacía en Neon. Los productos sin filas en `product_colors` siguen funcionando; podés asignar colores desde el admin.
+
+3. Verificar: `./scripts/migrate_cloudsql_to_neon.sh verify` ( `product_colors` en -1 en origen es normal si la tabla no existía en Cloud SQL).

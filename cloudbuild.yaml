@@ -10,8 +10,8 @@ steps:
     args: ['push', 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA']
 
   # Paso 3: Desplegar en Cloud Run
-  # Conexión DB vía IP privada (secret DB_HOST) + VPC connector — estable en este proyecto.
-  # Para quitar el VPC más adelante: rol Cloud SQL Client en la SA de Run + socket (ver docs/specs/14).
+  # Base de datos: Neon vía secreto DATABASE_URL (sin VPC connector ni Cloud SQL).
+  # Crear en Secret Manager: DATABASE_URL=postgresql+psycopg2://...@ep-...-pooler....neon.tech/neondb?sslmode=require
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
     waitFor: ['push']
@@ -25,12 +25,11 @@ steps:
       - '--region'
       - 'us-central1'
       - '--no-allow-unauthenticated'
-      - '--vpc-connector'
-      - 'whatsapp-bot-vpc-connecto'
+      - '--clear-vpc-connector'
       - '--remove-env-vars'
-      - 'CLOUD_SQL_CONNECTION_NAME'
+      - 'CLOUD_SQL_CONNECTION_NAME,DB_USER,DB_PASSWORD,DB_NAME,DB_HOST,DB_PORT'
       - '--set-secrets'
-      - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,PYWA_PHONE_ID=PYWA_PHONE_ID:latest,DB_USER=DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_NAME=DB_NAME:latest,DB_HOST=DB_HOST:latest,DB_PORT=DB_PORT:latest,LOGIN_EMAIL=LOGIN_EMAIL:latest,LOGIN_PASS=LOGIN_PASS:latest'
+      - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,PYWA_PHONE_ID=PYWA_PHONE_ID:latest,DATABASE_URL=DATABASE_URL:latest,LOGIN_EMAIL=LOGIN_EMAIL:latest,LOGIN_PASS=LOGIN_PASS:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY
