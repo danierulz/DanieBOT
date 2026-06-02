@@ -91,6 +91,18 @@ def _seed_sizes_if_empty() -> None:
         session.close()
 
 
+def _seed_colors_if_empty() -> None:
+    """Los colores se cargan por admin/API; no hay catálogo fijo en el seed."""
+    from database.models.Color import Color
+
+    session = SessionLocal()
+    try:
+        if session.query(Color).count() > 0:
+            return
+    finally:
+        session.close()
+
+
 def _seed_categories_if_empty() -> None:
     from database.models.Category import Category
 
