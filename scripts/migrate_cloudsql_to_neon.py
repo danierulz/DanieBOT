@@ -185,8 +185,13 @@ def migrate_copy(source_url: str, target_url: str) -> None:
         _truncate_target(dst)
         for table in DATA_TABLES:
             buf = io.BytesIO()
-            with src.cursor() as cur:
-                cur.copy_expert(f'COPY "{table}" TO STDOUT', buf)
+            try:
+                with src.cursor() as cur:
+                    cur.copy_expert(f'COPY "{table}" TO STDOUT', buf)
+            except psycopg2.Error as e:
+                src.rollback()
+                print(f"  {table}: omitida en origen ({e.pgerror or e})")
+                continue
             buf.seek(0)
             if buf.getbuffer().nbytes == 0:
                 print(f"  {table}: (vacía)")
@@ -229,7 +234,7 @@ def migrate_pg_dump(source_url: str, target_url: str, dump_path: Path) -> None:
     env = os.environ.copy()
     env["PGPASSWORD"] = src["password"]
     print(f"Exportando datos (solo datos) → {dump_path}")
-    subprocess.run(
+    dump_cmd = subprocess.run(
         [
             "pg_dump",
             "-h",
@@ -248,8 +253,14 @@ def migrate_pg_dump(source_url: str, target_url: str, dump_path: Path) -> None:
             str(dump_path),
         ],
         env=env,
-        check=True,
+        capture_output=True,
+        text=True,
     )
+    if dump_cmd.returncode != 0:
+        err = (dump_cmd.stderr or "") + (dump_cmd.stdout or "")
+        if "version mismatch" in err or "server version" in err:
+            raise RuntimeError("pg_dump version mismatch")
+        dump_cmd.check_returncode()
 
     dst_conn = _connect(target_url, label="destino")
     try:
@@ -289,8 +300,8 @@ def main() -> int:
     parser.add_argument(
         "--method",
         choices=("pg_dump", "copy"),
-        default="pg_dump",
-        help="pg_dump (rápido, recomendado) o copy (solo psycopg2)",
+        default="copy",
+        help="copy (psycopg2, compatible PG18 en Cloud Shell) o pg_dump",
     )
     parser.add_argument(
         "--dump",
@@ -321,7 +332,18 @@ def main() -> int:
     print("Destino:", target_url.split("@")[-1])
 
     if args.method == "pg_dump":
-        migrate_pg_dump(source_url, target_url, args.dump)
+        try:
+            migrate_pg_dump(source_url, target_url, args.dump)
+        except (subprocess.CalledProcessError, RuntimeError) as e:
+            msg = str(e)
+            if "version mismatch" in msg or isinstance(e, RuntimeError):
+                print(
+                    "AVISO: pg_dump no coincide con la versión del servidor "
+                    "(p. ej. Cloud SQL PG18 + pg_dump 16). Usando método copy..."
+                )
+                migrate_copy(source_url, target_url)
+            else:
+                raise
     else:
         migrate_copy(source_url, target_url)
 

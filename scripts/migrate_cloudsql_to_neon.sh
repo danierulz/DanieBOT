@@ -36,6 +36,13 @@ start_proxy_if_needed() {
     return 0
   fi
 
+  if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":${PROXY_PORT} "; then
+    echo ">> Proxy ya activo en 127.0.0.1:${PROXY_PORT}"
+    export DB_HOST=127.0.0.1
+    export DB_PORT="$PROXY_PORT"
+    return 0
+  fi
+
   if ! command -v cloud-sql-proxy >/dev/null 2>&1; then
     echo "cloud-sql-proxy no instalado. En Cloud Shell:"
     echo "  curl -o cloud-sql-proxy -L https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.3/cloud-sql-proxy.linux.amd64"
@@ -52,7 +59,7 @@ start_proxy_if_needed() {
   export DB_PORT="$PROXY_PORT"
 }
 
-METHOD="${1:-pg_dump}"
+METHOD="${1:-copy}"
 shift || true
 
 start_proxy_if_needed
@@ -69,7 +76,10 @@ case "$METHOD" in
   copy)
     exec python3 scripts/migrate_cloudsql_to_neon.py --method copy "$@"
     ;;
-  pg_dump|*)
+  pg_dump)
     exec python3 scripts/migrate_cloudsql_to_neon.py --method pg_dump "$@"
+    ;;
+  *)
+    exec python3 scripts/migrate_cloudsql_to_neon.py --method copy "$@"
     ;;
 esac
