@@ -104,7 +104,7 @@ El script vacía tablas de datos en Neon (mantiene el esquema), copia filas, sin
 
    ```bash
    export DATABASE_URL='postgresql+psycopg2://...'
-   python3 -m alembic stamp 20260528_0002
+   python3 -m alembic stamp --purge 20260528_0002
    ```
 
 2. **`product_colors`:** si el origen no tenía esa tabla, quedará vacía en Neon. Los productos sin filas en `product_colors` siguen funcionando; podés asignar colores desde el admin.
