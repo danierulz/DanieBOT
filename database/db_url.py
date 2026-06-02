@@ -34,11 +34,21 @@ def get_sqlalchemy_connect_args() -> dict:
     return args
 
 
+def _normalize_database_url(url: str) -> str:
+    """Asegura driver psycopg2 y SSL para Neon."""
+    u = url.strip()
+    if u.startswith("postgresql://"):
+        u = "postgresql+psycopg2://" + u[len("postgresql://") :]
+    if "neon.tech" in u and "sslmode=" not in u:
+        u += "&sslmode=require" if "?" in u else "?sslmode=require"
+    return u
+
+
 def build_database_url() -> str:
     """Construye la URL PostgreSQL desde variables de entorno."""
-    override = os.getenv("DATABASE_URL")
+    override = os.getenv("DATABASE_URL", "").strip()
     if override:
-        return override
+        return _normalize_database_url(override)
 
     user = os.getenv("DB_USER", "")
     password = os.getenv("DB_PASSWORD", "")

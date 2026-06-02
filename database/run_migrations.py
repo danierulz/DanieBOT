@@ -22,7 +22,8 @@ from database.db_url import build_database_url, get_sqlalchemy_connect_args
 logger = logging.getLogger(__name__)
 
 _MIGRATION_LOCK_ID = 73482901
-_LOCK_WAIT_SECONDS = 120
+# Cloud Run: no bloquear el arranque esperando lock entre revisiones
+_LOCK_WAIT_SECONDS = 30 if os.getenv("K_SERVICE") else 120
 _CONNECT_TIMEOUT = 30
 
 

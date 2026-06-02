@@ -11,7 +11,6 @@ steps:
 
   # Paso 3: Desplegar en Cloud Run
   # Base de datos: Neon vía secreto DATABASE_URL (sin VPC connector ni Cloud SQL).
-  # Crear en Secret Manager: DATABASE_URL=postgresql+psycopg2://...@ep-...-pooler....neon.tech/neondb?sslmode=require
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
     waitFor: ['push']
@@ -25,6 +24,7 @@ steps:
       - '--region'
       - 'us-central1'
       - '--no-allow-unauthenticated'
+      - '--cpu-boost'
       - '--clear-vpc-connector'
       - '--remove-env-vars'
       - 'CLOUD_SQL_CONNECTION_NAME,DB_USER,DB_PASSWORD,DB_NAME,DB_HOST,DB_PORT'
