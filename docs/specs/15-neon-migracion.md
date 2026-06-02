@@ -97,3 +97,16 @@ El script vacía tablas de datos en Neon (mantiene el esquema), copia filas, sin
 
 
 **Cloud Shell:** Cloud SQL suele ser PostgreSQL 18; el `pg_dump` del sistema (16) falla con *version mismatch*. Usá `copy` (por defecto) o dejá que `pg_dump` haga fallback automático tras `git pull`.
+
+## Después de copiar datos
+
+1. **Alembic:** el origen puede tener una revisión antigua (p. ej. `20260525_0004`) que no está en este repo. En Neon, alinear al head del código:
+
+   ```bash
+   export DATABASE_URL='postgresql+psycopg2://...'
+   python3 -m alembic stamp 20260528_0002
+   ```
+
+2. **`product_colors`:** si el origen no tenía esa tabla, quedará vacía en Neon. Los productos sin filas en `product_colors` siguen funcionando; podés asignar colores desde el admin.
+
+3. Verificar: `./scripts/migrate_cloudsql_to_neon.sh verify` ( `product_colors` en -1 en origen es normal si la tabla no existía en Cloud SQL).

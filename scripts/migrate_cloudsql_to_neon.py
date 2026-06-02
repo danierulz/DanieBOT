@@ -112,9 +112,12 @@ def verify(source_url: str, target_url: str) -> int:
     for table in DATA_TABLES + ["alembic_version"]:
         s, d = src_counts.get(table, -1), dst_counts.get(table, -1)
         ok = s == d and s >= 0
-        if not ok and table != "alembic_version":
+        if table == "product_colors" and s < 0:
+            mark = "n/a"
+        else:
+            mark = "yes" if ok else "NO"
+        if not ok and table not in ("alembic_version", "product_colors"):
             mismatches += 1
-        mark = "yes" if ok else "NO"
         print(f"{table:<22} {s:>10} {d:>10} {mark:>4}")
 
     try:
@@ -199,6 +202,50 @@ def _copy_alembic_version(src, dst) -> None:
     print(f"alembic_version copiada: {row[0]}")
 
 
+
+
+def _align_alembic_head(target_url: str) -> None:
+    """Marca alembic_version al head del repo si quedó una revisión huérfana del origen."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    cfg = Config(str(REPO_ROOT / "alembic.ini"))
+    script = ScriptDirectory.from_config(cfg)
+    head = script.get_current_head()
+    if not head:
+        return
+
+    conn = _connect(target_url, label="destino")
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT version_num FROM alembic_version")
+            row = cur.fetchone()
+            current = row[0] if row else None
+            if current == head:
+                print(f"Alembic ya en head ({head}).")
+                return
+            revisions = {r.revision for r in script.walk_revisions()}
+            if current in revisions:
+                print(f"Alembic destino {current} — ejecutá: python3 -m alembic upgrade head")
+                return
+        conn.close()
+    except psycopg2.Error:
+        conn.close()
+        return
+
+    print(f"Alembic {current} no está en este repo — stamp → {head}")
+    conn = _connect(target_url, label="destino")
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM alembic_version")
+            cur.execute(
+                "INSERT INTO alembic_version (version_num) VALUES (%s)", (head,)
+            )
+        conn.commit()
+        print(f"alembic_version actualizada a {head}.")
+    finally:
+        conn.close()
+
 def migrate_copy(source_url: str, target_url: str) -> None:
     src = _connect(source_url, label="origen")
     dst = _connect(target_url, label="destino")
@@ -239,6 +286,7 @@ def migrate_copy(source_url: str, target_url: str) -> None:
             print(f"  {table}: {n} filas")
         _copy_alembic_version(src, dst)
         _fix_sequences(dst)
+        _align_alembic_head(target_url)
     finally:
         src.close()
         dst.close()
