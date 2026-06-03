@@ -11,6 +11,7 @@ steps:
 
   # Paso 3: Desplegar en Cloud Run
   # Base de datos: Neon vía secreto DATABASE_URL (sin VPC connector ni Cloud SQL).
+  # Costos: sin cpu-boost, max 5 instancias, escala a cero (min 0 implícito).
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
     waitFor: ['push']
@@ -24,8 +25,16 @@ steps:
       - '--region'
       - 'us-central1'
       - '--no-allow-unauthenticated'
-      - '--cpu-boost'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '5'
+      - '--concurrency'
+      - '80'
       - '--clear-vpc-connector'
+      - '--no-cpu-boost'
       - '--remove-env-vars'
       - 'CLOUD_SQL_CONNECTION_NAME,DB_USER,DB_PASSWORD,DB_NAME,DB_HOST,DB_PORT'
       - '--set-secrets'

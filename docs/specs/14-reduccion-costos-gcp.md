@@ -1,67 +1,91 @@
 # Reducción de costos GCP (tienda + bot)
 
-Instancia Cloud SQL: `laslocaswhatsapp:us-central1:laslocas-dbng`
+## Estado actual (Jun 2026)
 
-## Estado actual del deploy
+| Recurso | Estado | Costo aprox. |
+|---------|--------|--------------|
+| **Cloud SQL** `laslocas-dbng` | **Eliminado** (0 instancias) | ~USD 0 |
+| **VPC connector** `whatsapp-bot-vpc-connecto` | **Eliminado** | ~USD 0 (antes ~3–7/mes) |
+| **Base de datos** | **Neon** (`DATABASE_URL` en Secret Manager) | Factura en Neon, no en GCP |
+| **Cloud Run** `deploy-whatsapp-cloudbuild` | `us-central1`, escala a 0, max 5 instancias | Pay-per-use |
+| **GCR** `laslocaswhatsapp` | Muchas tags históricas | Centavos–USD 1/mes según tags |
 
-**Producción usa de nuevo el VPC connector** `whatsapp-bot-vpc-connecto` y el secreto `DB_HOST` (IP privada). Así la tienda y el bot vuelven a arrancar sin depender del socket Cloud SQL ni de IAM automático en Cloud Build.
-
-## Cómo bajar costos más adelante (socket sin VPC)
-
-Cuando quieras eliminar el conector (~$3–7/mes):
-
-1. En **IAM** (con tu usuario admin, no Cloud Build): cuenta de servicio de Cloud Run → rol **Cloud SQL Client**.
-2. Cambiar `cloudbuild.yaml`: quitar `--vpc-connector`, agregar `--add-cloudsql-instances=laslocaswhatsapp:us-central1:laslocas-dbng` y `--update-env-vars=CLOUD_SQL_CONNECTION_NAME=laslocaswhatsapp:us-central1:laslocas-dbng`.
-3. `database/db_url.py` ya soporta socket con `CLOUD_SQL_CONNECTION_NAME` + psycopg2.
-4. Probar deploy; si funciona, borrar el conector VPC en consola.
-
-Cloud Build **no puede** asignar roles IAM solo (la cuenta de build no tiene `getIamPolicy`); hay que hacerlo en consola.
-
-## Qué tenés que hacer vos (tablet, pocos pasos)
-
-### 1. Aprobar el PR y dejar que Cloud Build despliegue
-
-- En GitHub: **Merge** del PR.
-- Si el trigger de Cloud Build está en `main`, el deploy corre solo.
-- Si no: en la consola GCP → **Cloud Build** → **Historial** → **Ejecutar** el último commit de `main`.
-
-### 2. Permiso Cloud SQL (obligatorio si el deploy falla al arrancar)
-
-Si Cloud Build termina con *"container failed to start"* o *"listen on PORT=8080"*, casi siempre es la **base de datos** en el arranque (migraciones), no el puerto.
-
-En los logs del contenedor buscá:
-- `Socket Cloud SQL ausente` → falta `--add-cloudsql-instances` o permiso IAM.
-- `Fallo al migrar` → credenciales `DB_*` o instancia SQL apagada.
-
-Cloud Run → servicio `deploy-whatsapp-cloudbuild` → pestaña **Seguridad** → copiá el **correo de la cuenta de servicio** (termina en `@...gserviceaccount.com`).
-
-IAM → **Conceder acceso** → principal = esa cuenta → rol **Cloud SQL Client** → Guardar.
-
-Volvé a ejecutar el build o redeploy.
-
-### 3. Probar (2 minutos)
-
-- Abrí la URL pública de la tienda (home y un producto).
-- Entrá al admin y listá productos.
-- Mandá un mensaje de prueba al bot de WhatsApp.
-
-Si algo falla: Cloud Run → **Registros**; buscá errores de conexión a la base.
-
-### 4. Opcional: borrar el conector VPC (ahorro ~$3–7/mes)
-
-Solo cuando la tienda y el bot funcionen bien:
-
-GCP → **VPC network** → **Serverless VPC access** → eliminá `whatsapp-bot-vpc-connecto`.
-
-### 5. Opcional: achicar Cloud SQL
-
-SQL → `laslocas-dbng` → **Editar** → tier **db-f1-micro**, disco mínimo, **sin** alta disponibilidad.
+La app **no usa** `DB_HOST` / `DB_*` en Cloud Run (se quitan en deploy). Podés archivar esos secretos viejos en Secret Manager si querés orden (costo por secreto: centavos).
 
 ---
 
-## Secret `DB_HOST`
+## Qué ya está optimizado en `cloudbuild.yaml`
 
-No es obligatorio cambiarlo: con `CLOUD_SQL_CONNECTION_NAME` en el deploy, la app ignora la IP privada antigua.
+- `--clear-vpc-connector` — sin conector Serverless VPC
+- `--no-cpu-boost` — sin CPU extra al arrancar (ahorro en cold starts)
+- `--max-instances=5` — tope ante picos o abuso
+- `--memory=512Mi` / `--cpu=1` — tamaño fijo razonable para FastAPI + migraciones
+- Solo secretos necesarios: `DATABASE_URL`, WhatsApp, login admin
 
-Si querés ordenar Secret Manager, podés poner en `DB_HOST` el valor  
-`laslocaswhatsapp:us-central1:laslocas-dbng` (mismo formato que la instancia).
+---
+
+## Acciones manuales recomendadas (consola o CLI)
+
+### 1. Limpiar imágenes Docker viejas (GCR)
+
+Cada deploy sube una tag nueva. Las viejas ocupan disco.
+
+```powershell
+cd C:\Projects\DanieBOT
+.\scripts\gcp_prune_images.ps1 -Keep 8
+```
+
+Conserva las 8 más recientes; borra el resto.
+
+### 2. Desactivar APIs que ya no usás
+
+Si no volvés a Cloud SQL ni VPC connector:
+
+```bash
+gcloud services disable sqladmin.googleapis.com --project laslocaswhatsapp
+gcloud services disable vpcaccess.googleapis.com --project laslocaswhatsapp
+```
+
+No baja la factura si no hay recursos, pero reduce superficie y confusiones.
+
+### 3. Presupuesto y alertas
+
+Billing → **Budgets & alerts** → crear presupuesto mensual (ej. USD 15) con alerta al 50 % y 90 %.
+
+### 4. Revisar factura por SKU
+
+Billing → **Reports** → filtrar:
+
+- **Cloud Run** — compute + egress
+- **Networking** → **Network egress** — tráfico a usuarios, Meta API y Neon
+- **Cloud Build** — minutos de build (free tier mensual)
+- **Artifact Registry / GCR** — almacenamiento de imágenes
+
+### 5. Neon (fuera de GCP)
+
+El costo de Postgres migró a Neon. Revisá en [console.neon.tech](https://console.neon.tech): plan free/autoscale, suspender compute inactivo si aplica.
+
+---
+
+## Networking / egress (lo que suele aparecer en billing)
+
+- **Entrada** al sitio y webhooks de Meta: gratis.
+- **Salida** (egress): HTML, JS, llamadas a Graph API, queries a Neon → se factura por GB (volumen bajo en tienda chica).
+- **Región `us-central1`**: no es “global”; es Iowa. Cambiar a `southamerica-east1` mejora latencia a AR pero Neon suele estar en US igual; el ahorro de egress es marginal salvo mucho tráfico.
+
+---
+
+## Qué NO hacer sin migrar de nuevo
+
+- Volver a encender Cloud SQL 24/7 “por las dudas” — era el mayor costo fijo.
+- Recrear el VPC connector sin necesidad — ~USD 3–7/mes mínimo aunque no lo uses mucho.
+
+---
+
+## Checklist rápido post-deploy
+
+1. Tienda carga (home + producto).
+2. Admin login y listado.
+3. WhatsApp webhook (mensaje de prueba).
+4. Cloud Run → **Registros** sin errores de `DATABASE_URL`.
+5. Ejecutar `gcp_prune_images.ps1` una vez al mes si deployás seguido.
