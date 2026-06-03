@@ -6,6 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title_admin_edit }} · {{ brand_name }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    const COLOR_LABELS = {
+      empty: {{ admin_colors_empty_catalog | tojson }},
+      msgAdded: {{ admin_colors_msg_added | tojson }},
+    };
+  </script>
+  <script src="/static/js/adminColors.js"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -77,6 +84,8 @@
             </div>
           </div>
         </div>
+
+        {% include "partials/admin_product_colors.html" %}
 
         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
           <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
@@ -245,6 +254,9 @@
       const statusCb = document.getElementById('status');
       if (statusCb) statusCb.checked = !!p.activo;
       fillVariantsFromProduct(p);
+      if (typeof setSelectedProductColorIds === 'function') {
+        setSelectedProductColorIds((p.colores || []).map((c) => c.color_id));
+      }
     }
 
     async function submitPut() {
@@ -258,6 +270,9 @@
       const formData = new FormData(form);
       formData.set('status', document.getElementById('status').checked ? '1' : '0');
       formData.append('variants_json', collectVariants());
+      if (typeof collectProductColorIds === 'function') {
+        formData.append('colors_json', JSON.stringify(collectProductColorIds()));
+      }
       try {
         const resp = await fetch('/api/productos/' + EDIT_PRODUCT_ID, {
           method: 'PUT',

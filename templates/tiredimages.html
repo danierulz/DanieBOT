@@ -42,6 +42,11 @@
         </div>
         <p id="precio-savings" class="hidden text-sm text-green-700 font-semibold mt-1"></p>
 
+        <div id="color-section" class="mt-6 hidden">
+          <p class="text-sm font-semibold text-gray-800">{{ detail_select_color }}</p>
+          <div id="color-chips" class="mt-2 flex flex-wrap gap-2"></div>
+        </div>
+
         <div class="mt-6">
           <p class="text-sm font-semibold text-gray-800">{{ detail_select_size }}</p>
           <div id="size-chips" class="mt-2 flex flex-wrap gap-2"></div>
@@ -84,6 +89,8 @@
   <script>
     const LABEL_NO_DESCRIPTION = {{ label_no_description | tojson }};
     const LABEL_DETAIL_REQUIRES = {{ detail_add_requires_size | tojson }};
+    const LABEL_SELECT_COLOR = {{ detail_select_color | tojson }};
+    const LABEL_REQUIRES_COLOR = {{ detail_add_requires_color | tojson }};
     const LABEL_IMMEDIATE = {{ detail_immediate | tojson }};
     const LABEL_ENCARGO = {{ detail_encargo | tojson }};
     const DETAIL_SELECT_PLACEHOLDER = {{ detail_select_size | tojson }};
@@ -98,9 +105,25 @@
     let productActual = null;
     let variantMap = {};
     let selectedVariantId = null;
+    let selectedColorId = null;
+    let productColores = [];
     const product_id_from_template = "{{ product_id }}";
 
-    window.detailShowSizeWarning = function () { alert(LABEL_DETAIL_REQUIRES); };
+    function showVariantError(msg) {
+      const hint = document.getElementById('variant-hint');
+      if (!hint) return;
+      hint.classList.remove('hidden');
+      hint.className = 'mt-3 rounded-lg border px-3 py-2 text-sm bg-red-50 border-red-200 text-red-800 font-medium';
+      hint.textContent = msg;
+    }
+
+    window.detailShowSizeWarning = function () {
+      if (productColores.length && !selectedColorId) {
+        showVariantError(LABEL_REQUIRES_COLOR);
+        return;
+      }
+      showVariantError(LABEL_DETAIL_REQUIRES);
+    };
 
     function setMainImage(url) {
       const el = document.getElementById('img-main');
@@ -130,6 +153,51 @@
 
     function variantMode(v) {
       return (v.qty_stock_local || 0) > 0 ? 'inmediato' : 'encargo';
+    }
+
+    function renderColorChips() {
+      const section = document.getElementById('color-section');
+      const cont = document.getElementById('color-chips');
+      productColores = (productActual && productActual.colores) || [];
+      if (!section || !cont) return;
+
+      if (!productColores.length) {
+        section.classList.add('hidden');
+        selectedColorId = null;
+        cont.innerHTML = '';
+        return;
+      }
+
+      section.classList.remove('hidden');
+      if (productColores.length === 1) {
+        selectedColorId = productColores[0].color_id;
+      }
+
+      cont.innerHTML = productColores.map((c) => {
+        const sel = selectedColorId === c.color_id;
+        const cls = sel
+          ? 'border-black ring-2 ring-black ring-offset-1'
+          : 'border-gray-300 hover:border-black';
+        const bg = c.hex || '#888888';
+        return `<button type="button" data-cid="${c.color_id}" title="${String(c.label || '').replace(/"/g, '&quot;')}"
+          class="inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition bg-white ${cls}">
+          <span class="w-4 h-4 rounded-full border border-gray-300 shrink-0" style="background:${bg}"></span>
+          ${c.label}
+        </button>`;
+      }).join('');
+
+      cont.querySelectorAll('button[data-cid]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          selectedColorId = parseInt(btn.getAttribute('data-cid'), 10);
+          renderColorChips();
+          const hint = document.getElementById('variant-hint');
+          if (hint && hint.classList.contains('text-red-800')) {
+            hint.classList.add('hidden');
+            hint.textContent = '';
+          }
+          updateCtaState();
+        });
+      });
     }
 
     function renderSizeChips() {
@@ -188,10 +256,11 @@
     function updateCtaState() {
       const btn = document.getElementById('btn-add-cart');
       const buy = document.getElementById('btn-buy-now');
+      const needsColor = productColores.length > 0;
       const v = selectedVariantId ? variantMap[selectedVariantId] : null;
-      if (!v) {
+      if (!v || (needsColor && !selectedColorId)) {
         btn.disabled = true; btn.className = 'flex-1 min-h-[48px] rounded-full bg-gray-300 text-gray-600 font-bold cursor-not-allowed transition touch-manipulation shadow-sm';
-        btn.textContent = DETAIL_SELECT_PLACEHOLDER;
+        btn.textContent = needsColor && !selectedColorId ? LABEL_SELECT_COLOR : DETAIL_SELECT_PLACEHOLDER;
         buy.disabled = true; buy.className = 'flex-1 min-h-[48px] rounded-full bg-gray-200 text-gray-500 font-bold cursor-not-allowed transition';
         return;
       }
@@ -215,7 +284,9 @@
 
     function buildPayloadFromSelection() {
       if (!selectedVariantId || !variantMap[selectedVariantId]) return null;
+      if (productColores.length && !selectedColorId) return null;
       const v = variantMap[selectedVariantId];
+      const color = productColores.find((c) => c.color_id === selectedColorId);
       const modo = variantMode(v);
       return {
         ...productActual,
@@ -224,6 +295,8 @@
         talle_label: v.size_label,
         size_label: v.size_label,
         size_code: v.size_code,
+        color_id: selectedColorId || null,
+        color_label: color ? color.label : '',
         modo_entrega: modo,
         dias_encargo_estimados: v.dias_encargo_estimados || null,
       };

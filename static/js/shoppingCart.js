@@ -41,6 +41,8 @@ function agregarAlCarrito(producto) {
       descuento_porcentaje: producto.descuento_porcentaje || 0,
       variant_id: producto.variant_id,
       talle_label: producto.talle_label || producto.size_label || '',
+      color_id: producto.color_id || null,
+      color_label: producto.color_label || '',
       size_code: producto.size_code || '',
       modo_entrega: producto.modo_entrega || '',
       dias_encargo_estimados: producto.dias_encargo_estimados || null,
@@ -79,6 +81,7 @@ function renderCarrito() {
   } else {
     cont.innerHTML = carrito.map((p, i) => {
       const talle = p.talle_label || p.size_label || '';
+      const color = p.color_label || '';
       const modo = modoLabel(p);
       const sub = (Number(p.precio) || 0) * (p.cantidad || 1);
       const subOrig = (Number(p.precio_original) || Number(p.precio) || 0) * (p.cantidad || 1);
@@ -93,6 +96,7 @@ function renderCarrito() {
             <div class="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">${escapeCartHtml(p.titulo)}</div>
             <div class="mt-1 flex flex-wrap gap-1">
               ${talle ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">Talle ${escapeCartHtml(talle)}</span>` : ''}
+              ${color ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">Color ${escapeCartHtml(color)}</span>` : ''}
               ${modo ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${modoBadgeClass(p)}">${escapeCartHtml(modo)}</span>` : ''}
               ${p.is_sale ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white">SALE${p.descuento_porcentaje ? ' -' + p.descuento_porcentaje + '%' : ''}</span>` : ''}
             </div>
@@ -175,6 +179,7 @@ async function confirmarPedido() {
       precio: Number(p.precio) || 0,
       cantidad: p.cantidad || 1,
       variant_id: p.variant_id || null,
+      color_id: p.color_id || null,
     })),
     cart_snapshot: carrito,
   };

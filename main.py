@@ -983,6 +983,7 @@ def crear_producto(
     price: int = Form(...),
     description: str = Form(...),
     variants_json: str = Form("[]"),
+    colors_json: str = Form("[]"),
     category_id: Optional[str] = Form(None),
     is_sale: Optional[str] = Form(None),
     discount_percent: Optional[str] = Form(None),
@@ -1009,6 +1010,7 @@ def crear_producto(
 
         _guardar_imagenes_producto(db, nuevo.product_id, images)
         _sync_product_variants(db, nuevo.product_id, _parse_variants_json(variants_json))
+        sync_product_colors(db, nuevo.product_id, parse_colors_json(colors_json))
         db.commit()
         db.refresh(nuevo)
         return {"ok": True, "id": nuevo.product_id}
@@ -1027,6 +1029,7 @@ def actualizar_producto(
     price: int = Form(...),
     description: str = Form(...),
     variants_json: str = Form("[]"),
+    colors_json: str = Form("[]"),
     category_id: Optional[str] = Form(None),
     is_sale: Optional[str] = Form(None),
     discount_percent: Optional[str] = Form(None),
@@ -1058,6 +1061,7 @@ def actualizar_producto(
             )
             _guardar_imagenes_producto(db, product_id, images)
         _sync_product_variants(db, product_id, _parse_variants_json(variants_json))
+        sync_product_colors(db, product_id, parse_colors_json(colors_json))
         db.commit()
         db.refresh(producto)
         return {"ok": True, "id": producto.product_id}
