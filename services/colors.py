@@ -98,11 +98,6 @@ def create_color(db: Session, *, label: str, hex_value: Optional[str] = None) ->
     if not label:
         raise HTTPException(status_code=400, detail="El nombre del color es obligatorio.")
     code = normalize_color_code(label)
-    existing = db.query(Color).filter(Color.code == code).first()
-    if existing:
-        return existing
-    max_order = db.query(Color.sort_order).order_by(Color.sort_order.desc()).limit(1).scalar()
-    sort_order = (max_order or 0) + 10
     hex_clean = None
     if hex_value:
         h = hex_value.strip()
@@ -110,6 +105,14 @@ def create_color(db: Session, *, label: str, hex_value: Optional[str] = None) ->
             h = "#" + h
         if h and re.match(r"^#[0-9A-Fa-f]{6}$", h):
             hex_clean = h.upper()
+    existing = db.query(Color).filter(Color.code == code).first()
+    if existing:
+        if hex_clean and not existing.hex:
+            existing.hex = hex_clean
+            db.flush()
+        return existing
+    max_order = db.query(Color.sort_order).order_by(Color.sort_order.desc()).limit(1).scalar()
+    sort_order = (max_order or 0) + 10
     row = Color(code=code, label=label[:64], sort_order=sort_order, hex=hex_clean)
     db.add(row)
     db.flush()

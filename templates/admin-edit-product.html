@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title_admin_edit }} · {{ brand_name }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/js/toast.js"></script>
+  <script src="/static/js/authSession.js"></script>
+  <script src="/static/js/adminProductFields.js"></script>
   <script>
     const COLOR_LABELS = {
       empty: {{ admin_colors_empty_catalog | tojson }},
@@ -36,8 +39,9 @@
       <form id="producto-form" class="space-y-4">
         <div>
           <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
-          <input id="item_title" name="item_title" type="text" required
+          <input id="item_title" name="item_title" type="text" required maxlength="255"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          <p id="item-title-count" class="mt-1 text-xs text-gray-500 text-right">0 / 255</p>
         </div>
         <div>
           <label for="price" class="block text-sm font-medium text-gray-700">{{ label_price }}</label>
@@ -46,8 +50,12 @@
         </div>
         <div>
           <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
-          <textarea id="description" name="description" rows="4"
+          <textarea id="description" name="description" rows="4" maxlength="255"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
+          <p class="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500">
+            <span>{{ admin_description_limit_help }}</span>
+            <span id="description-count">0 / 255</span>
+          </p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -226,17 +234,18 @@
       sync();
     }
 
-    function productAuthHeaders() {
-      const token = localStorage.getItem('token');
-      return token ? { 'Authorization': 'Bearer ' + token } : {};
+    function showApiError(message, fallback) {
+      if (typeof showToast === 'function') {
+        showToast(message || fallback || LABELS.msgError, { type: 'error' });
+      } else {
+        document.getElementById('msg').textContent = message || fallback || LABELS.msgError;
+      }
     }
 
     async function loadProduct() {
-      const r = await fetch('/api/producto/' + EDIT_PRODUCT_ID, {
-        headers: productAuthHeaders(),
-      });
+      const r = await authFetch('/api/producto/' + EDIT_PRODUCT_ID);
       if (!r.ok) {
-        document.getElementById('msg').textContent = LABELS.msgError;
+        showApiError(null, LABELS.msgError);
         return;
       }
       const p = await r.json();
@@ -257,15 +266,14 @@
       if (typeof setSelectedProductColorIds === 'function') {
         setSelectedProductColorIds((p.colores || []).map((c) => c.color_id));
       }
+      if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
     }
 
     async function submitPut() {
-      const token = localStorage.getItem('token');
-      const msg = document.getElementById('msg');
-      if (!token) {
-        window.location.href = '/login';
+      if (typeof validateProductFieldLimits === 'function' && !validateProductFieldLimits()) {
         return;
       }
+      const msg = document.getElementById('msg');
       const form = document.getElementById('producto-form');
       const formData = new FormData(form);
       formData.set('status', document.getElementById('status').checked ? '1' : '0');
@@ -274,13 +282,13 @@
         formData.append('colors_json', JSON.stringify(collectProductColorIds()));
       }
       try {
-        const resp = await fetch('/api/productos/' + EDIT_PRODUCT_ID, {
+        const resp = await authFetch('/api/productos/' + EDIT_PRODUCT_ID, {
           method: 'PUT',
-          headers: { 'Authorization': 'Bearer ' + token },
           body: formData,
         });
         if (!resp.ok) {
-          msg.textContent = LABELS.msgError;
+          const data = await resp.json().catch(() => ({}));
+          showApiError(data.detail, LABELS.msgError);
           return;
         }
         if (saveStayOnPage) {
@@ -290,7 +298,9 @@
           window.location.href = '/admin-panel?tab=list&updated=1';
         }
       } catch (err) {
-        msg.textContent = LABELS.msgError;
+        if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
+          showApiError(err.message, LABELS.msgError);
+        }
       }
     }
 
@@ -306,11 +316,9 @@
     });
 
     window.addEventListener('DOMContentLoaded', async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!ensureValidSession()) return;
+      await maybeRefreshToken();
+      if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
       await initVariantsTable();
       await initColorsUi();
       await loadCategoriesSelect();

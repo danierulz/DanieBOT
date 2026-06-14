@@ -71,7 +71,17 @@
       </div>
       <div class="mt-4">
         <p class="text-white text-sm font-semibold">{{ footer_pickup }}</p>
-        <p class="text-xs text-gray-400">{{ footer_pickup_hint }}</p>
+        {% for store in stores %}
+        <div class="mt-2 text-sm text-gray-400 space-y-1">
+          <p class="text-white font-medium">{{ store.name }}</p>
+          <p>{{ store.address }}</p>
+          <p>{{ store.hours }}</p>
+          <a href="{{ store.maps_url }}" target="_blank" rel="noopener noreferrer"
+            class="inline-flex items-center gap-1 text-xs text-gray-300 hover:text-white mt-1">
+            {{ stores_open_maps }}
+          </a>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>

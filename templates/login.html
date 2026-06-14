@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>{{ page_title_login }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/js/toast.js"></script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center h-screen">
 
@@ -35,6 +36,8 @@
       e.preventDefault();
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
+      const loginMsg = document.getElementById("login-msg");
+      loginMsg.textContent = "";
 
       try {
         const resp = await fetch("/login", {
@@ -44,18 +47,18 @@
         });
 
         if (!resp.ok) {
-          document.getElementById("login-msg").textContent = "Credenciales inválidas";
+          showToast("Credenciales inválidas", { type: "error" });
           return;
         }
 
         const data = await resp.json();
         localStorage.setItem("token", data.access_token);
-        document.getElementById("login-msg").textContent = "Login exitoso ✔️";
+        loginMsg.textContent = "Login exitoso ✔️";
+        showToast("Login exitoso", { type: "success", duration: 1500 });
 
-        // Redirigir al panel admin
         window.location.href = "/admin-panel";
       } catch (err) {
-        document.getElementById("login-msg").textContent = "Error de conexión";
+        showToast("Error de conexión", { type: "error" });
       }
     });
   </script>

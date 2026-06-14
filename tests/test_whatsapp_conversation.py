@@ -81,10 +81,11 @@ class ReplyForIntentTest(unittest.TestCase):
         reply = reply_for_intent(Intent.SHIPPING)
         self.assertIn("100.000", reply.text)
 
-    def test_stores_reply_lists_both_locations(self):
+    def test_stores_reply_lists_jose_c_paz(self):
         reply = reply_for_intent(Intent.STORES)
         self.assertIn("José C. Paz", reply.text)
-        self.assertIn("Nogués", reply.text)
+        self.assertIn("Coronel Arias 585", reply.text)
+        self.assertNotIn("Nogués", reply.text)
 
     def test_help_offers_ver_tienda(self):
         reply = reply_for_intent(Intent.HELP)

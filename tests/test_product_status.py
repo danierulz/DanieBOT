@@ -107,6 +107,38 @@ class ProductStatusApiTest(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertFalse(r.json()["activo"])
 
+    def test_create_product_rejects_long_description(self):
+        long_desc = "x" * 256
+        r = self.client.post(
+            "/api/productos",
+            data={
+                "item_title": "Remera",
+                "price": "1000",
+                "description": long_desc,
+            },
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("256", r.json()["detail"])
+        self.assertIn("255", r.json()["detail"])
+
+    def test_update_product_rejects_long_description(self):
+        session = self.SessionLocal()
+        product_id = session.query(Products).filter(Products.cod_product == "A1").one().product_id
+        session.close()
+        r = self.client.put(
+            f"/api/productos/{product_id}",
+            data={
+                "item_title": "Activo",
+                "price": "1000",
+                "description": "y" * 300,
+            },
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("300", r.json()["detail"])
+        self.assertIn("descripción", r.json()["detail"].lower())
+
     def test_import_respects_status_flag(self):
         from provider_importers.types import ImportedProduct
         from unittest.mock import patch

@@ -2,11 +2,54 @@
   let catalogColors = [];
   let selectedIds = new Set();
   let addButtonBound = false;
+  const DEFAULT_HEX = '#2563EB';
 
   function escapeHtml(s) {
     const d = document.createElement('div');
     d.textContent = s == null ? '' : String(s);
     return d.innerHTML;
+  }
+
+  function normalizeHex(value) {
+    const raw = (value || '').trim();
+    if (!raw) return null;
+    const withHash = raw.startsWith('#') ? raw : '#' + raw;
+    return /^#[0-9A-Fa-f]{6}$/.test(withHash) ? withHash.toUpperCase() : null;
+  }
+
+  function syncColorPicker(hex) {
+    const input = document.getElementById('new-color-hex');
+    const preview = document.getElementById('new-color-preview');
+    const clean = normalizeHex(hex) || DEFAULT_HEX;
+    if (input) input.value = clean;
+    if (preview) preview.style.background = clean;
+  }
+
+  function bindColorPickerUi() {
+    const input = document.getElementById('new-color-hex');
+    if (input && !input.dataset.bound) {
+      input.dataset.bound = '1';
+      input.addEventListener('input', () => syncColorPicker(input.value));
+    }
+
+    document.querySelectorAll('.color-preset-btn').forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', () => {
+        syncColorPicker(btn.getAttribute('data-hex'));
+      });
+    });
+
+    syncColorPicker(input ? input.value : DEFAULT_HEX);
+  }
+
+  function showColorError(message) {
+    if (typeof showToast === 'function') {
+      showToast(message, { type: 'error' });
+      return;
+    }
+    const msg = document.getElementById('msg');
+    if (msg) msg.textContent = message;
   }
 
   function renderCheckboxes() {
@@ -61,29 +104,42 @@
     addButtonBound = true;
 
     btn.addEventListener('click', async () => {
-      const token = localStorage.getItem('token');
       const labelInput = document.getElementById('new-color-label');
+      const hexInput = document.getElementById('new-color-hex');
       const label = labelInput && labelInput.value.trim();
+      const hex = normalizeHex(hexInput && hexInput.value);
       const msg = document.getElementById('msg');
+
       if (!label) {
-        if (msg) msg.textContent = 'Escribí el nombre del color.';
+        showColorError('Escribí el nombre del color.');
         return;
       }
-      if (!token) {
-        window.location.href = '/login';
+      if (!hex) {
+        showColorError('Elegí un color válido con la paleta.');
+        return;
+      }
+      if (typeof ensureValidSession === 'function' && !ensureValidSession()) {
         return;
       }
 
       btn.disabled = true;
       try {
-        const r = await fetch('/api/admin/colors', {
+        const fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+        const options = {
           method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ label }),
-        });
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label, hex }),
+        };
+        if (fetchFn === fetch) {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            window.location.href = '/login';
+            return;
+          }
+          options.headers.Authorization = 'Bearer ' + token;
+        }
+
+        const r = await fetchFn('/api/admin/colors', options);
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
           const detail = data.detail;
@@ -100,11 +156,22 @@
           renderCheckboxes();
         }
         if (labelInput) labelInput.value = '';
+        syncColorPicker(DEFAULT_HEX);
         if (msg && typeof COLOR_LABELS !== 'undefined' && COLOR_LABELS.msgAdded) {
           msg.textContent = COLOR_LABELS.msgAdded;
         }
+        if (typeof showToast === 'function') {
+          showToast(
+            (typeof COLOR_LABELS !== 'undefined' && COLOR_LABELS.msgAdded) ||
+              'Color agregado al catálogo.',
+            { type: 'success' }
+          );
+        }
       } catch (e) {
-        if (msg) msg.textContent = e.message || 'No se pudo agregar el color.';
+        if (typeof isSessionRedirectScheduled === 'function' && isSessionRedirectScheduled()) {
+          return;
+        }
+        showColorError(e.message || 'No se pudo agregar el color.');
       } finally {
         btn.disabled = false;
       }
@@ -116,6 +183,7 @@
     if (options.selectedIds) {
       selectedIds = new Set(options.selectedIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id)));
     }
+    bindColorPickerUi();
     bindAddColorButton();
     const status = document.getElementById('product-colors-status');
     try {
@@ -145,6 +213,7 @@
     renderCheckboxes();
     const input = document.getElementById('new-color-label');
     if (input) input.value = '';
+    syncColorPicker(DEFAULT_HEX);
   }
 
   window.initColorsUi = initColorsUi;

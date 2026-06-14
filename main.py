@@ -272,6 +272,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         return {"access_token": token, "token_type": "bearer"}
     raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
+
+@app.post("/api/auth/refresh")
+def refresh_token(user: dict = Depends(get_current_user)):
+    token = create_access_token({"sub": user["sub"], "rol": user.get("rol", "admin")})
+    return {"access_token": token, "token_type": "bearer"}
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", page_context(request))
@@ -775,6 +781,31 @@ def _truncate(value: Optional[str], max_len: int) -> str:
     return clean[:max_len].rstrip()
 
 
+PRODUCT_ITEM_TITLE_MAX_LEN = 255
+PRODUCT_DESCRIPTION_MAX_LEN = 255
+
+
+def _validate_product_form_fields(*, item_title: str, description: str) -> None:
+    title = item_title or ""
+    desc = description or ""
+    if len(title) > PRODUCT_ITEM_TITLE_MAX_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"El título supera el máximo de {PRODUCT_ITEM_TITLE_MAX_LEN} caracteres "
+                f"(ingresaste {len(title)})."
+            ),
+        )
+    if len(desc) > PRODUCT_DESCRIPTION_MAX_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"La descripción supera el máximo de {PRODUCT_DESCRIPTION_MAX_LEN} caracteres "
+                f"(ingresaste {len(desc)})."
+            ),
+        )
+
+
 def _resolve_category_slug(db: Session, slug: Optional[str]) -> Optional[int]:
     if not slug:
         return None
@@ -991,6 +1022,7 @@ def crear_producto(
     db: Session = Depends(get_db_fastApi),
     _: dict = Depends(get_current_user),
 ):
+    _validate_product_form_fields(item_title=item_title, description=description)
     try:
         is_sale_b = str(is_sale).lower() in ("1", "true", "on", "yes")
         nuevo = Products(
@@ -1041,6 +1073,7 @@ def actualizar_producto(
     producto = db.query(Products).filter(Products.product_id == product_id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+    _validate_product_form_fields(item_title=item_title, description=description)
     try:
         is_sale_b = str(is_sale).lower() in ("1", "true", "on", "yes")
         producto.item_title = item_title

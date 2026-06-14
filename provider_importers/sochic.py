@@ -135,7 +135,11 @@ def _walk_jsonld(node: Any) -> Iterable[dict[str, Any]]:
 
 
 def _extract_prices(soup: BeautifulSoup, product_json: dict[str, Any]) -> tuple[Optional[int], Optional[int]]:
-    price_box = soup.select_one("p.price")
+    price_box = (
+        soup.select_one(".summary p.price")
+        or soup.select_one(".product-summary p.price")
+        or soup.select_one("p.price")
+    )
     final_price = _parse_money(_text(price_box.select_one("ins .amount")) if price_box else None)
     original_price = _parse_money(_text(price_box.select_one("del .amount")) if price_box else None)
     if final_price is None and price_box:
@@ -194,6 +198,8 @@ def _extract_image_urls(soup: BeautifulSoup, product_json: dict[str, Any], sourc
 
 def _extract_colors(soup: BeautifulSoup) -> list[str]:
     colors: list[str] = []
+    skip_labels = {"color", "price", "stock", "sku", "precio", "cantidad"}
+
     for table in soup.select("table.vartable, table[class*='vartable']"):
         headers = [_squash_ws(_text(th)).lower() for th in table.select("thead th")]
         color_indexes = [idx for idx, header in enumerate(headers) if "color" in header]
@@ -208,6 +214,24 @@ def _extract_colors(soup: BeautifulSoup) -> list[str]:
                 value = _squash_ws(_text(cell))
                 if value:
                     colors.append(value)
+
+    for header in soup.select(
+        ".wcbvp-row-header[data-label], .wcbvp-header.wcbvp-row-header[data-label]"
+    ):
+        value = _squash_ws(header.get("data-label") or "")
+        if value and value.lower() not in skip_labels:
+            colors.append(value)
+
+    for span in soup.select(".wcbvp-row-header .wcbvp-header-block span"):
+        value = _squash_ws(_text(span))
+        if value and value.lower() not in skip_labels:
+            colors.append(value)
+
+    for option in soup.select("select[name*='pa_color'] option, select[id*='pa_color'] option"):
+        value = _squash_ws(_text(option))
+        if value and value.lower() not in {"elige una opción", "choose an option", "elegí"}:
+            colors.append(value)
+
     return _dedupe(colors)
 
 

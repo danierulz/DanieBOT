@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title_admin }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/js/toast.js"></script>
+  <script src="/static/js/authSession.js"></script>
+  <script src="/static/js/adminProductFields.js"></script>
   <script>
     const COLOR_LABELS = {
       empty: {{ admin_colors_empty_catalog | tojson }},
@@ -66,8 +69,9 @@
       <form id="producto-form" class="space-y-4">
         <div>
           <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
-          <input id="item_title" name="item_title" type="text" required
+          <input id="item_title" name="item_title" type="text" required maxlength="255"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          <p id="item-title-count" class="mt-1 text-xs text-gray-500 text-right">0 / 255</p>
         </div>
         <div>
           <label for="price" class="block text-sm font-medium text-gray-700">{{ label_price }}</label>
@@ -76,8 +80,12 @@
         </div>
         <div>
           <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
-          <textarea id="description" name="description" rows="3"
+          <textarea id="description" name="description" rows="3" maxlength="255"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
+          <p class="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500">
+            <span>{{ admin_description_limit_help }}</span>
+            <span id="description-count">0 / 255</span>
+          </p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -426,15 +434,18 @@
     tabBtnBanners.addEventListener('click', () => showTab('banners'));
     tabBtnOrders.addEventListener('click', () => showTab('orders'));
 
-    function authHeaders() {
-      const token = localStorage.getItem('token');
-      return token ? { Authorization: 'Bearer ' + token } : {};
+    function showApiError(message, fallback) {
+      if (typeof showToast === 'function') {
+        showToast(message || fallback || LABELS.msgError, { type: 'error' });
+      } else {
+        document.getElementById('msg').textContent = message || fallback || LABELS.msgError;
+      }
     }
 
     async function patchOrderStatus(orderId, status) {
-      const res = await fetch('/api/admin/pedidos/' + orderId, {
+      const res = await authFetch('/api/admin/pedidos/' + orderId, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
@@ -453,11 +464,7 @@
       try {
         let url = '/api/admin/pedidos?limit=100';
         if (filter) url += '&status=' + encodeURIComponent(filter);
-        const res = await fetch(url, { headers: authHeaders() });
-        if (res.status === 401 || res.status === 403) {
-          window.location.href = '/login';
-          return;
-        }
+        const res = await authFetch(url);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const items = data.items || [];
@@ -501,7 +508,7 @@
               document.getElementById('msg').textContent = LABELS.ordersMsgUpdated;
               loadOrdersList();
             } catch (e) {
-              alert(e.message || LABELS.ordersLoadErr);
+              showApiError(e.message, LABELS.ordersLoadErr);
             } finally {
               btn.disabled = false;
             }
@@ -622,17 +629,6 @@
       return u.toString();
     }
 
-    function listAuthHeaders() {
-      const token = localStorage.getItem('token');
-      return token ? { 'Authorization': 'Bearer ' + token } : {};
-    }
-
-    function bindListRowActions(tbody) {
-      tbody.querySelectorAll('[data-del]').forEach(btn => {
-        btn.addEventListener('click', () => openDeleteModal(Number(btn.getAttribute('data-del'))));
-      });
-    }
-
     async function loadList(requestedPage) {
       const page = requestedPage != null ? requestedPage : listPage;
       const statusEl = document.getElementById('list-status');
@@ -645,15 +641,8 @@
       statusEl.textContent = '';
       tbody.innerHTML = '';
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        statusEl.textContent = 'No estás logueado como admin.';
-        nav.classList.add('hidden');
-        return;
-      }
-
       try {
-        const r = await fetch(buildListUrl(page), { headers: listAuthHeaders() });
+        const r = await authFetch(buildListUrl(page));
         if (!r.ok) throw new Error('fail');
         let data = await r.json();
 
@@ -713,6 +702,12 @@
       }
     }
 
+    function bindListRowActions(tbody) {
+      tbody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal(Number(btn.getAttribute('data-del'))));
+      });
+    }
+
     function runSearch() {
       listSearch = document.getElementById('admin-search-input').value;
       listPage = 1;
@@ -759,36 +754,30 @@
 
     document.getElementById('modal-delete-confirm').addEventListener('click', async () => {
       if (deleteTargetId == null) return;
-      const token = localStorage.getItem('token');
-      if (!token) return;
       try {
-        const r = await fetch('/api/productos/' + deleteTargetId, {
+        const r = await authFetch('/api/productos/' + deleteTargetId, {
           method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + token },
         });
         closeDeleteModal();
         if (!r.ok) {
-          document.getElementById('msg').textContent = LABELS.msgError;
+          showApiError(null, LABELS.msgError);
           return;
         }
         document.getElementById('msg').textContent = LABELS.msgDeleted;
         loadList();
       } catch (e) {
         closeDeleteModal();
-        document.getElementById('msg').textContent = LABELS.msgError;
+        if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
+          showApiError(null, LABELS.msgError);
+        }
       }
     });
 
     document.getElementById('provider-import-btn').addEventListener('click', async () => {
-      const token = localStorage.getItem('token');
       const msg = document.getElementById('msg');
       const input = document.getElementById('provider-url');
       const btn = document.getElementById('provider-import-btn');
       const url = (input.value || '').trim();
-      if (!token) {
-        msg.textContent = 'No estás logueado como admin.';
-        return;
-      }
       if (!url) {
         input.focus();
         return;
@@ -797,12 +786,9 @@
       btn.textContent = LABELS.providerImporting;
       msg.textContent = LABELS.providerImporting;
       try {
-        const resp = await fetch('/api/proveedores/importar', {
+        const resp = await authFetch('/api/proveedores/importar', {
           method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url,
             status: document.getElementById('provider-status-active').checked,
@@ -810,7 +796,7 @@
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.ok) {
-          msg.textContent = data.detail || LABELS.msgError;
+          showApiError(data.detail, LABELS.msgError);
           return;
         }
         const providerLabel = data.provider ? ` (${data.provider})` : '';
@@ -820,9 +806,15 @@
           msg.textContent = LABELS.providerExists + providerLabel;
         }
         input.value = '';
+        if (data.created && data.id) {
+          window.location.href = '/admin-panel/edit/' + data.id;
+          return;
+        }
         showTab('list');
       } catch (err) {
-        msg.textContent = LABELS.msgError;
+        if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
+          showApiError(err.message, LABELS.msgError);
+        }
       } finally {
         btn.disabled = false;
         btn.textContent = LABELS.providerBtn;
@@ -831,38 +823,38 @@
 
     document.getElementById('producto-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const token = localStorage.getItem('token');
-      const msg = document.getElementById('msg');
-      if (!token) {
-        msg.textContent = 'No estás logueado como admin.';
+      if (typeof validateProductFieldLimits === 'function' && !validateProductFieldLimits()) {
         return;
       }
+      const msg = document.getElementById('msg');
       const form = document.getElementById('producto-form');
       const formData = new FormData(form);
       formData.append('variants_json', collectVariants());
       formData.append('colors_json', JSON.stringify(collectProductColorIds()));
 
       try {
-        const resp = await fetch('/api/productos', {
+        const resp = await authFetch('/api/productos', {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token },
           body: formData,
         });
         if (!resp.ok) {
-          msg.textContent = LABELS.msgError;
+          const data = await resp.json().catch(() => ({}));
+          showApiError(data.detail, LABELS.msgError);
+          return;
+        }
+        const data = await resp.json().catch(() => ({}));
+        if (data.id) {
+          window.location.href = '/admin-panel/edit/' + data.id;
           return;
         }
         msg.textContent = LABELS.msgSaved;
         clearFormAfterSuccess();
       } catch (err) {
-        msg.textContent = LABELS.msgError;
+        if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
+          showApiError(err.message, LABELS.msgError);
+        }
       }
     });
-
-    function bannerAuthHeaders() {
-      const token = localStorage.getItem('token');
-      return token ? { 'Authorization': 'Bearer ' + token } : {};
-    }
 
     function getBannerLinkValue() {
       const preset = document.getElementById('banner-link-preset').value;
@@ -913,7 +905,7 @@
       const status = document.getElementById('banners-status');
       tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-4 text-gray-500">Cargando…</td></tr>';
       try {
-        const r = await fetch('/api/admin/banners', { headers: bannerAuthHeaders() });
+        const r = await authFetch('/api/admin/banners');
         if (!r.ok) throw new Error('fail');
         const rows = await r.json();
         if (!rows.length) {
@@ -974,16 +966,17 @@
       if (!confirm(LABELS.bannerDeleteConfirm)) return;
       const status = document.getElementById('banners-status');
       try {
-        const r = await fetch('/api/admin/banners/' + id, {
+        const r = await authFetch('/api/admin/banners/' + id, {
           method: 'DELETE',
-          headers: bannerAuthHeaders(),
         });
         if (!r.ok) throw new Error('fail');
         status.textContent = LABELS.bannerMsgDeleted;
         resetBannerForm();
         loadBannersList();
       } catch (e) {
-        status.textContent = LABELS.msgError;
+        if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
+          status.textContent = LABELS.msgError;
+        }
       }
     }
 
@@ -991,12 +984,7 @@
 
     document.getElementById('banner-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const token = localStorage.getItem('token');
       const status = document.getElementById('banners-status');
-      if (!token) {
-        status.textContent = 'No estás logueado como admin.';
-        return;
-      }
       const id = document.getElementById('banner-id').value;
       const fd = new FormData();
       const urlVal = (document.getElementById('banner-image-url').value || '').trim();
@@ -1015,30 +1003,29 @@
       const method = id ? 'PUT' : 'POST';
       const path = id ? '/api/admin/banners/' + id : '/api/admin/banners';
       try {
-        const r = await fetch(path, {
+        const r = await authFetch(path, {
           method,
-          headers: bannerAuthHeaders(),
           body: fd,
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-          status.textContent = data.detail || LABELS.msgError;
+          showApiError(data.detail, LABELS.msgError);
           return;
         }
         status.textContent = id ? LABELS.bannerMsgUpdated : LABELS.bannerMsgSaved;
         resetBannerForm();
         loadBannersList();
       } catch (err) {
-        status.textContent = LABELS.msgError;
+        if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
+          showApiError(err.message, LABELS.msgError);
+        }
       }
     });
 
     window.addEventListener('DOMContentLoaded', async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!ensureValidSession()) return;
+      await maybeRefreshToken();
+      if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
       await initVariantsTable();
       if (typeof initColorsUi === 'function') await initColorsUi();
       loadCategoriesSelect('category_id');

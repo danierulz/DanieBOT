@@ -176,8 +176,27 @@
   const btnLoginMobile = document.getElementById("btn-login-mobile");
   const btnAdminMobile = document.getElementById("btn-admin-mobile");
 
+  function isStoredTokenExpired(token) {
+    if (!token) return true;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const payload = JSON.parse(atob(padded));
+      if (!payload.exp) return true;
+      return payload.exp <= Math.floor(Date.now() / 1000);
+    } catch (e) {
+      return true;
+    }
+  }
+
   function checkAuth() {
-    const token = localStorage.getItem("token");
+    let token = localStorage.getItem("token");
+    if (token && isStoredTokenExpired(token)) {
+      localStorage.removeItem("token");
+      token = null;
+    }
     if (token) {
       btnAdmin && btnAdmin.classList.remove("hidden");
       btnAdminMobile && btnAdminMobile.classList.remove("hidden");

@@ -74,13 +74,6 @@ _STORES = [
         "note": "Coordinar el horario de retiro con confirmación previa.",
         "maps_url": "https://www.google.com/maps/search/?api=1&q=Coronel+Arias+585,+Jose+C.+Paz,+Buenos+Aires",
     },
-    {
-        "name": "Ingeniero Pablo Nogués",
-        "address": "Boulogne Sur Mer 2779, Ingeniero Pablo Nogués, Buenos Aires",
-        "hours": "Lunes a sábado · 9:00 a 16:00",
-        "note": "Coordinar el horario de retiro con confirmación previa.",
-        "maps_url": "https://www.google.com/maps/search/?api=1&q=Boulogne+Sur+Mer+2779,+Ingeniero+Pablo+Nogues,+Buenos+Aires",
-    },
 ]
 
 # Categorías del menú Productos (slugs alineados con seed en init_db)
@@ -281,6 +274,8 @@ def get_template_context() -> dict:
         "admin_colors_new_label": "Color nuevo",
         "admin_colors_new_placeholder": "Ej. Verde musgo",
         "admin_colors_btn_add": "Agregar color",
+        "admin_colors_pick_label": "Tono del color",
+        "admin_colors_presets_label": "Tonos rápidos",
         "admin_colors_loading": "Cargando colores…",
         "admin_colors_empty_catalog": "Todavía no hay colores en el catálogo.",
         "admin_colors_msg_added": "Color agregado al catálogo.",
@@ -306,6 +301,7 @@ def get_template_context() -> dict:
         "label_title": "Título",
         "label_price": "Precio",
         "label_description": "Descripción",
+        "admin_description_limit_help": "Máximo 255 caracteres.",
         "admin_btn_upload": "Subir fotos",
         "login_heading": "Login Admin",
         "label_username": "Usuario",

@@ -55,6 +55,40 @@ SOCHIC_HTML = """
 """
 
 
+SOCHIC_GRID_HTML = """
+<html>
+  <head>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": "Campera Friza Young Leaders",
+        "offers": {"@type": "Offer", "price": "29000"}
+      }
+    </script>
+  </head>
+  <body>
+    <h1 class="product_title entry-title">Campera Friza Young Leaders</h1>
+    <div class="summary entry-summary">
+      <p class="price"><span class="amount"><bdi>$29.000</bdi></span></p>
+    </div>
+    <div class="wc-bulk-variations-table-wrapper">
+      <div class="wcbvp-row" role="row">
+        <div class="wcbvp-header wcbvp-row-header" data-label="UVA" role="rowheader">
+          <div class="wcbvp-header-block"><span class="UVA">UVA</span></div>
+        </div>
+      </div>
+      <div class="wcbvp-row" role="row">
+        <div class="wcbvp-header wcbvp-row-header" data-label="Celeste" role="rowheader">
+          <div class="wcbvp-header-block"><span class="Celeste">Celeste</span></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+
+
 class SoChicImporterTest(unittest.TestCase):
     def test_parse_product_extracts_catalog_fields(self):
         product = parse_sochic_product(
@@ -83,6 +117,14 @@ class SoChicImporterTest(unittest.TestCase):
     def test_rejects_non_sochic_product_urls(self):
         with self.assertRaises(ProviderImportError):
             parse_sochic_product(SOCHIC_HTML, "https://example.com/product/x/")
+
+    def test_parse_product_extracts_colors_from_bulk_variations_grid(self):
+        product = parse_sochic_product(
+            SOCHIC_GRID_HTML,
+            "https://sochic.com.ar/product/campera-friza-young-leaders/",
+        )
+        self.assertEqual(product.colors, ["UVA", "Celeste"])
+        self.assertEqual(product.price, 29000)
 
 
 if __name__ == "__main__":
