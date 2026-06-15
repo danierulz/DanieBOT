@@ -8,6 +8,13 @@
     return d.innerHTML;
   }
 
+  function getCategorySlugFromForm() {
+    const sel = document.getElementById('category_id');
+    if (!sel || !sel.value) return '';
+    const opt = sel.options[sel.selectedIndex];
+    return opt ? opt.getAttribute('data-slug') || '' : '';
+  }
+
   function getSelectedProductColors() {
     if (typeof collectProductColorIds === 'function') {
       const ids = collectProductColorIds();
@@ -154,15 +161,21 @@
       .join('');
   }
 
+  async function loadCatalogSizes(categorySlug) {
+    const slug = (categorySlug || '').trim();
+    const url = slug ? '/api/sizes?category_slug=' + encodeURIComponent(slug) : '/api/sizes';
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('fail');
+    catalogSizes = await r.json();
+  }
+
   async function initVariantsTable() {
     const tbody = document.getElementById('variants-table-body');
     if (!tbody) return;
     tbody.innerHTML =
       '<tr><td colspan="5" class="px-2 py-3 text-gray-500 text-sm">Cargando talles…</td></tr>';
     try {
-      const r = await fetch('/api/sizes');
-      if (!r.ok) throw new Error('fail');
-      catalogSizes = await r.json();
+      await loadCatalogSizes(getCategorySlugFromForm());
       renderVariantRows();
     } catch (e) {
       const msg =
@@ -218,9 +231,30 @@
     renderVariantRows(preserved);
   }
 
+  async function refreshVariantsTableForCategory() {
+    const preserved = readCurrentRows();
+    try {
+      await loadCatalogSizes(getCategorySlugFromForm());
+      renderVariantRows(preserved);
+    } catch (e) {
+      /* keep current table on transient errors */
+    }
+  }
+
+  function bindCategoryForVariants() {
+    const sel = document.getElementById('category_id');
+    if (!sel || sel.dataset.variantsBound === '1') return;
+    sel.dataset.variantsBound = '1';
+    sel.addEventListener('change', () => {
+      refreshVariantsTableForCategory();
+    });
+  }
+
   window.initVariantsTable = initVariantsTable;
   window.resetVariantRows = resetVariantRows;
   window.collectVariants = collectVariants;
   window.fillVariantsFromProduct = fillVariantsFromProduct;
   window.refreshVariantsTableForColors = refreshVariantsTableForColors;
+  window.refreshVariantsTableForCategory = refreshVariantsTableForCategory;
+  window.bindCategoryForVariants = bindCategoryForVariants;
 })();

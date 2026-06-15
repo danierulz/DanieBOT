@@ -165,8 +165,9 @@
         const cats = await r.json();
         const current = sel.value;
         sel.innerHTML = '<option value="">{{ admin_label_category_none }}</option>' +
-          cats.map(c => `<option value="${c.category_id}">${escapeHtml(c.name)}</option>`).join('');
+          cats.map(c => `<option value="${c.category_id}" data-slug="${escapeHtml(c.slug || '')}">${escapeHtml(c.name)}</option>`).join('');
         if (current) sel.value = current;
+        if (typeof bindCategoryForVariants === 'function') bindCategoryForVariants();
       } catch (e) {}
     }
 
@@ -213,6 +214,9 @@
       dc.value = p.descuento_porcentaje ? String(p.descuento_porcentaje) : '';
       const statusCb = document.getElementById('status');
       if (statusCb) statusCb.checked = !!p.activo;
+      if (typeof refreshVariantsTableForCategory === 'function') {
+        await refreshVariantsTableForCategory();
+      }
       if (typeof setSelectedProductColorIds === 'function') {
         setSelectedProductColorIds((p.colores || []).map((c) => c.color_id));
       }
@@ -270,9 +274,10 @@
       if (!ensureValidSession()) return;
       await maybeRefreshToken();
       if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
+      await loadCategoriesSelect();
+      if (typeof bindCategoryForVariants === 'function') bindCategoryForVariants();
       await initVariantsTable();
       await initColorsUi();
-      await loadCategoriesSelect();
       bindSaleToggle();
       await loadProduct();
     });

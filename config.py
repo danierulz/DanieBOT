@@ -98,6 +98,42 @@ _NAV_PRODUCTOS_CHILDREN = [
     ],
 ]
 
+# Grupos de talles por tipo de prenda
+SIZE_GROUPS: dict[str, list[str]] = {
+    "letter": ["XS", "S", "M", "L", "XL", "XXL", "UNICO"],
+    "numeric": ["34", "36", "38", "40", "42"],
+}
+
+CATEGORY_SIZE_GROUP: dict[str, str] = {
+    "jeans": "numeric",
+    "pantalones": "numeric",
+}
+
+DEFAULT_SIZE_GROUP = "letter"
+
+_NUMERIC_SIZE_SEED = [
+    ("34", "34", 75),
+    ("36", "36", 76),
+    ("38", "38", 77),
+    ("40", "40", 78),
+    ("42", "42", 79),
+]
+
+
+def get_size_group_for_category(category_slug: str | None) -> str:
+    if not category_slug:
+        return DEFAULT_SIZE_GROUP
+    return CATEGORY_SIZE_GROUP.get(str(category_slug).strip().lower(), DEFAULT_SIZE_GROUP)
+
+
+def get_size_codes_for_category(category_slug: str | None) -> list[str]:
+    group = get_size_group_for_category(category_slug)
+    return list(SIZE_GROUPS.get(group, SIZE_GROUPS[DEFAULT_SIZE_GROUP]))
+
+
+def get_numeric_size_seed() -> list[tuple[str, str, int]]:
+    return list(_NUMERIC_SIZE_SEED)
+
 # Menú principal
 _NAV_LINKS = [
     {"label": "Inicio", "href": "/"},
@@ -311,6 +347,10 @@ def get_template_context() -> dict:
         "label_badge_sale": "SALE",
         "detail_select_size": "Elegí un talle",
         "detail_availability": "Disponibilidad",
+        "detail_summary_colors": "Colores",
+        "detail_summary_sizes": "Talles",
+        "detail_unavailable_in_color": "No disponible en este color",
+        "detail_unavailable_in_size": "No disponible en este talle",
         "detail_immediate": "Retiro en el local",
         "detail_encargo": "Pedido / próximos días",
         "detail_add_requires_size": "Seleccioná un talle antes de agregar al carrito.",

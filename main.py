@@ -41,6 +41,7 @@ from sqlalchemy import or_
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context
+from config import get_size_codes_for_category
 from services.colors import (
     color_to_public,
     create_color,
@@ -242,8 +243,6 @@ def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
             }
         )
     return out
-    out.sort(key=lambda x: (x["size_label"], x["size_code"]))
-    return out
 
 
 # --- Rutas de FastAPI ---
@@ -415,8 +414,14 @@ def obtener_producto(
 
 
 @app.get("/api/sizes")
-def listar_talles(db: Session = Depends(get_db_fastApi)):
+def listar_talles(
+    category_slug: Optional[str] = Query(None),
+    db: Session = Depends(get_db_fastApi),
+):
     rows = db.query(Size).order_by(Size.sort_order.asc(), Size.code.asc()).all()
+    if category_slug is not None and str(category_slug).strip():
+        allowed = set(get_size_codes_for_category(category_slug))
+        rows = [s for s in rows if s.code in allowed]
     return [{"size_id": s.size_id, "code": s.code, "label": s.label} for s in rows]
 
 

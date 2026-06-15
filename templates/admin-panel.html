@@ -573,8 +573,9 @@
         const cats = await r.json();
         const current = sel.value;
         sel.innerHTML = '<option value="">{{ admin_label_category_none }}</option>' +
-          cats.map(c => `<option value="${c.category_id}">${escapeHtml(c.name)}</option>`).join('');
+          cats.map(c => `<option value="${c.category_id}" data-slug="${escapeHtml(c.slug || '')}">${escapeHtml(c.name)}</option>`).join('');
         if (current) sel.value = current;
+        if (typeof bindCategoryForVariants === 'function') bindCategoryForVariants();
       } catch (e) {}
     }
 
@@ -1023,10 +1024,11 @@
       if (!ensureValidSession()) return;
       await maybeRefreshToken();
       if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
+      await loadCategoriesSelect('category_id');
+      if (typeof bindCategoryForVariants === 'function') bindCategoryForVariants();
       await initVariantsTable();
       if (typeof initColorsUi === 'function') await initColorsUi();
       if (typeof initColorCatalogTab === 'function') initColorCatalogTab();
-      loadCategoriesSelect('category_id');
       bindSaleToggle();
       resetBannerForm();
       const params = new URLSearchParams(window.location.search);

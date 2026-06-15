@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 load_dotenv()
 
 from database.db_url import build_database_url, get_sqlalchemy_connect_args  # noqa: E402
+from config import get_numeric_size_seed  # noqa: E402
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -60,8 +61,32 @@ def initialize_database() -> None:
 def seed_reference_data() -> None:
     """Talles, colores y categorías base (idempotente). No altera el esquema."""
     _seed_sizes_if_empty()
+    _ensure_missing_sizes(get_numeric_size_seed())
     _seed_colors_if_empty()
     _seed_categories_if_empty()
+
+
+def _ensure_missing_sizes(defaults: list[tuple[str, str, int]]) -> None:
+    from database.models.Size import Size
+
+    if not defaults:
+        return
+    session = SessionLocal()
+    try:
+        existing = {row[0] for row in session.query(Size.code).all()}
+        added = False
+        for code, label, order in defaults:
+            if code not in existing:
+                session.add(Size(code=code, label=label, sort_order=order))
+                added = True
+        if added:
+            session.commit()
+            print("Talles adicionales insertados (sizes).")
+    except Exception as e:
+        session.rollback()
+        print(f"No se pudieron insertar talles adicionales: {e}")
+    finally:
+        session.close()
 
 
 def _seed_sizes_if_empty() -> None:

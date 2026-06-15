@@ -42,6 +42,8 @@
         </div>
         <p id="precio-savings" class="hidden text-sm text-green-700 font-semibold mt-1"></p>
 
+        <div id="variant-availability-summary" class="hidden mt-5 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700"></div>
+
         <div id="color-section" class="mt-6 hidden">
           <p class="text-sm font-semibold text-gray-800">{{ detail_select_color }}</p>
           <div id="color-chips" class="mt-2 flex flex-wrap gap-2"></div>
@@ -98,6 +100,10 @@
     const BTN_ADD_ENCARGO_DAYS = {{ btn_add_cart_encargo_days | tojson }};
     const BTN_ADD_ENCARGO_NO_DAYS = {{ btn_add_cart_encargo_no_days | tojson }};
     const BADGE_SALE = {{ label_badge_sale | tojson }};
+    const LABEL_SUMMARY_COLORS = {{ detail_summary_colors | tojson }};
+    const LABEL_SUMMARY_SIZES = {{ detail_summary_sizes | tojson }};
+    const LABEL_UNAVAILABLE_IN_COLOR = {{ detail_unavailable_in_color | tojson }};
+    const LABEL_UNAVAILABLE_IN_SIZE = {{ detail_unavailable_in_size | tojson }};
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
     function formatPrecio(n) { return moneyFmt.format(Number(n) || 0); }
@@ -132,7 +138,7 @@
       return variantIsAvailable(findVariantForCombo(colorId, sizeCode));
     }
 
-    function uniqueSizes() {
+    function productSizes() {
       const map = new Map();
       allVariants().forEach((v) => {
         if (!map.has(v.size_code)) {
@@ -140,6 +146,26 @@
         }
       });
       return Array.from(map.values());
+    }
+
+    function productColors() {
+      return (productActual && productActual.colores) || [];
+    }
+
+    function availableSizes() {
+      const hasColors = productColors().length > 0;
+      return productSizes().filter((s) => {
+        if (hasColors) {
+          return productColors().some((c) => comboAvailable(c.color_id, s.code));
+        }
+        return comboAvailable(null, s.code);
+      });
+    }
+
+    function availableColors() {
+      return productColors().filter((c) =>
+        productSizes().some((s) => comboAvailable(c.color_id, s.code))
+      );
     }
 
     function syncSelectedVariant() {
@@ -156,8 +182,32 @@
       if (v) variantMap[v.variant_id] = v;
     }
 
-    function oosBadgeHtml() {
-      return '<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-xs font-bold leading-4 text-center pointer-events-none" aria-hidden="true">×</span>';
+    function unavailableOverlayHtml() {
+      return '<span class="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">' +
+        '<span class="block w-[140%] h-px bg-gray-400/90 rotate-45"></span></span>';
+    }
+
+    function renderAvailabilitySummary() {
+      const el = document.getElementById('variant-availability-summary');
+      if (!el) return;
+      const colors = availableColors();
+      const sizes = availableSizes();
+      if (!colors.length && !sizes.length) {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        return;
+      }
+      const parts = [];
+      if (colors.length) {
+        parts.push('<span><strong>' + LABEL_SUMMARY_COLORS + ':</strong> ' +
+          colors.map((c) => c.label).join(', ') + '</span>');
+      }
+      if (sizes.length) {
+        parts.push('<span><strong>' + LABEL_SUMMARY_SIZES + ':</strong> ' +
+          sizes.map((s) => s.label).join(', ') + '</span>');
+      }
+      el.innerHTML = parts.join('<span class="mx-2 text-gray-300 hidden sm:inline">·</span>');
+      el.classList.remove('hidden');
     }
 
     function showVariantError(msg) {
@@ -201,7 +251,7 @@
     function renderColorChips() {
       const section = document.getElementById('color-section');
       const cont = document.getElementById('color-chips');
-      productColores = (productActual && productActual.colores) || [];
+      productColores = productColors();
       if (!section || !cont) return;
 
       if (!productColores.length) {
@@ -216,27 +266,26 @@
         selectedColorId = productColores[0].color_id;
       }
 
-      cont.innerHTML = productColores.map((c) => {
+      const colorsToShow = selectedSizeCode ? productColores : availableColors();
+
+      cont.innerHTML = colorsToShow.map((c) => {
         const sel = selectedColorId === c.color_id;
-        let avail;
-        if (selectedSizeCode) {
-          avail = comboAvailable(c.color_id, selectedSizeCode);
-        } else {
-          avail = uniqueSizes().some((s) => comboAvailable(c.color_id, s.code));
-        }
+        const avail = selectedSizeCode
+          ? comboAvailable(c.color_id, selectedSizeCode)
+          : productSizes().some((s) => comboAvailable(c.color_id, s.code));
         const cls = sel
           ? 'border-black ring-2 ring-black ring-offset-1'
-          : (avail ? 'border-gray-300 hover:border-black' : 'border-gray-200');
-        const oosCls = avail ? '' : 'opacity-50';
+          : (avail ? 'border-gray-300 hover:border-black' : 'border-gray-200 text-gray-500');
         const bg = c.hex || '#888888';
+        const title = avail
+          ? String(c.label || '')
+          : (selectedSizeCode ? LABEL_UNAVAILABLE_IN_SIZE : String(c.label || ''));
         const disabledAttr = avail ? '' : ' disabled aria-disabled="true"';
-        return `<button type="button" data-cid="${c.color_id}" title="${String(c.label || '').replace(/"/g, '&quot;')}"${disabledAttr}
-          class="relative inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition bg-white ${cls} ${oosCls}">
-          <span class="relative inline-flex shrink-0">
-            <span class="w-4 h-4 rounded-full border border-gray-300" style="background:${bg}"></span>
-            ${avail ? '' : oosBadgeHtml()}
-          </span>
-          ${c.label}
+        return `<button type="button" data-cid="${c.color_id}" title="${title.replace(/"/g, '&quot;')}"${disabledAttr}
+          class="relative overflow-hidden inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition bg-white ${cls}">
+          <span class="w-4 h-4 rounded-full border border-gray-300 shrink-0" style="background:${bg}"></span>
+          <span class="relative">${c.label}</span>
+          ${avail ? '' : unavailableOverlayHtml()}
         </button>`;
       }).join('');
 
@@ -244,17 +293,10 @@
         btn.addEventListener('click', () => {
           if (btn.disabled) return;
           selectedColorId = parseInt(btn.getAttribute('data-cid'), 10);
-          if (selectedSizeCode && !comboAvailable(selectedColorId, selectedSizeCode)) {
-            selectedSizeCode = null;
-          }
           syncSelectedVariant();
           renderColorChips();
           renderSizeChips();
-          const hint = document.getElementById('variant-hint');
-          if (hint && hint.classList.contains('text-red-800')) {
-            hint.classList.add('hidden');
-            hint.textContent = '';
-          }
+          clearVariantErrorHint();
           updateVariantHint();
           updateCtaState();
         });
@@ -264,28 +306,25 @@
     function renderSizeChips() {
       const cont = document.getElementById('size-chips');
       const empty = document.getElementById('size-empty');
-      const sizes = uniqueSizes();
-      if (!sizes.length) {
+      const sizesToShow = selectedColorId ? productSizes() : availableSizes();
+      if (!sizesToShow.length) {
         cont.innerHTML = '';
         empty.classList.remove('hidden');
         return;
       }
       empty.classList.add('hidden');
       const hasColors = productColores.length > 0;
-      cont.innerHTML = sizes.map((s) => {
-        let avail;
-        if (hasColors && selectedColorId) {
-          avail = comboAvailable(selectedColorId, s.code);
-        } else if (hasColors) {
-          avail = productColores.some((c) => comboAvailable(c.color_id, s.code));
-        } else {
-          avail = comboAvailable(null, s.code);
-        }
+      cont.innerHTML = sizesToShow.map((s) => {
+        const avail = hasColors && selectedColorId
+          ? comboAvailable(selectedColorId, s.code)
+          : (hasColors
+              ? productColores.some((c) => comboAvailable(c.color_id, s.code))
+              : comboAvailable(null, s.code));
         const isInmediato = avail && (findVariantForCombo(selectedColorId, s.code)?.qty_stock_local || 0) > 0;
         const sel = selectedSizeCode === s.code;
         let cls;
         if (!avail) {
-          cls = 'bg-white text-gray-400 border-gray-200 opacity-50 cursor-not-allowed';
+          cls = 'bg-white text-gray-500 border-gray-200 cursor-not-allowed';
         } else if (sel) {
           cls = 'bg-black text-white border-black';
         } else if (isInmediato) {
@@ -293,26 +332,36 @@
         } else {
           cls = 'bg-amber-50 text-amber-900 border-amber-200 hover:border-amber-500';
         }
+        const title = avail
+          ? s.label
+          : (selectedColorId ? LABEL_UNAVAILABLE_IN_COLOR : s.label);
         const disabledAttr = avail ? '' : ' disabled aria-disabled="true"';
-        return `<button type="button" data-size="${s.code}"${disabledAttr}
-          class="relative min-w-[3rem] min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition ${cls}">
-          ${s.label}${avail ? '' : '<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold leading-4 text-center" aria-hidden="true">×</span>'}
+        return `<button type="button" data-size="${s.code}" title="${String(title).replace(/"/g, '&quot;')}"${disabledAttr}
+          class="relative overflow-hidden min-w-[3rem] min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition ${cls}">
+          <span class="relative">${s.label}</span>
+          ${avail ? '' : unavailableOverlayHtml()}
         </button>`;
       }).join('');
       cont.querySelectorAll('button[data-size]').forEach((btn) => {
         btn.addEventListener('click', () => {
           if (btn.disabled) return;
           selectedSizeCode = btn.getAttribute('data-size');
-          if (selectedColorId && !comboAvailable(selectedColorId, selectedSizeCode)) {
-            selectedColorId = null;
-          }
           syncSelectedVariant();
           renderColorChips();
           renderSizeChips();
+          clearVariantErrorHint();
           updateVariantHint();
           updateCtaState();
         });
       });
+    }
+
+    function clearVariantErrorHint() {
+      const hint = document.getElementById('variant-hint');
+      if (hint && hint.classList.contains('text-red-800')) {
+        hint.classList.add('hidden');
+        hint.textContent = '';
+      }
     }
 
     function variantMode(v) {
@@ -444,6 +493,7 @@
         selectedSizeCode = null;
         selectedVariantId = null;
         selectedColorId = null;
+        renderAvailabilitySummary();
         renderSizeChips();
         renderColorChips();
         updateVariantHint();
