@@ -14,3 +14,4 @@ class Color(Base):
     hex = Column(String(7), nullable=True)
 
     product_links = relationship("ProductColor", back_populates="color", cascade="all, delete-orphan")
+    variants = relationship("ProductVariant", back_populates="color")

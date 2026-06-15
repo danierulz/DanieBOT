@@ -40,8 +40,26 @@ def fetch_sochic_product(url: str) -> ImportedProduct:
             },
         )
         response.raise_for_status()
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else None
+        body_snippet = ""
+        if exc.response is not None:
+            body_snippet = (exc.response.text or "")[:200].lower()
+        if status == 429 or "too many request" in body_snippet:
+            raise ProviderImportError(
+                "So Chic limitó las consultas (demasiados pedidos). "
+                "Esperá unos minutos e intentá de nuevo.",
+                code="rate_limit",
+            ) from exc
+        raise ProviderImportError(
+            f"No se pudo acceder a So Chic (HTTP {status}): {exc}",
+            code="http_error",
+        ) from exc
     except requests.RequestException as exc:
-        raise ProviderImportError(f"No se pudo acceder a So Chic: {exc}") from exc
+        raise ProviderImportError(
+            f"No se pudo acceder a So Chic: {exc}",
+            code="network_error",
+        ) from exc
     return parse_sochic_product(response.text, response.url)
 
 

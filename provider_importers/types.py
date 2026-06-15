@@ -5,6 +5,10 @@ from typing import Optional
 class ProviderImportError(ValueError):
     """Raised when a provider page cannot be imported safely."""
 
+    def __init__(self, message: str, *, code: str = "import_failed"):
+        super().__init__(message)
+        self.code = code
+
 
 @dataclass
 class ImportedProduct:

@@ -106,8 +106,59 @@
     let variantMap = {};
     let selectedVariantId = null;
     let selectedColorId = null;
+    let selectedSizeCode = null;
     let productColores = [];
     const product_id_from_template = "{{ product_id }}";
+
+    function allVariants() {
+      return (productActual && productActual.variantes) || [];
+    }
+
+    function variantIsAvailable(v) {
+      return v && ((v.qty_stock_local || 0) > 0 || !!v.encargo_habilitado);
+    }
+
+    function findVariantForCombo(colorId, sizeCode) {
+      const list = allVariants();
+      let v = list.find((x) => x.size_code === sizeCode && x.color_id === colorId);
+      if (v) return v;
+      if (colorId != null) {
+        v = list.find((x) => x.size_code === sizeCode && (x.color_id == null));
+      }
+      return v || null;
+    }
+
+    function comboAvailable(colorId, sizeCode) {
+      return variantIsAvailable(findVariantForCombo(colorId, sizeCode));
+    }
+
+    function uniqueSizes() {
+      const map = new Map();
+      allVariants().forEach((v) => {
+        if (!map.has(v.size_code)) {
+          map.set(v.size_code, { code: v.size_code, label: v.size_label });
+        }
+      });
+      return Array.from(map.values());
+    }
+
+    function syncSelectedVariant() {
+      if (!selectedSizeCode) {
+        selectedVariantId = null;
+        return;
+      }
+      if (productColores.length && !selectedColorId) {
+        selectedVariantId = null;
+        return;
+      }
+      const v = findVariantForCombo(selectedColorId, selectedSizeCode);
+      selectedVariantId = v && variantIsAvailable(v) ? v.variant_id : null;
+      if (v) variantMap[v.variant_id] = v;
+    }
+
+    function oosBadgeHtml() {
+      return '<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-xs font-bold leading-4 text-center pointer-events-none" aria-hidden="true">×</span>';
+    }
 
     function showVariantError(msg) {
       const hint = document.getElementById('variant-hint');
@@ -147,14 +198,6 @@
       }
     }
 
-    function variantIsAvailable(v) {
-      return (v.qty_stock_local || 0) > 0 || !!v.encargo_habilitado;
-    }
-
-    function variantMode(v) {
-      return (v.qty_stock_local || 0) > 0 ? 'inmediato' : 'encargo';
-    }
-
     function renderColorChips() {
       const section = document.getElementById('color-section');
       const cont = document.getElementById('color-chips');
@@ -169,32 +212,50 @@
       }
 
       section.classList.remove('hidden');
-      if (productColores.length === 1) {
+      if (productColores.length === 1 && !selectedColorId) {
         selectedColorId = productColores[0].color_id;
       }
 
       cont.innerHTML = productColores.map((c) => {
         const sel = selectedColorId === c.color_id;
+        let avail;
+        if (selectedSizeCode) {
+          avail = comboAvailable(c.color_id, selectedSizeCode);
+        } else {
+          avail = uniqueSizes().some((s) => comboAvailable(c.color_id, s.code));
+        }
         const cls = sel
           ? 'border-black ring-2 ring-black ring-offset-1'
-          : 'border-gray-300 hover:border-black';
+          : (avail ? 'border-gray-300 hover:border-black' : 'border-gray-200');
+        const oosCls = avail ? '' : 'opacity-50';
         const bg = c.hex || '#888888';
-        return `<button type="button" data-cid="${c.color_id}" title="${String(c.label || '').replace(/"/g, '&quot;')}"
-          class="inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition bg-white ${cls}">
-          <span class="w-4 h-4 rounded-full border border-gray-300 shrink-0" style="background:${bg}"></span>
+        const disabledAttr = avail ? '' : ' disabled aria-disabled="true"';
+        return `<button type="button" data-cid="${c.color_id}" title="${String(c.label || '').replace(/"/g, '&quot;')}"${disabledAttr}
+          class="relative inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition bg-white ${cls} ${oosCls}">
+          <span class="relative inline-flex shrink-0">
+            <span class="w-4 h-4 rounded-full border border-gray-300" style="background:${bg}"></span>
+            ${avail ? '' : oosBadgeHtml()}
+          </span>
           ${c.label}
         </button>`;
       }).join('');
 
       cont.querySelectorAll('button[data-cid]').forEach((btn) => {
         btn.addEventListener('click', () => {
+          if (btn.disabled) return;
           selectedColorId = parseInt(btn.getAttribute('data-cid'), 10);
+          if (selectedSizeCode && !comboAvailable(selectedColorId, selectedSizeCode)) {
+            selectedSizeCode = null;
+          }
+          syncSelectedVariant();
           renderColorChips();
+          renderSizeChips();
           const hint = document.getElementById('variant-hint');
           if (hint && hint.classList.contains('text-red-800')) {
             hint.classList.add('hidden');
             hint.textContent = '';
           }
+          updateVariantHint();
           updateCtaState();
         });
       });
@@ -203,33 +264,59 @@
     function renderSizeChips() {
       const cont = document.getElementById('size-chips');
       const empty = document.getElementById('size-empty');
-      const variantes = (productActual.variantes || []).filter(variantIsAvailable);
-      if (!variantes.length) {
+      const sizes = uniqueSizes();
+      if (!sizes.length) {
         cont.innerHTML = '';
         empty.classList.remove('hidden');
         return;
       }
       empty.classList.add('hidden');
-      cont.innerHTML = variantes.map(v => {
-        const isInmediato = (v.qty_stock_local || 0) > 0;
-        const cls = selectedVariantId === v.variant_id
-          ? 'bg-black text-white border-black'
-          : (isInmediato
-              ? 'bg-white text-gray-900 border-gray-300 hover:border-black'
-              : 'bg-amber-50 text-amber-900 border-amber-200 hover:border-amber-500');
-        return `<button type="button" data-vid="${v.variant_id}"
-          class="min-w-[3rem] min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition ${cls}">
-          ${v.size_label}
+      const hasColors = productColores.length > 0;
+      cont.innerHTML = sizes.map((s) => {
+        let avail;
+        if (hasColors && selectedColorId) {
+          avail = comboAvailable(selectedColorId, s.code);
+        } else if (hasColors) {
+          avail = productColores.some((c) => comboAvailable(c.color_id, s.code));
+        } else {
+          avail = comboAvailable(null, s.code);
+        }
+        const isInmediato = avail && (findVariantForCombo(selectedColorId, s.code)?.qty_stock_local || 0) > 0;
+        const sel = selectedSizeCode === s.code;
+        let cls;
+        if (!avail) {
+          cls = 'bg-white text-gray-400 border-gray-200 opacity-50 cursor-not-allowed';
+        } else if (sel) {
+          cls = 'bg-black text-white border-black';
+        } else if (isInmediato) {
+          cls = 'bg-white text-gray-900 border-gray-300 hover:border-black';
+        } else {
+          cls = 'bg-amber-50 text-amber-900 border-amber-200 hover:border-amber-500';
+        }
+        const disabledAttr = avail ? '' : ' disabled aria-disabled="true"';
+        return `<button type="button" data-size="${s.code}"${disabledAttr}
+          class="relative min-w-[3rem] min-h-[44px] px-3 py-2 rounded-full border-2 text-sm font-semibold transition ${cls}">
+          ${s.label}${avail ? '' : '<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold leading-4 text-center" aria-hidden="true">×</span>'}
         </button>`;
       }).join('');
-      cont.querySelectorAll('button[data-vid]').forEach(btn => {
+      cont.querySelectorAll('button[data-size]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          selectedVariantId = parseInt(btn.getAttribute('data-vid'), 10);
+          if (btn.disabled) return;
+          selectedSizeCode = btn.getAttribute('data-size');
+          if (selectedColorId && !comboAvailable(selectedColorId, selectedSizeCode)) {
+            selectedColorId = null;
+          }
+          syncSelectedVariant();
+          renderColorChips();
           renderSizeChips();
           updateVariantHint();
           updateCtaState();
         });
       });
+    }
+
+    function variantMode(v) {
+      return (v.qty_stock_local || 0) > 0 ? 'inmediato' : 'encargo';
     }
 
     function updateVariantHint() {
@@ -354,6 +441,9 @@
 
         variantMap = {};
         (p.variantes || []).forEach(v => { variantMap[v.variant_id] = v; });
+        selectedSizeCode = null;
+        selectedVariantId = null;
+        selectedColorId = null;
         renderSizeChips();
         renderColorChips();
         updateVariantHint();

@@ -12,10 +12,10 @@
   <script>
     const COLOR_LABELS = {
       empty: {{ admin_colors_empty_catalog | tojson }},
-      msgAdded: {{ admin_colors_msg_added | tojson }},
     };
   </script>
   <script src="/static/js/adminColors.js"></script>
+  <script src="/static/js/adminProductVariants.js"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -140,6 +140,14 @@
       msgError: {{ admin_msg_error | tojson }},
       msgLoadErr: {{ admin_list_load_error | tojson }},
     };
+    const VARIANT_LABELS = {
+      colSize: {{ admin_variants_col_size | tojson }},
+      colColor: {{ admin_variants_col_color | tojson }},
+      colStock: {{ admin_variants_col_stock | tojson }},
+      colEncargo: {{ admin_variants_col_encargo | tojson }},
+      colDays: {{ admin_variants_col_days | tojson }},
+      loadError: {{ admin_list_load_error | tojson }},
+    };
 
     let saveStayOnPage = false;
 
@@ -147,67 +155,6 @@
       const d = document.createElement('div');
       d.textContent = s;
       return d.innerHTML;
-    }
-
-    function resetVariantRows() {
-      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
-        const q = row.querySelector('.pv-qty');
-        const e = row.querySelector('.pv-encargo');
-        const d = row.querySelector('.pv-dias');
-        if (q) q.value = '0';
-        if (e) e.checked = false;
-        if (d) d.value = '';
-      });
-    }
-
-    function collectVariants() {
-      const out = [];
-      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
-        const code = row.getAttribute('data-size-code');
-        const qty = parseInt(row.querySelector('.pv-qty').value, 10) || 0;
-        const enc = row.querySelector('.pv-encargo').checked;
-        const diasRaw = (row.querySelector('.pv-dias').value || '').trim();
-        if (qty === 0 && !enc) return;
-        const o = { size_code: code, qty_stock_local: qty, encargo_habilitado: enc };
-        if (diasRaw) o.dias_encargo_estimados = parseInt(diasRaw, 10);
-        out.push(o);
-      });
-      return JSON.stringify(out);
-    }
-
-    function fillVariantsFromProduct(p) {
-      resetVariantRows();
-      if (!p.variantes || !p.variantes.length) return;
-      const byCode = {};
-      p.variantes.forEach(v => { byCode[v.size_code] = v; });
-      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
-        const code = row.getAttribute('data-size-code');
-        const v = byCode[code];
-        if (!v) return;
-        row.querySelector('.pv-qty').value = String(v.qty_stock_local ?? 0);
-        row.querySelector('.pv-encargo').checked = !!v.encargo_habilitado;
-        row.querySelector('.pv-dias').value = v.dias_encargo_estimados != null ? String(v.dias_encargo_estimados) : '';
-      });
-    }
-
-    async function initVariantsTable() {
-      const tbody = document.getElementById('variants-table-body');
-      tbody.innerHTML = '<tr><td colspan="4" class="px-2 py-3 text-gray-500 text-sm">Cargando talles…</td></tr>';
-      try {
-        const r = await fetch('/api/sizes');
-        if (!r.ok) throw new Error('fail');
-        const sizes = await r.json();
-        tbody.innerHTML = sizes.map(s => `
-          <tr data-size-code="${escapeHtml(s.code)}" class="border-t border-gray-100">
-            <td class="px-2 py-2 font-medium">${escapeHtml(s.label)} <span class="text-gray-400 text-xs">(${escapeHtml(s.code)})</span></td>
-            <td class="px-2 py-2"><input type="number" min="0" step="1" value="0" class="pv-qty w-24 sm:w-28 px-2 py-2 border rounded-md"></td>
-            <td class="px-2 py-2 text-center"><input type="checkbox" class="pv-encargo w-4 h-4 accent-black"></td>
-            <td class="px-2 py-2"><input type="number" min="1" step="1" placeholder="—" class="pv-dias w-20 px-2 py-2 border rounded-md"></td>
-          </tr>
-        `).join('');
-      } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-red-600 px-2 py-2 text-sm">' + LABELS.msgLoadErr + '</td></tr>';
-      }
     }
 
     async function loadCategoriesSelect() {
@@ -235,10 +182,14 @@
     }
 
     function showApiError(message, fallback) {
+      const text = typeof formatApiMessage === 'function'
+        ? formatApiMessage(message)
+        : (message || fallback || LABELS.msgError);
+      const finalText = text || fallback || LABELS.msgError;
       if (typeof showToast === 'function') {
-        showToast(message || fallback || LABELS.msgError, { type: 'error' });
+        showToast(finalText, { type: 'error' });
       } else {
-        document.getElementById('msg').textContent = message || fallback || LABELS.msgError;
+        document.getElementById('msg').textContent = finalText;
       }
     }
 
@@ -262,10 +213,10 @@
       dc.value = p.descuento_porcentaje ? String(p.descuento_porcentaje) : '';
       const statusCb = document.getElementById('status');
       if (statusCb) statusCb.checked = !!p.activo;
-      fillVariantsFromProduct(p);
       if (typeof setSelectedProductColorIds === 'function') {
         setSelectedProductColorIds((p.colores || []).map((c) => c.color_id));
       }
+      fillVariantsFromProduct(p);
       if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
     }
 

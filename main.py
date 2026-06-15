@@ -12,7 +12,7 @@ import json
 import traceback
 from dataclasses import asdict
 from fastapi.templating import Jinja2Templates  
-from fastapi.responses import HTMLResponse  
+from fastapi.responses import HTMLResponse, FileResponse  
 from fastapi.staticfiles import StaticFiles      
 from pydantic import BaseModel
 from sqlalchemy.orm import sessionmaker, declarative_base, Session, joinedload
@@ -44,6 +44,9 @@ from config import get_template_context
 from services.colors import (
     color_to_public,
     create_color,
+    get_or_create_color,
+    update_color,
+    delete_color,
     list_colors_public,
     normalize_color_code,
     parse_colors_json,
@@ -96,10 +99,21 @@ async def _app_lifespan(_app: FastAPI):
 app = FastAPI(lifespan=_app_lifespan)
 app.include_router(orders_router)
 init_whatsapp(app)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(
+        os.path.join(BASE_DIR, "static", "favicon.svg"),
+        media_type="image/svg+xml",
+    )
+
+
 # Montar la carpeta static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 print("BASE_DIR:", BASE_DIR)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 #templates = Jinja2Templates(directory="/app/templates")
@@ -135,18 +149,34 @@ def _sync_product_variants(db: Session, product_id: int, items: List[dict]) -> N
         size = db.query(Size).filter(Size.code == code).first()
         if not size:
             continue
+        color_id_raw = it.get("color_id")
+        color_id = int(color_id_raw) if color_id_raw not in (None, "") else None
+        if color_id is not None:
+            linked = (
+                db.query(ProductColor)
+                .filter(
+                    ProductColor.product_id == product_id,
+                    ProductColor.color_id == color_id,
+                    ProductColor.activo.is_(True),
+                )
+                .first()
+            )
+            if not linked:
+                continue
         qty = int(it.get("qty_stock_local", 0) or 0)
         enc = bool(it.get("encargo_habilitado", False))
         dias_raw = it.get("dias_encargo_estimados")
         dias_i = int(dias_raw) if dias_raw not in (None, "") else None
         if qty < 0:
             qty = 0
-        if qty == 0 and not enc:
+        matrix_cell = color_id is not None
+        if qty == 0 and not enc and not matrix_cell:
             continue
         db.add(
             ProductVariant(
                 product_id=product_id,
                 size_id=size.size_id,
+                color_id=color_id,
                 qty_stock_local=qty,
                 encargo_habilitado=enc,
                 dias_encargo_estimados=dias_i,
@@ -196,19 +226,22 @@ def _variants_public_list(variants: List[ProductVariant]) -> List[dict]:
             disp.append("inmediato")
         if v.encargo_habilitado:
             disp.append("encargo")
-        if not disp:
-            continue
         out.append(
             {
                 "variant_id": v.variant_id,
                 "size_code": v.size.code,
                 "size_label": v.size.label,
+                "color_id": v.color_id,
+                "color_label": v.color.label if v.color else None,
+                "color_hex": v.color.hex if v.color else None,
                 "qty_stock_local": v.qty_stock_local,
                 "encargo_habilitado": v.encargo_habilitado,
                 "dias_encargo_estimados": v.dias_encargo_estimados,
                 "disponibilidad": disp,
+                "disponible": len(disp) > 0,
             }
         )
+    return out
     out.sort(key=lambda x: (x["size_label"], x["size_code"]))
     return out
 
@@ -326,6 +359,7 @@ def obtener_producto(
         db.query(Products)
         .options(
             joinedload(Products.variants).joinedload(ProductVariant.size),
+            joinedload(Products.variants).joinedload(ProductVariant.color),
             joinedload(Products.product_colors).joinedload(ProductColor.color),
             joinedload(Products.images),
             joinedload(Products.category),
@@ -395,6 +429,11 @@ def listar_colores(db: Session = Depends(get_db_fastApi)):
 
 class ColorCreateIn(BaseModel):
     label: str
+    hex: str
+
+
+class ColorUpdateIn(BaseModel):
+    label: Optional[str] = None
     hex: Optional[str] = None
 
 
@@ -410,6 +449,32 @@ def admin_crear_color(
     return {"ok": True, "color": color_to_public(row), "created": True}
 
 
+@app.put("/api/admin/colors/{color_id}")
+def admin_actualizar_color(
+    color_id: int,
+    body: ColorUpdateIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    if body.label is None and body.hex is None:
+        raise HTTPException(status_code=400, detail="Indicá el nombre o el tono a actualizar.")
+    row = update_color(db, color_id, label=body.label, hex_value=body.hex)
+    db.commit()
+    db.refresh(row)
+    return {"ok": True, "color": color_to_public(row)}
+
+
+@app.delete("/api/admin/colors/{color_id}")
+def admin_eliminar_color(
+    color_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    delete_color(db, color_id)
+    db.commit()
+    return {"ok": True, "deleted": True}
+
+
 def _match_import_color_ids(db: Session, color_names: List[str]) -> List[int]:
     if not color_names:
         return []
@@ -421,7 +486,7 @@ def _match_import_color_ids(db: Session, color_names: List[str]) -> List[int]:
         code = normalize_color_code(label)
         row = db.query(Color).filter(Color.code == code).first()
         if not row:
-            row = create_color(db, label=label)
+            row = get_or_create_color(db, label=label)
         if row.color_id not in ids:
             ids.append(row.color_id)
     return ids
@@ -973,20 +1038,53 @@ def _page_ficha_from_url(url: str) -> str:
     return path.replace("/", "") or "ficha"
 
 
+def _log_provider_import_failure(provider: str, url: str, error: ProviderImportError) -> None:
+    logging.warning(
+        json.dumps(
+            {
+                "event": "provider_import_failed",
+                "provider": provider,
+                "url": url,
+                "error_code": error.code,
+                "detail": str(error),
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
 def _import_product_from_url(
     payload: ProviderUrlImportRequest,
     db: Session,
 ) -> dict:
+    provider = detect_provider(payload.url)
     try:
         imported = fetch_product(payload.url)
     except ProviderImportError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        _log_provider_import_failure(provider, payload.url, e)
+        return {
+            "ok": False,
+            "error": str(e),
+            "error_code": e.code,
+            "provider": provider,
+        }
 
     try:
         return _persist_imported_product(db, imported, payload)
     except Exception as e:
         db.rollback()
-        logging.error(f"Error al importar producto ({detect_provider(payload.url)}): {e}", exc_info=True)
+        logging.error(
+            json.dumps(
+                {
+                    "event": "provider_import_persist_failed",
+                    "provider": provider,
+                    "url": payload.url,
+                    "detail": str(e),
+                },
+                ensure_ascii=False,
+            ),
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Error al importar producto desde proveedor")
 
 
@@ -1041,8 +1139,9 @@ def crear_producto(
         db.refresh(nuevo)
 
         _guardar_imagenes_producto(db, nuevo.product_id, images)
-        _sync_product_variants(db, nuevo.product_id, _parse_variants_json(variants_json))
         sync_product_colors(db, nuevo.product_id, parse_colors_json(colors_json))
+        db.flush()
+        _sync_product_variants(db, nuevo.product_id, _parse_variants_json(variants_json))
         db.commit()
         db.refresh(nuevo)
         return {"ok": True, "id": nuevo.product_id}
@@ -1093,8 +1192,9 @@ def actualizar_producto(
                 synchronize_session=False
             )
             _guardar_imagenes_producto(db, product_id, images)
-        _sync_product_variants(db, product_id, _parse_variants_json(variants_json))
         sync_product_colors(db, product_id, parse_colors_json(colors_json))
+        db.flush()
+        _sync_product_variants(db, product_id, _parse_variants_json(variants_json))
         db.commit()
         db.refresh(producto)
         return {"ok": True, "id": producto.product_id}

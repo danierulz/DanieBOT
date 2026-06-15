@@ -41,7 +41,7 @@
       message ||
       'Tu sesión expiró. Te redirigimos al login para que vuelvas a iniciar sesión.';
     if (typeof window.showToast === 'function') {
-      window.showToast(msg, { type: 'error', duration: 6000 });
+      window.showToast(msg, { type: 'error' });
     }
     setTimeout(() => {
       window.location.href = '/login';

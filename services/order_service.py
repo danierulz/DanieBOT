@@ -32,7 +32,7 @@ def _validate_line(db: Session, item: dict) -> dict:
     if variant_id:
         variant = (
             db.query(ProductVariant)
-            .options(joinedload(ProductVariant.size))
+            .options(joinedload(ProductVariant.size), joinedload(ProductVariant.color))
             .filter(
                 ProductVariant.variant_id == variant_id,
                 ProductVariant.product_id == product.product_id,
@@ -82,6 +82,22 @@ def _validate_line(db: Session, item: dict) -> dict:
     color_row = validate_line_color(db, product.product_id, item.get("color_id"))
     color_id = color_row.color_id if color_row else None
     color_label_snapshot = color_row.label if color_row else None
+
+    if variant_id and color_id is not None:
+        variant_for_color = (
+            db.query(ProductVariant)
+            .filter(
+                ProductVariant.variant_id == variant_id,
+                ProductVariant.product_id == product.product_id,
+            )
+            .first()
+        )
+        if variant_for_color and variant_for_color.color_id is not None:
+            if variant_for_color.color_id != color_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El color seleccionado no coincide con el talle para {title}.",
+                )
 
     if product_requires_color(db, product.product_id) and not variant_id:
         raise HTTPException(

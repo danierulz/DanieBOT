@@ -21,7 +21,7 @@ from database.models.ProductImages import ProductImages
 from database.models.Products import Products
 from database.models.ProductVariant import ProductVariant
 from database.models.Size import Size
-from provider_importers.types import ImportedProduct
+from provider_importers.types import ImportedProduct, ProviderImportError
 
 
 class ProviderImportEndpointTest(unittest.TestCase):
@@ -123,6 +123,32 @@ class ProviderImportEndpointTest(unittest.TestCase):
             self.assertTrue(image.url.startswith("https://storage.googleapis.com/"))
         finally:
             session.close()
+
+    def test_import_failure_returns_ok_false_without_http_400(self):
+        with patch.object(
+            main,
+            "fetch_product",
+            side_effect=ProviderImportError(
+                "So Chic limitó las consultas (demasiados pedidos). "
+                "Esperá unos minutos e intentá de nuevo.",
+                code="rate_limit",
+            ),
+        ):
+            response = self.client.post(
+                "/api/proveedores/importar",
+                json={"url": "https://sochic.com.ar/product/campera-test/"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error_code"], "rate_limit")
+        self.assertIn("limitó las consultas", body["error"])
+
+    def test_favicon_is_served(self):
+        response = self.client.get("/favicon.ico")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("image", response.headers.get("content-type", ""))
 
 
 if __name__ == "__main__":

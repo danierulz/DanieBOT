@@ -82,6 +82,10 @@ class ColorsAndOrdersTest(unittest.TestCase):
 
         main.app.dependency_overrides[main.get_db_fastApi] = override_db
         self.client = TestClient(main.app)
+        self.admin_headers = {
+            "Authorization": "Bearer "
+            + main.create_access_token({"sub": main.ADMIN_USER["username"], "rol": "admin"})
+        }
 
     def tearDown(self):
         main.app.dependency_overrides.clear()
@@ -96,14 +100,56 @@ class ColorsAndOrdersTest(unittest.TestCase):
         self.assertTrue(any(c["code"] == "CELESTE" for c in r.json()))
 
     def test_admin_create_color(self):
-        token = main.create_access_token({"sub": main.ADMIN_USER["username"], "rol": "admin"})
         r = self.client.post(
             "/api/admin/colors",
-            json={"label": "Verde musgo"},
-            headers={"Authorization": f"Bearer {token}"},
+            json={"label": "Verde musgo", "hex": "#16A34A"},
+            headers=self.admin_headers,
         )
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(r.json()["color"]["label"], "Verde musgo")
+        data = r.json()
+        self.assertEqual(data["color"]["label"], "Verde musgo")
+        self.assertEqual(data["color"]["hex"], "#16A34A")
+        self.assertTrue(data["created"])
+
+    def test_admin_create_duplicate_color_returns_409(self):
+        r = self.client.post(
+            "/api/admin/colors",
+            json={"label": "Celeste", "hex": "#38BDF8"},
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 409, r.text)
+        self.assertIn("Celeste", r.json()["detail"])
+
+    def test_admin_update_color_hex(self):
+        r = self.client.put(
+            f"/api/admin/colors/{self.color_id}",
+            json={"hex": "#DC2626"},
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["color"]["hex"], "#DC2626")
+
+    def test_admin_delete_color_blocked_when_in_use(self):
+        r = self.client.delete(
+            f"/api/admin/colors/{self.color_id}",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 409, r.text)
+        self.assertIn("producto", r.json()["detail"].lower())
+
+    def test_admin_delete_color_ok_when_unused(self):
+        r = self.client.post(
+            "/api/admin/colors",
+            json={"label": "Rosa", "hex": "#EC4899"},
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        color_id = r.json()["color"]["color_id"]
+        deleted = self.client.delete(
+            f"/api/admin/colors/{color_id}",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(deleted.status_code, 200, deleted.text)
 
     def test_producto_includes_colores(self):
         r = self.client.get(f"/api/producto/{self.product_id}")
@@ -111,6 +157,78 @@ class ColorsAndOrdersTest(unittest.TestCase):
         data = r.json()
         self.assertEqual(len(data["colores"]), 1)
         self.assertEqual(data["colores"][0]["label"], "Celeste")
+        self.assertEqual(len(data["variantes"]), 1)
+        self.assertTrue(data["variantes"][0]["disponible"])
+        self.assertIsNone(data["variantes"][0]["color_id"])
+
+    def test_update_product_variants_with_color_matrix(self):
+        r = self.client.put(
+            f"/api/productos/{self.product_id}",
+            data={
+                "item_title": "Remera Test",
+                "price": "10000",
+                "description": "Desc",
+                "status": "1",
+                "colors_json": f"[{self.color_id}]",
+                "variants_json": (
+                    '[{"size_code":"M","color_id":'
+                    + str(self.color_id)
+                    + ',"qty_stock_local":2,"encargo_habilitado":false}]'
+                ),
+            },
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        detail = self.client.get(f"/api/producto/{self.product_id}").json()
+        self.assertEqual(len(detail["variantes"]), 1)
+        self.assertEqual(detail["variantes"][0]["color_id"], self.color_id)
+        self.assertEqual(detail["variantes"][0]["qty_stock_local"], 2)
+
+    def test_order_rejects_color_variant_mismatch(self):
+        session = self.SessionLocal()
+        rojo = Color(code="ROJO", label="Rojo", sort_order=20, hex="#FF0000")
+        session.add(rojo)
+        session.flush()
+        size = session.query(Size).filter_by(code="M").first()
+        product = session.query(Products).filter_by(product_id=self.product_id).first()
+        session.add(
+            ProductColor(product_id=product.product_id, color_id=rojo.color_id, activo=True)
+        )
+        session.add(
+            ProductVariant(
+                product_id=product.product_id,
+                size_id=size.size_id,
+                color_id=rojo.color_id,
+                qty_stock_local=1,
+                encargo_habilitado=False,
+                activo=True,
+            )
+        )
+        session.commit()
+        rojo_variant = (
+            session.query(ProductVariant)
+            .filter_by(product_id=self.product_id, color_id=rojo.color_id)
+            .first()
+        )
+        rojo_variant_id = rojo_variant.variant_id
+        session.close()
+
+        r = self.client.post(
+            "/api/whatsapp/pedido",
+            json={
+                "items": [
+                    {
+                        "id": self.product_id,
+                        "titulo": "Remera Test",
+                        "precio": 10000,
+                        "cantidad": 1,
+                        "variant_id": rojo_variant_id,
+                        "color_id": self.color_id,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(r.status_code, 400)
 
     def test_order_requires_color_when_product_has_colors(self):
         r = self.client.post(

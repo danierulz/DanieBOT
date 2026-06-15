@@ -12,10 +12,27 @@
   <script>
     const COLOR_LABELS = {
       empty: {{ admin_colors_empty_catalog | tojson }},
+    };
+    const CATALOG_COLOR_LABELS = {
+      empty: {{ admin_colors_empty_catalog | tojson }},
+      loading: {{ admin_colors_loading | tojson }},
+      loadErr: {{ admin_colors_load_err | tojson }},
+      msgError: {{ admin_msg_error | tojson }},
       msgAdded: {{ admin_colors_msg_added | tojson }},
+      msgUpdated: {{ admin_colors_msg_updated | tojson }},
+      msgDeleted: {{ admin_colors_msg_deleted | tojson }},
+      btnAdd: {{ admin_colors_btn_add | tojson }},
+      btnUpdate: {{ admin_colors_btn_update | tojson }},
+      edit: {{ admin_edit | tojson }},
+      del: {{ admin_delete | tojson }},
+      deleteConfirm: {{ admin_colors_delete_confirm | tojson }},
+      nameRequired: {{ admin_colors_name_required | tojson }},
+      hexRequired: {{ admin_colors_hex_required | tojson }},
     };
   </script>
   <script src="/static/js/adminColors.js"></script>
+  <script src="/static/js/adminProductVariants.js"></script>
+  <script src="/static/js/adminColorCatalog.js"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -35,6 +52,9 @@
       </button>
       <button type="button" id="tab-btn-banners" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_banners }}
+      </button>
+      <button type="button" id="tab-btn-colors" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
+        {{ admin_tab_colors }}
       </button>
       <button type="button" id="tab-btn-orders" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_orders }}
@@ -292,6 +312,8 @@
       </div>
     </div>
 
+    {% include "partials/admin_colors_tab.html" %}
+
     <!-- Panel: Pedidos -->
     <div id="panel-orders" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
       <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ admin_orders_heading }}</h2>
@@ -386,6 +408,14 @@
       ordersCancel: {{ admin_orders_btn_cancel | tojson }},
       ordersLines: {{ admin_orders_lines | tojson }},
     };
+    const VARIANT_LABELS = {
+      colSize: {{ admin_variants_col_size | tojson }},
+      colColor: {{ admin_variants_col_color | tojson }},
+      colStock: {{ admin_variants_col_stock | tojson }},
+      colEncargo: {{ admin_variants_col_encargo | tojson }},
+      colDays: {{ admin_variants_col_days | tojson }},
+      loadError: {{ admin_list_load_error | tojson }},
+    };
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
     let deleteTargetId = null;
@@ -393,10 +423,12 @@
     const panelNew = document.getElementById('panel-new');
     const panelList = document.getElementById('panel-list');
     const panelBanners = document.getElementById('panel-banners');
+    const panelColors = document.getElementById('panel-colors');
     const panelOrders = document.getElementById('panel-orders');
     const tabBtnNew = document.getElementById('tab-btn-new');
     const tabBtnList = document.getElementById('tab-btn-list');
     const tabBtnBanners = document.getElementById('tab-btn-banners');
+    const tabBtnColors = document.getElementById('tab-btn-colors');
     const tabBtnOrders = document.getElementById('tab-btn-orders');
     const submitBtn = document.getElementById('submit-btn');
 
@@ -412,33 +444,42 @@
       const isNew = which === 'new';
       const isList = which === 'list';
       const isBanners = which === 'banners';
+      const isColors = which === 'colors';
       const isOrders = which === 'orders';
       panelNew.classList.toggle('hidden', !isNew);
       panelList.classList.toggle('hidden', !isList);
       panelBanners.classList.toggle('hidden', !isBanners);
+      panelColors.classList.toggle('hidden', !isColors);
       panelOrders.classList.toggle('hidden', !isOrders);
       setTabBtnStyle(tabBtnNew, isNew);
       setTabBtnStyle(tabBtnList, isList);
       setTabBtnStyle(tabBtnBanners, isBanners);
+      setTabBtnStyle(tabBtnColors, isColors);
       setTabBtnStyle(tabBtnOrders, isOrders);
       if (isList) {
         listSearch = document.getElementById('admin-search-input').value;
         loadList(listPage);
       }
       if (isBanners) loadBannersList();
+      if (isColors && typeof loadColorsCatalog === 'function') loadColorsCatalog();
       if (isOrders) loadOrdersList();
     }
 
     tabBtnNew.addEventListener('click', () => showTab('new'));
     tabBtnList.addEventListener('click', () => showTab('list'));
     tabBtnBanners.addEventListener('click', () => showTab('banners'));
+    tabBtnColors.addEventListener('click', () => showTab('colors'));
     tabBtnOrders.addEventListener('click', () => showTab('orders'));
 
     function showApiError(message, fallback) {
+      const text = typeof formatApiMessage === 'function'
+        ? formatApiMessage(message)
+        : (message || fallback || LABELS.msgError);
+      const finalText = text || fallback || LABELS.msgError;
       if (typeof showToast === 'function') {
-        showToast(message || fallback || LABELS.msgError, { type: 'error' });
+        showToast(finalText, { type: 'error' });
       } else {
-        document.getElementById('msg').textContent = message || fallback || LABELS.msgError;
+        document.getElementById('msg').textContent = finalText;
       }
     }
 
@@ -523,32 +564,6 @@
     document.getElementById('admin-orders-refresh').addEventListener('click', loadOrdersList);
     document.getElementById('admin-orders-status-filter').addEventListener('change', loadOrdersList);
 
-    function resetVariantRows() {
-      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
-        const q = row.querySelector('.pv-qty');
-        const e = row.querySelector('.pv-encargo');
-        const d = row.querySelector('.pv-dias');
-        if (q) q.value = '0';
-        if (e) e.checked = false;
-        if (d) d.value = '';
-      });
-    }
-
-    function collectVariants() {
-      const out = [];
-      document.querySelectorAll('#variants-table-body [data-size-code]').forEach(row => {
-        const code = row.getAttribute('data-size-code');
-        const qty = parseInt(row.querySelector('.pv-qty').value, 10) || 0;
-        const enc = row.querySelector('.pv-encargo').checked;
-        const diasRaw = (row.querySelector('.pv-dias').value || '').trim();
-        if (qty === 0 && !enc) return;
-        const o = { size_code: code, qty_stock_local: qty, encargo_habilitado: enc };
-        if (diasRaw) o.dias_encargo_estimados = parseInt(diasRaw, 10);
-        out.push(o);
-      });
-      return JSON.stringify(out);
-    }
-
     async function loadCategoriesSelect(selectId) {
       const sel = document.getElementById(selectId);
       if (!sel) return;
@@ -573,26 +588,6 @@
       };
       cb.addEventListener('change', sync);
       sync();
-    }
-
-    async function initVariantsTable() {
-      const tbody = document.getElementById('variants-table-body');
-      tbody.innerHTML = '<tr><td colspan="4" class="px-2 py-3 text-gray-500 text-sm">Cargando talles…</td></tr>';
-      try {
-        const r = await fetch('/api/sizes');
-        if (!r.ok) throw new Error('fail');
-        const sizes = await r.json();
-        tbody.innerHTML = sizes.map(s => `
-          <tr data-size-code="${escapeHtml(s.code)}" class="border-t border-gray-100">
-            <td class="px-2 py-2 font-medium">${escapeHtml(s.label)} <span class="text-gray-400 text-xs">(${escapeHtml(s.code)})</span></td>
-            <td class="px-2 py-2"><input type="number" min="0" step="1" value="0" class="pv-qty w-20 px-2 py-1 border rounded-md" aria-label="Stock ${escapeHtml(s.code)}"></td>
-            <td class="px-2 py-2 text-center"><input type="checkbox" class="pv-encargo w-4 h-4 accent-black" aria-label="Encargo ${escapeHtml(s.code)}"></td>
-            <td class="px-2 py-2"><input type="number" min="1" step="1" placeholder="—" class="pv-dias w-16 px-2 py-1 border rounded-md"></td>
-          </tr>
-        `).join('');
-      } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-red-600 px-2 py-2 text-sm">No se pudieron cargar los talles. Recargá la página.</td></tr>';
-      }
     }
 
     function resetForm() {
@@ -795,8 +790,9 @@
           }),
         });
         const data = await resp.json().catch(() => ({}));
-        if (!resp.ok || !data.ok) {
-          showApiError(data.detail, LABELS.msgError);
+        if (!data.ok) {
+          showApiError(data.error || data.detail, LABELS.msgError);
+          msg.textContent = '';
           return;
         }
         const providerLabel = data.provider ? ` (${data.provider})` : '';
@@ -812,6 +808,7 @@
         }
         showTab('list');
       } catch (err) {
+        msg.textContent = '';
         if (typeof isSessionRedirectScheduled !== 'function' || !isSessionRedirectScheduled()) {
           showApiError(err.message, LABELS.msgError);
         }
@@ -1028,6 +1025,7 @@
       if (typeof bindProductFieldLimits === 'function') bindProductFieldLimits();
       await initVariantsTable();
       if (typeof initColorsUi === 'function') await initColorsUi();
+      if (typeof initColorCatalogTab === 'function') initColorCatalogTab();
       loadCategoriesSelect('category_id');
       bindSaleToggle();
       resetBannerForm();
@@ -1036,6 +1034,8 @@
         showTab('list');
       } else if (params.get('tab') === 'banners') {
         showTab('banners');
+      } else if (params.get('tab') === 'colors') {
+        showTab('colors');
       } else if (params.get('tab') === 'orders') {
         showTab('orders');
       }

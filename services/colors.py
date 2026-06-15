@@ -93,18 +93,26 @@ def sync_product_colors(db: Session, product_id: int, color_ids: List[int]) -> N
         db.add(ProductColor(product_id=product_id, color_id=cid, activo=True))
 
 
-def create_color(db: Session, *, label: str, hex_value: Optional[str] = None) -> Color:
+def parse_hex_value(hex_value: Optional[str], *, required: bool = False) -> Optional[str]:
+    if not hex_value or not str(hex_value).strip():
+        if required:
+            raise HTTPException(status_code=400, detail="Elegí un tono de color válido.")
+        return None
+    h = str(hex_value).strip()
+    if not h.startswith("#"):
+        h = "#" + h
+    if not re.match(r"^#[0-9A-Fa-f]{6}$", h):
+        raise HTTPException(status_code=400, detail="El tono debe tener formato #RRGGBB.")
+    return h.upper()
+
+
+def get_or_create_color(db: Session, *, label: str, hex_value: Optional[str] = None) -> Color:
+    """Usado por imports de proveedores: reutiliza color existente por code."""
     label = (label or "").strip()
     if not label:
         raise HTTPException(status_code=400, detail="El nombre del color es obligatorio.")
     code = normalize_color_code(label)
-    hex_clean = None
-    if hex_value:
-        h = hex_value.strip()
-        if h and not h.startswith("#"):
-            h = "#" + h
-        if h and re.match(r"^#[0-9A-Fa-f]{6}$", h):
-            hex_clean = h.upper()
+    hex_clean = parse_hex_value(hex_value, required=False)
     existing = db.query(Color).filter(Color.code == code).first()
     if existing:
         if hex_clean and not existing.hex:
@@ -117,6 +125,69 @@ def create_color(db: Session, *, label: str, hex_value: Optional[str] = None) ->
     db.add(row)
     db.flush()
     return row
+
+
+def create_color(db: Session, *, label: str, hex_value: str) -> Color:
+    label = (label or "").strip()
+    if not label:
+        raise HTTPException(status_code=400, detail="El nombre del color es obligatorio.")
+    code = normalize_color_code(label)
+    hex_clean = parse_hex_value(hex_value, required=True)
+    existing = db.query(Color).filter(Color.code == code).first()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f'Ya existe el color "{existing.label}". Editá el color existente en la pestaña Colores.',
+        )
+    max_order = db.query(Color.sort_order).order_by(Color.sort_order.desc()).limit(1).scalar()
+    sort_order = (max_order or 0) + 10
+    row = Color(code=code, label=label[:64], sort_order=sort_order, hex=hex_clean)
+    db.add(row)
+    db.flush()
+    return row
+
+
+def update_color(
+    db: Session,
+    color_id: int,
+    *,
+    label: Optional[str] = None,
+    hex_value: Optional[str] = None,
+) -> Color:
+    row = db.query(Color).filter(Color.color_id == color_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Color no encontrado.")
+    if label is not None:
+        clean_label = label.strip()
+        if not clean_label:
+            raise HTTPException(status_code=400, detail="El nombre del color es obligatorio.")
+        row.label = clean_label[:64]
+    if hex_value is not None:
+        row.hex = parse_hex_value(hex_value, required=True)
+    db.flush()
+    return row
+
+
+def delete_color(db: Session, color_id: int) -> None:
+    row = db.query(Color).filter(Color.color_id == color_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Color no encontrado.")
+    usage = (
+        db.query(ProductColor)
+        .filter(ProductColor.color_id == color_id, ProductColor.activo.is_(True))
+        .count()
+    )
+    if usage > 0:
+        noun = "producto" if usage == 1 else "productos"
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Este color está en {usage} {noun}. "
+                "Quitá la asignación en esos productos antes de eliminarlo."
+            ),
+        )
+    db.delete(row)
+    db.flush()
 
 
 def validate_line_color(db: Session, product_id: int, color_id: Optional[int]) -> Optional[Color]:

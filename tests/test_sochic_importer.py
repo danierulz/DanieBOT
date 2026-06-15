@@ -1,6 +1,9 @@
 import unittest
+from unittest.mock import patch
 
-from provider_importers.sochic import ProviderImportError, parse_sochic_product
+import requests
+
+from provider_importers.sochic import ProviderImportError, fetch_sochic_product, parse_sochic_product
 
 
 SOCHIC_HTML = """
@@ -125,6 +128,22 @@ class SoChicImporterTest(unittest.TestCase):
         )
         self.assertEqual(product.colors, ["UVA", "Celeste"])
         self.assertEqual(product.price, 29000)
+
+    def test_fetch_maps_rate_limit_to_provider_error(self):
+        response = requests.Response()
+        response.status_code = 429
+        response._content = b"Too Many Requests"
+        http_error = requests.HTTPError("429 Client Error", response=response)
+
+        with patch("provider_importers.sochic.requests.get", return_value=response):
+            with patch.object(response, "raise_for_status", side_effect=http_error):
+                with self.assertRaises(ProviderImportError) as ctx:
+                    fetch_sochic_product(
+                        "https://sochic.com.ar/product/campera-friza-young-leaders/"
+                    )
+
+        self.assertEqual(ctx.exception.code, "rate_limit")
+        self.assertIn("limitó las consultas", str(ctx.exception))
 
 
 if __name__ == "__main__":
