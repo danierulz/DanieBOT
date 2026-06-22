@@ -1,0 +1,295 @@
+/* Logo animado Outfit Jazmines — header (fondo claro, letras negras) */
+
+.brand-logo-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 48vw;
+  text-decoration: none;
+  position: relative;
+}
+
+.brand-logo-link .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 640px) {
+  .brand-logo-link {
+    max-width: none;
+  }
+}
+
+.brand-logo-link:hover .brand-logo__letters {
+  opacity: 0.88;
+}
+
+.brand-logo {
+  --logo-letter: #111111;
+  --logo-stem: #3d6b4f;
+  --logo-leaf: #2f5a40;
+  --logo-petal: #fafaf8;
+  --logo-petal-center: #e8c547;
+  --logo-bud: #f5f5f0;
+
+  display: block;
+  height: 36px;
+  width: auto;
+  overflow: visible;
+}
+
+@media (min-width: 640px) {
+  .brand-logo {
+    height: 44px;
+  }
+}
+
+.brand-logo--preview-lg {
+  height: 160px;
+  width: auto;
+}
+
+.brand-logo__stem {
+  fill: none;
+  stroke: var(--logo-stem);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: var(--logo-stem-length, 520);
+  stroke-dashoffset: var(--logo-stem-length, 520);
+}
+
+.brand-logo__leaf {
+  fill: var(--logo-leaf);
+  stroke: rgba(47, 90, 64, 0.35);
+  stroke-width: 0.8;
+  opacity: 0;
+  transform: scale(0.35);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.brand-logo__bud {
+  fill: var(--logo-bud);
+  stroke: var(--logo-stem);
+  stroke-width: 0.6;
+  opacity: 0;
+  transform: scale(0.2);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.brand-logo__petal {
+  fill: var(--logo-petal);
+  stroke: rgba(47, 90, 64, 0.25);
+  stroke-width: 0.35;
+  opacity: 0;
+  transform: scale(0.12);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.brand-logo__flower-center {
+  fill: var(--logo-petal-center);
+  opacity: 0;
+  transform: scale(0);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.brand-logo__letter-o,
+.brand-logo__letter-j {
+  fill: transparent;
+  stroke: var(--logo-letter);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* --- Animación completa (play once) --- */
+.brand-logo--animate .brand-logo__stem {
+  animation: brand-logo-stem-draw 0.7s ease-out forwards;
+}
+
+.brand-logo--animate .brand-logo__leaf {
+  animation: brand-logo-leaf-in 0.4s ease-out var(--leaf-delay, 0.5s) forwards;
+}
+
+.brand-logo--animate .brand-logo__bud {
+  animation: brand-logo-bud-in 0.35s ease-out var(--bud-delay, 1.08s) forwards;
+}
+
+.brand-logo--animate .brand-logo__petal {
+  animation: brand-logo-petal-open 0.55s cubic-bezier(0.34, 1.25, 0.64, 1) var(--petal-delay, 1.28s) forwards;
+}
+
+.brand-logo--animate .brand-logo__flower-center {
+  animation: brand-logo-center-in 0.35s ease-out var(--center-delay, 1.58s) forwards;
+}
+
+.brand-logo--animate .brand-logo__letter-o,
+.brand-logo--animate .brand-logo__letter-j {
+  animation: brand-logo-letter-fill 0.55s ease forwards var(--letter-delay, 1.78s);
+}
+
+/* --- Hover replay (flor + letras) --- */
+.brand-logo--hover-replay .brand-logo__bud {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.brand-logo--hover-replay .brand-logo__petal {
+  animation: brand-logo-petal-open 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+.brand-logo--hover-replay .brand-logo__flower-center {
+  animation: brand-logo-center-in 0.3s ease-out 0.22s forwards;
+}
+
+.brand-logo--hover-replay .brand-logo__letter-o {
+  animation: brand-logo-letter-fill 0.4s ease forwards 0.3s;
+}
+
+.brand-logo--hover-replay .brand-logo__letter-j {
+  animation: brand-logo-letter-fill 0.4s ease forwards 0.4s;
+}
+
+/* --- Estado final / instant --- */
+.brand-logo--done .brand-logo__stem,
+.brand-logo--instant .brand-logo__stem {
+  stroke-dashoffset: 0;
+}
+
+.brand-logo--done .brand-logo__leaf,
+.brand-logo--instant .brand-logo__leaf {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.brand-logo--done .brand-logo__bud,
+.brand-logo--instant .brand-logo__bud {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.brand-logo--done .brand-logo__petal,
+.brand-logo--instant .brand-logo__petal {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.brand-logo--done .brand-logo__flower-center,
+.brand-logo--instant .brand-logo__flower-center {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.brand-logo--done .brand-logo__letter-o,
+.brand-logo--done .brand-logo__letter-j,
+.brand-logo--instant .brand-logo__letter-o,
+.brand-logo--instant .brand-logo__letter-j {
+  fill: var(--logo-letter);
+  stroke: transparent;
+}
+
+/* --- Dev preview helpers --- */
+.brand-logo--force-animate .brand-logo__stem {
+  animation: brand-logo-stem-draw 0.7s ease-out forwards;
+}
+
+.brand-logo--force-animate .brand-logo__leaf {
+  animation: brand-logo-leaf-in 0.4s ease-out var(--leaf-delay, 0.5s) forwards;
+}
+
+.brand-logo--force-animate .brand-logo__bud {
+  animation: brand-logo-bud-in 0.35s ease-out var(--bud-delay, 1.08s) forwards;
+}
+
+.brand-logo--force-animate .brand-logo__petal {
+  animation: brand-logo-petal-open 0.55s cubic-bezier(0.34, 1.25, 0.64, 1) var(--petal-delay, 1.28s) forwards;
+}
+
+.brand-logo--force-animate .brand-logo__flower-center {
+  animation: brand-logo-center-in 0.35s ease-out var(--center-delay, 1.58s) forwards;
+}
+
+.brand-logo--force-animate .brand-logo__letter-o,
+.brand-logo--force-animate .brand-logo__letter-j {
+  animation: brand-logo-letter-fill 0.55s ease forwards var(--letter-delay, 1.78s);
+}
+
+.brand-logo--reset {
+  /* base hidden states restored via removing done/instant/force classes */
+}
+
+@keyframes brand-logo-stem-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes brand-logo-leaf-in {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes brand-logo-bud-in {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes brand-logo-petal-open {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes brand-logo-center-in {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes brand-logo-letter-fill {
+  to {
+    fill: var(--logo-letter);
+    stroke: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo--animate .brand-logo__stem,
+  .brand-logo--animate .brand-logo__leaf,
+  .brand-logo--animate .brand-logo__bud,
+  .brand-logo--animate .brand-logo__petal,
+  .brand-logo--animate .brand-logo__flower-center,
+  .brand-logo--animate .brand-logo__letter-o,
+  .brand-logo--animate .brand-logo__letter-j,
+  .brand-logo--hover-replay .brand-logo__petal,
+  .brand-logo--hover-replay .brand-logo__flower-center,
+  .brand-logo--hover-replay .brand-logo__letter-o,
+  .brand-logo--hover-replay .brand-logo__letter-j,
+  .brand-logo--force-animate .brand-logo__stem,
+  .brand-logo--force-animate .brand-logo__leaf,
+  .brand-logo--force-animate .brand-logo__bud,
+  .brand-logo--force-animate .brand-logo__petal,
+  .brand-logo--force-animate .brand-logo__flower-center,
+  .brand-logo--force-animate .brand-logo__letter-o,
+  .brand-logo--force-animate .brand-logo__letter-j {
+    animation: none;
+  }
+}

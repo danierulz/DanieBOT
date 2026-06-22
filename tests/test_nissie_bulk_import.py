@@ -108,6 +108,7 @@ class NissieBulkImportTest(unittest.TestCase):
 
         session.refresh(run)
         self.assertEqual(run.status, "completed")
+        self.assertEqual(run.phase, "completed")
         self.assertEqual(run.discovered, 3)
         self.assertEqual(run.created, 1)
         self.assertEqual(run.skipped, 1)

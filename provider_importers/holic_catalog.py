@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import time
+from typing import Callable
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
@@ -26,6 +27,7 @@ def discover_holic_product_urls(
     session: requests.Session | None = None,
     *,
     catalog_url: str = HOLIC_CATALOG_URL,
+    on_progress: Callable[[str, int], None] | None = None,
 ) -> list[str]:
     http = session or requests.Session()
     http.headers.setdefault("User-Agent", USER_AGENT)
@@ -53,6 +55,9 @@ def discover_holic_product_urls(
         for url in page_products:
             if url not in discovered:
                 discovered.append(url)
+
+        if on_progress:
+            on_progress(f"HOLIC · listado · página {page_num}", len(discovered))
 
         if page_num > 1 and len(discovered) == before_count:
             break

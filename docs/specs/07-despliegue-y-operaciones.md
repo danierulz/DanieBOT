@@ -10,10 +10,10 @@
    - Servicio: `deploy-whatsapp-cloudbuild`
    - Región: `us-central1`
    - Imagen: la del paso anterior
-   - `--no-allow-unauthenticated` (invocación autenticada; el webhook de Meta debe poder alcanzar la URL — revisar configuración IAM/ingress según doc Meta)
-   - **VPC connector:** `whatsapp-bot-vpc-connecto` (DB por IP privada en secreto `DB_HOST`). Alternativa sin VPC: ver [14-reduccion-costos-gcp.md](./14-reduccion-costos-gcp.md).
+   - `--allow-unauthenticated` (tienda pública y webhook Meta; admin protegido con JWT)
    - **Secrets** montados como env (Secret Manager):  
-     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DATABASE_URL`, `LOGIN_EMAIL`, `LOGIN_PASS` (import Las Locas)
+     `PYWA_VERIFY_TOKEN`, `PYWA_AUTH_TOKEN`, `PYWA_PHONE_ID`, `DATABASE_URL`, `LOGIN_EMAIL`, `LOGIN_PASS`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET_KEY`
+   - **Env vars** en deploy: `APP_DEBUG=false`, `ADMIN_LOGIN_NAV_VISIBLE=false`, `STORAGE_BACKEND=gcs`, `GCS_BUCKET_NAME`, `SITE_PUBLIC_URL`, `GOOGLE_CLOUD_PROJECT`
 
    **Email SMTP (avisos de pedidos):** opcional. Por defecto `ADMIN_NOTIFY_EMAIL_ENABLED=false` en Cloud Build; no se montan secretos SMTP. El deploy no depende de Zoho. Para activar después: [20-email-dominio-propio.md](./20-email-dominio-propio.md) → sección «Activar email después del deploy».
 

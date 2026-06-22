@@ -129,7 +129,7 @@
         </a>
         {% endif %}
       {% endfor %}
-      <div class="border-t border-gray-200 mt-1 pt-2 grid grid-cols-2 gap-2 px-2">
+      <div id="nav-auth-row" class="border-t border-gray-200 mt-1 pt-2 grid grid-cols-2 gap-2 px-2{% if not admin_login_nav_visible %} hidden{% endif %}">
         <button id="btn-login-mobile" type="button"
           class="inline-flex items-center justify-center min-h-[44px] px-3 rounded-full border border-gray-300 bg-white text-gray-900 font-semibold shadow-sm text-sm">
           {{ nav_login }}
@@ -170,11 +170,19 @@
   const CHECKOUT_WHATSAPP_NUMBER = {{ checkout_whatsapp_number | tojson }};
   const NAV_LOGIN = {{ nav_login | tojson }};
   const NAV_LOGOUT = {{ nav_logout | tojson }};
+  const ADMIN_LOGIN_NAV_VISIBLE = {{ admin_login_nav_visible | tojson }};
+  const ADMIN_LOGIN_PATH = {{ admin_login_path | tojson }};
 
   const btnLogin = document.getElementById("btn-login");
   const btnAdmin = document.getElementById("btn-admin");
   const btnLoginMobile = document.getElementById("btn-login-mobile");
   const btnAdminMobile = document.getElementById("btn-admin-mobile");
+  const navAuthRow = document.getElementById("nav-auth-row");
+
+  function setAuthNavRowVisible(visible) {
+    btnLoginMobile?.classList.toggle("hidden", !visible);
+    navAuthRow?.classList.toggle("hidden", !visible);
+  }
 
   function isStoredTokenExpired(token) {
     if (!token) return true;
@@ -198,6 +206,8 @@
       token = null;
     }
     if (token) {
+      setAuthNavRowVisible(true);
+      btnLogin?.classList.remove("hidden");
       btnAdmin && btnAdmin.classList.remove("hidden");
       btnAdminMobile && btnAdminMobile.classList.remove("hidden");
       const goAdmin = () => { window.location.href = "/admin-panel"; };
@@ -214,7 +224,15 @@
     } else {
       btnAdmin && btnAdmin.classList.add("hidden");
       btnAdminMobile && btnAdminMobile.classList.add("hidden");
-      const goLogin = () => { window.location.href = "/login"; };
+      if (ADMIN_LOGIN_NAV_VISIBLE) {
+        setAuthNavRowVisible(true);
+        btnLogin?.classList.add("hidden");
+        btnLogin?.classList.add("sm:inline-flex");
+      } else {
+        setAuthNavRowVisible(false);
+        btnLogin?.classList.add("hidden");
+      }
+      const goLogin = () => { window.location.href = ADMIN_LOGIN_PATH; };
       if (btnLogin) { btnLogin.textContent = NAV_LOGIN; btnLogin.onclick = goLogin; }
       if (btnLoginMobile) { btnLoginMobile.textContent = NAV_LOGIN; btnLoginMobile.onclick = goLogin; }
     }

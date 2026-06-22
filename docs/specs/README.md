@@ -12,6 +12,8 @@ Documentación viva del producto y del sistema. **Versión inicial** generada a 
 | [04-api-y-contratos.md](./04-api-y-contratos.md) | Rutas HTTP relevantes, payloads, integraciones |
 | [05-datos-y-scraper.md](./05-datos-y-scraper.md) | Modelo de datos, scraping “Las Locas”, GCS |
 | [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md) | Runner HTTP masivo Las Locas / Nissie, migración desde Selenium |
+| [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md) | **Pestaña admin** importación masiva (separada de Nuevo producto), progreso y API |
+| [22-admin-auth-config.md](./22-admin-auth-config.md) | **Credenciales admin** (JWT, bcrypt, Secret Manager) |
 | [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md) | **Patrones de identidad e inserción** por proveedor (referencia Nissie) |
 | [06-frontend-y-checkout-whatsapp.md](./06-frontend-y-checkout-whatsapp.md) | Tailwind, carrito, mensaje `wa.me`, formato del pedido |
 | [07-despliegue-y-operaciones.md](./07-despliegue-y-operaciones.md) | GCP, Cloud Run, Cloud Build, secretos, local |

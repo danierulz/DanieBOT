@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
@@ -27,6 +27,7 @@ def discover_nissie_product_urls(
     session: requests.Session | None = None,
     *,
     catalog_url: str = NISSIE_CATALOG_URL,
+    on_progress: Callable[[str, int], None] | None = None,
 ) -> list[str]:
     http = session or requests.Session()
     http.headers.setdefault("User-Agent", USER_AGENT)
@@ -63,6 +64,9 @@ def discover_nissie_product_urls(
             if url not in discovered:
                 discovered.append(url)
 
+        if on_progress:
+            on_progress(f"Nissie · listado · página {page_index}", len(discovered))
+
         for next_page in _extract_pagination_links(response.text, response.url):
             if next_page not in seen_pages and next_page not in page_urls:
                 page_urls.append(next_page)
@@ -92,6 +96,8 @@ def discover_nissie_product_urls(
                             added += 1
                     if added == 0:
                         break
+                    if on_progress:
+                        on_progress(f"Nissie · listado · página {page_num}", len(discovered))
                 except requests.RequestException:
                     break
                 page_num += 1

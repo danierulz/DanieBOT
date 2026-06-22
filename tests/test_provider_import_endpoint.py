@@ -198,6 +198,7 @@ class ProviderImportEndpointTest(unittest.TestCase):
             run = session.query(ProviderImportRun).one()
             self.assertEqual(run.provider, "nissie")
             self.assertEqual(run.status, "running")
+            self.assertEqual(run.phase, "discovering")
         finally:
             session.close()
 
@@ -216,8 +217,47 @@ class ProviderImportEndpointTest(unittest.TestCase):
             run = session.query(ProviderImportRun).one()
             self.assertEqual(run.provider, "holic")
             self.assertEqual(run.status, "running")
+            self.assertEqual(run.phase, "discovering")
         finally:
             session.close()
+
+    def test_import_run_api_includes_phase_and_progress_detail(self):
+        session = self.SessionLocal()
+        run = ProviderImportRun(
+            provider="laslocas",
+            status="running",
+            phase="discovering",
+            progress_detail="Las Locas · denim · página 2/5",
+            discovered=8,
+        )
+        session.add(run)
+        session.commit()
+        session.refresh(run)
+        run_id = run.run_id
+        session.close()
+
+        response = self.client.get(f"/api/proveedores/importaciones/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["phase"], "discovering")
+        self.assertEqual(body["progress_detail"], "Las Locas · denim · página 2/5")
+        self.assertEqual(body["discovered"], 8)
+        self.assertIn("is_stale", body)
+
+    def test_cancel_import_run_marks_failed(self):
+        session = self.SessionLocal()
+        run = ProviderImportRun(provider="nissie", status="running", phase="importing", discovered=10)
+        session.add(run)
+        session.commit()
+        run_id = run.run_id
+        session.close()
+
+        response = self.client.post(f"/api/proveedores/importaciones/{run_id}/cancelar")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["run"]["status"], "failed")
+        self.assertEqual(body["run"]["phase"], "failed")
 
     def test_product_list_provider_filter(self):
         session = self.SessionLocal()

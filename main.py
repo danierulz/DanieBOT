@@ -6,7 +6,14 @@ from math import ceil
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Request, Response, HTTPException, Form, UploadFile, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
-from auth.auth import create_access_token, get_current_user, get_optional_user, ADMIN_USER
+from auth.auth import (
+    ADMIN_USER,
+    admin_auth_status,
+    authenticate_admin,
+    create_access_token,
+    get_current_user,
+    get_optional_user,
+)
 import os
 import json
 import traceback
@@ -36,16 +43,14 @@ from services.provider_import import (
 from services.nissie_bulk_import import (
     BulkImportConflictError,
     create_bulk_run,
-    get_active_run,
     run_nissie_bulk_import,
-    serialize_run,
 )
 from services.holic_bulk_import import (
     BulkImportConflictError as HolicBulkImportConflictError,
     create_bulk_run as create_holic_bulk_run,
-    get_active_run as get_holic_active_run,
     run_holic_bulk_import,
 )
+from services.provider_import_runs import cancel_run, get_active_run, serialize_run
 from services import laslocas_bulk_import as laslocas_bulk
 from database.models.ProviderImportRun import ProviderImportRun
 from scraper_locas.constants import BUCKET_NAME
@@ -274,6 +279,7 @@ def health_check():
             "enabled": os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "false").lower()
             in ("1", "true", "yes", "on"),
         },
+        "admin_auth": admin_auth_status(),
     }
 
 
@@ -300,6 +306,31 @@ async def page_sale(request: Request):
     return templates.TemplateResponse("sale.html", page_context(request))
 
 
+@app.get("/dev/brand-logo", response_class=HTMLResponse)
+async def dev_brand_logo_preview(request: Request):
+    if not APP_DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+    ctx = {"request": request, **get_template_context()}
+    return templates.TemplateResponse("dev-brand-logo.html", ctx)
+
+
+class LogoCalibrationPayload(BaseModel):
+    letters: dict
+    jasmine: dict
+
+
+@app.post("/dev/brand-logo/calibration")
+async def save_logo_calibration(payload: LogoCalibrationPayload):
+    if not APP_DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+    calibration_path = os.path.join("static", "brand", "logo-calibration.json")
+    data = {"letters": payload.letters, "jasmine": payload.jasmine}
+    with open(calibration_path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    return {"ok": True, "path": "/static/brand/logo-calibration.json"}
+
+
 @app.get("/contacto", response_class=HTMLResponse)
 async def page_contacto(request: Request):
     return templates.TemplateResponse("contacto.html", page_context(request))
@@ -313,8 +344,8 @@ async def page_stores(request: Request):
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username == ADMIN_USER["username"] and form_data.password == ADMIN_USER["password"]:
-        token = create_access_token({"sub": ADMIN_USER["username"], "rol": ADMIN_USER["rol"]})
+    if authenticate_admin(form_data.username, form_data.password):
+        token = create_access_token({"sub": form_data.username, "rol": "admin"})
         return {"access_token": token, "token_type": "bearer"}
     raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
@@ -1265,7 +1296,7 @@ def importar_catalogo_nissie_masivo(
     try:
         run = create_bulk_run(db, triggered_by=str(user.get("sub") or "admin"))
     except BulkImportConflictError as exc:
-        active = get_active_run(db)
+        active = get_active_run(db, "nissie")
         return {
             "ok": False,
             "error": str(exc),
@@ -1290,7 +1321,7 @@ def importar_catalogo_holic_masivo(
     try:
         run = create_holic_bulk_run(db, triggered_by=str(user.get("sub") or "admin"))
     except HolicBulkImportConflictError as exc:
-        active = get_holic_active_run(db)
+        active = get_active_run(db, "holic")
         return {
             "ok": False,
             "error": str(exc),
@@ -1316,7 +1347,7 @@ def importar_catalogo_laslocas_masivo(
     try:
         run = laslocas_bulk.create_bulk_run(db, triggered_by=str(user.get("sub") or "admin"))
     except laslocas_bulk.BulkImportConflictError as exc:
-        active = laslocas_bulk.get_active_run(db)
+        active = get_active_run(db, "laslocas")
         return {
             "ok": False,
             "error": str(exc),
@@ -1364,6 +1395,21 @@ def obtener_ultima_importacion_proveedor(
     )
     if not run:
         return {"ok": True, "run": None}
+    return {"ok": True, "run": serialize_run(db, run)}
+
+
+@app.post("/api/proveedores/importaciones/{run_id}/cancelar")
+def cancelar_importacion_proveedor(
+    run_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    run = db.query(ProviderImportRun).filter(ProviderImportRun.run_id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Importación no encontrada")
+    if run.status != "running":
+        raise HTTPException(status_code=400, detail="La importación no está en curso")
+    cancel_run(db, run)
     return {"ok": True, "run": serialize_run(db, run)}
 
 

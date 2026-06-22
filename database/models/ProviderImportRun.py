@@ -10,6 +10,8 @@ class ProviderImportRun(Base):
     run_id = Column(Integer, primary_key=True, autoincrement=True)
     provider = Column(String(32), nullable=False, index=True)
     status = Column(String(16), nullable=False, default="running")
+    phase = Column(String(16), nullable=False, default="discovering")
+    progress_detail = Column(String(255), nullable=True)
     started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     finished_at = Column(DateTime(timezone=True), nullable=True)
     discovered = Column(Integer, nullable=False, default=0)

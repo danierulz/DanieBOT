@@ -11,7 +11,8 @@ steps:
 
   # Paso 3: Desplegar en Cloud Run
   # Base de datos: Neon vía secreto DATABASE_URL (sin VPC connector ni Cloud SQL).
-  # Costos: sin cpu-boost, max 5 instancias, escala a cero (min 0 implícito).
+  # Migraciones Alembic: al arrancar el contenedor (scripts/docker_entrypoint.py).
+  # Tienda pública + webhook Meta: allow-unauthenticated (auth admin vía JWT en /login).
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
     waitFor: ['push']
@@ -24,7 +25,7 @@ steps:
       - 'gcr.io/$PROJECT_ID/laslocaswhatsapp:$COMMIT_SHA'
       - '--region'
       - 'us-central1'
-      - '--no-allow-unauthenticated'
+      - '--allow-unauthenticated'
       - '--memory'
       - '512Mi'
       - '--cpu'
@@ -36,9 +37,11 @@ steps:
       - '--clear-vpc-connector'
       - '--no-cpu-boost'
       - '--remove-env-vars'
-      - 'CLOUD_SQL_CONNECTION_NAME,DB_USER,DB_PASSWORD,DB_NAME,DB_HOST,DB_PORT,ADMIN_NOTIFY_EMAIL_ENABLED'
+      - 'CLOUD_SQL_CONNECTION_NAME,DB_USER,DB_PASSWORD,DB_NAME,DB_HOST,DB_PORT'
+      - '--set-env-vars'
+      - 'APP_DEBUG=false,ADMIN_LOGIN_NAV_VISIBLE=false,STORAGE_BACKEND=gcs,GCS_BUCKET_NAME=bucket_laslocas_prod,SITE_PUBLIC_URL=https://outfitjazmines.com.ar,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,ADMIN_NOTIFY_EMAIL_ENABLED=false'
       - '--set-secrets'
-      - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,PYWA_PHONE_ID=PYWA_PHONE_ID:latest,DATABASE_URL=DATABASE_URL:latest,LOGIN_EMAIL=LOGIN_EMAIL:latest,LOGIN_PASS=LOGIN_PASS:latest'
+      - 'PYWA_VERIFY_TOKEN=PYWA_VERIFY_TOKEN:latest,PYWA_AUTH_TOKEN=PYWA_AUTH_TOKEN:latest,PYWA_PHONE_ID=PYWA_PHONE_ID:latest,DATABASE_URL=DATABASE_URL:latest,LOGIN_EMAIL=LOGIN_EMAIL:latest,LOGIN_PASS=LOGIN_PASS:latest,ADMIN_USERNAME=ADMIN_USERNAME:latest,ADMIN_PASSWORD_HASH=ADMIN_PASSWORD_HASH:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY

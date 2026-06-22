@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
 from typing import Callable
 
 import requests
@@ -12,12 +11,17 @@ from sqlalchemy.orm import Session
 from database.models.ProviderImportRun import ProviderImportRun
 from database.models.ProviderImportRunItem import ProviderImportRunItem
 from database.models.Products import Products
+from provider_importers.bulk.delays import REQUEST_DELAY_SECONDS
 from provider_importers.nissie import fetch_nissie_product
 from provider_importers.nissie_catalog import discover_nissie_product_urls
 from provider_importers.types import ProviderImportError
 from services.provider_import import ProviderImportPayload, persist_imported_product, truncate
-
-from provider_importers.bulk.delays import REQUEST_DELAY_SECONDS
+from services.provider_import_runs import (
+    finish_run,
+    get_active_run,
+    make_progress_callback,
+    set_run_phase,
+)
 
 PROVIDER = "nissie"
 
@@ -26,23 +30,16 @@ class BulkImportConflictError(Exception):
     """Raised when a bulk import is already running for the provider."""
 
 
-def get_active_run(db: Session, provider: str = PROVIDER) -> ProviderImportRun | None:
-    return (
-        db.query(ProviderImportRun)
-        .filter(ProviderImportRun.provider == provider, ProviderImportRun.status == "running")
-        .order_by(ProviderImportRun.run_id.desc())
-        .first()
-    )
-
-
 def create_bulk_run(db: Session, *, triggered_by: str | None) -> ProviderImportRun:
-    active = get_active_run(db)
+    active = get_active_run(db, PROVIDER)
     if active:
         raise BulkImportConflictError("Ya hay una importación masiva de Nissie en curso.")
 
     run = ProviderImportRun(
         provider=PROVIDER,
         status="running",
+        phase="discovering",
+        progress_detail="Explorando catálogo Nissie…",
         triggered_by=triggered_by,
     )
     db.add(run)
@@ -72,9 +69,16 @@ def run_nissie_bulk_import(
     )
 
     try:
-        urls = discover_nissie_product_urls(session)
-        run.discovered = len(urls)
-        db.commit()
+        set_run_phase(db, run, phase="discovering", progress_detail="Explorando catálogo Nissie…")
+        on_progress = make_progress_callback(db, run_id)
+        urls = discover_nissie_product_urls(session, on_progress=on_progress)
+        set_run_phase(
+            db,
+            run,
+            phase="importing",
+            progress_detail=f"Importando 0/{len(urls)} productos…",
+            discovered=len(urls),
+        )
 
         existing_codes = {
             row[0]
@@ -84,6 +88,8 @@ def run_nissie_bulk_import(
         payload = ProviderImportPayload(status=False)
 
         for url in urls:
+            run.progress_detail = truncate(url, 255)
+            db.commit()
             try:
                 imported = fetch_nissie_product(url)
                 if imported.cod_product in existing_codes:
@@ -153,16 +159,12 @@ def run_nissie_bulk_import(
 
             time.sleep(REQUEST_DELAY_SECONDS)
 
-        run.status = "completed"
-        run.finished_at = datetime.now(timezone.utc)
-    except Exception:
+        finish_run(db, run, status="completed", phase="completed")
+    except Exception as exc:
         logging.exception("nissie bulk import run %s aborted", run_id)
-        run.status = "failed"
-        run.finished_at = datetime.now(timezone.utc)
-        db.commit()
+        run.progress_detail = truncate(str(exc), 255)
+        finish_run(db, run, status="failed", phase="failed")
         raise
-    else:
-        db.commit()
 
 
 def _log_item(
@@ -185,40 +187,3 @@ def _log_item(
             product_id=product_id,
         )
     )
-
-
-def serialize_run(db: Session, run: ProviderImportRun, *, include_failed: bool = True) -> dict:
-    failed_items = []
-    if include_failed:
-        failed_items = (
-            db.query(ProviderImportRunItem)
-            .filter(
-                ProviderImportRunItem.run_id == run.run_id,
-                ProviderImportRunItem.status == "failed",
-            )
-            .order_by(ProviderImportRunItem.item_id.asc())
-            .limit(100)
-            .all()
-        )
-    processed = run.created + run.skipped + run.failed
-    return {
-        "run_id": run.run_id,
-        "provider": run.provider,
-        "status": run.status,
-        "started_at": run.started_at.isoformat() if run.started_at else None,
-        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-        "discovered": run.discovered,
-        "created": run.created,
-        "skipped": run.skipped,
-        "failed": run.failed,
-        "processed": processed,
-        "triggered_by": run.triggered_by,
-        "failed_items": [
-            {
-                "source_url": item.source_url,
-                "cod_product": item.cod_product,
-                "error_message": item.error_message,
-            }
-            for item in failed_items
-        ],
-    }

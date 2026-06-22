@@ -13,6 +13,11 @@ _BRAND_LOGO_ANIMATED = os.getenv("SITE_BRAND_LOGO_ANIMATED", "true").lower() in 
     "on",
 )
 APP_DEBUG = os.getenv("APP_DEBUG", "false").lower() in ("1", "true", "yes", "on")
+ADMIN_LOGIN_NAV_VISIBLE = os.getenv(
+    "ADMIN_LOGIN_NAV_VISIBLE",
+    "true" if APP_DEBUG else "false",
+).lower() in ("1", "true", "yes", "on")
+ADMIN_LOGIN_PATH = os.getenv("ADMIN_LOGIN_PATH", "/login").strip() or "/login"
 # Paleta del logo (alineada al PNG: letras negras + jazmín a color)
 _BRAND_LOGO_COLORS = {
     "letter": os.getenv("SITE_BRAND_LOGO_LETTER", "#111111"),
@@ -195,6 +200,8 @@ def get_template_context() -> dict:
         "brand_logo_animated": _BRAND_LOGO_ANIMATED,
         "brand_logo_colors": _BRAND_LOGO_COLORS,
         "app_debug": APP_DEBUG,
+        "admin_login_nav_visible": ADMIN_LOGIN_NAV_VISIBLE,
+        "admin_login_path": ADMIN_LOGIN_PATH,
         "page_title_catalog": f"{_BRAND} - Catálogo",
         "page_title_product": "Detalle de producto",
         "page_title_admin": "Panel Admin",
@@ -273,6 +280,7 @@ def get_template_context() -> dict:
         "admin_btn_save_return_list": "Guardar y volver al listado",
         "admin_btn_save_continue_here": "Guardar y seguir aquí",
         "admin_tab_new": "Nuevo producto",
+        "admin_tab_bulk_import": "Importación masiva",
         "admin_tab_list": "Mis productos",
         "admin_tab_orders": "Pedidos",
         "admin_tab_catalog": "Catálogo",
@@ -353,7 +361,7 @@ def get_template_context() -> dict:
         "admin_msg_deleted": "Producto eliminado.",
         "admin_msg_error": "Algo salió mal. Revisá tu sesión o intentá de nuevo.",
         "admin_provider_heading": "Importar desde proveedor",
-        "admin_provider_help": "Pegá un link de So Chic, Las Locas o Nissie Denim. El producto se carga desactivado; activalo y ajustá el precio cuando quieras publicarlo.",
+        "admin_provider_help": "Pegá un link de So Chic, Las Locas, Nissie Denim o HOLIC. El producto se carga desactivado; activalo y ajustá el precio cuando quieras publicarlo.",
         "admin_provider_url_label": "Link del producto",
         "admin_provider_url_placeholder": "https://sochic.com.ar/product/... o https://laslocas.com/ficha-... o https://nissiedenim.com.ar/productos/...",
         "admin_provider_btn": "Importar producto",
@@ -375,6 +383,8 @@ def get_template_context() -> dict:
         "admin_nissie_bulk_errors_heading": "Productos con error",
         "admin_nissie_bulk_view_pending": "Ver pendientes de revisión (Nissie inactivos)",
         "admin_nissie_bulk_already_running": "Ya hay una importación masiva en curso.",
+        "admin_bulk_tab_heading": "Importación masiva por proveedor",
+        "admin_bulk_tab_help": "Importación automática desde proveedores: una ficha por URL o catálogos completos (Nissie, HOLIC, Las Locas). Solo se agregan productos nuevos; todo queda desactivado para revisar precio antes de publicar.",
         "admin_holic_bulk_heading": "Importación masiva HOLIC",
         "admin_holic_bulk_help": "Importa todo el catálogo de HOLIC. Solo se agregan productos nuevos; los existentes no se modifican. Todo queda desactivado para que revises precio y lo actives.",
         "admin_holic_bulk_btn": "Importar catálogo HOLIC",
@@ -403,6 +413,13 @@ def get_template_context() -> dict:
         "admin_laslocas_bulk_errors_heading": "Productos Las Locas con error",
         "admin_laslocas_bulk_view_pending": "Ver pendientes de revisión (Las Locas inactivos)",
         "admin_laslocas_bulk_already_running": "Ya hay una importación masiva de Las Locas en curso.",
+        "admin_bulk_phase_discover": "Explorando catálogo…",
+        "admin_bulk_phase_import": "Importando",
+        "admin_bulk_elapsed": "Tiempo transcurrido",
+        "admin_bulk_stale_warning": "Posible importación interrumpida (sin actividad reciente).",
+        "admin_bulk_cancel_btn": "Marcar como fallida",
+        "admin_bulk_cancel_confirm": "¿Marcar esta importación como fallida? No se revertirán productos ya creados.",
+        "admin_bulk_progress_detail": "Detalle",
         "admin_list_provider_filter_label": "Origen",
         "admin_list_provider_all": "Todos los orígenes",
         "admin_list_provider_nissie": "Nissie Denim",

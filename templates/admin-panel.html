@@ -89,6 +89,9 @@
       <button type="button" id="tab-btn-new" class="tab-btn px-4 py-2 font-semibold border-b-2 border-black text-gray-900">
         {{ admin_tab_new }}
       </button>
+      <button type="button" id="tab-btn-bulk" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
+        {{ admin_tab_bulk_import }}
+      </button>
       <button type="button" id="tab-btn-list" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_list }}
       </button>
@@ -105,107 +108,6 @@
 
     <!-- Panel: Nuevo producto -->
     <div id="panel-new" class="bg-white shadow-lg rounded-lg p-6 md:p-8">
-      <section class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <h2 class="text-sm font-semibold text-amber-950">{{ admin_provider_heading }}</h2>
-        <p class="mt-1 text-xs text-amber-900">{{ admin_provider_help }}</p>
-        <div class="mt-3 flex flex-col sm:flex-row gap-3">
-          <div class="flex-1">
-            <label for="provider-url" class="block text-xs font-medium text-amber-950">{{ admin_provider_url_label }}</label>
-            <input id="provider-url" type="url" placeholder="{{ admin_provider_url_placeholder }}"
-              class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white">
-          </div>
-          <button type="button" id="provider-import-btn"
-            class="sm:self-end px-4 py-2 rounded-md bg-amber-600 text-white font-bold hover:bg-amber-700 transition">
-            {{ admin_provider_btn }}
-          </button>
-        </div>
-        <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 cursor-pointer">
-          <input type="checkbox" id="provider-status-active" class="mt-0.5 w-4 h-4 accent-amber-600">
-          <span>
-            <span class="font-semibold">{{ admin_provider_status_label }}</span>
-            <span class="block text-amber-900/90">{{ admin_provider_status_help }}</span>
-          </span>
-        </label>
-        <div class="mt-4 pt-4 border-t border-amber-200">
-          <h3 class="text-sm font-semibold text-amber-950">{{ admin_nissie_bulk_heading }}</h3>
-          <p class="mt-1 text-xs text-amber-900">{{ admin_nissie_bulk_help }}</p>
-          <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
-            <button type="button" id="nissie-bulk-import-btn"
-              class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
-              {{ admin_nissie_bulk_btn }}
-            </button>
-            <button type="button" id="nissie-bulk-view-pending-btn"
-              class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
-              {{ admin_nissie_bulk_view_pending }}
-            </button>
-          </div>
-          <p id="nissie-bulk-status" class="mt-2 text-xs text-amber-950"></p>
-          <div id="nissie-bulk-errors-wrap" class="mt-3 hidden">
-            <p class="text-xs font-semibold text-amber-950">{{ admin_nissie_bulk_errors_heading }}</p>
-            <ul id="nissie-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
-          </div>
-        </div>
-        <div class="mt-4 pt-4 border-t border-amber-200">
-          <h3 class="text-sm font-semibold text-amber-950">{{ admin_holic_bulk_heading }}</h3>
-          <p class="mt-1 text-xs text-amber-900">{{ admin_holic_bulk_help }}</p>
-          <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
-            <button type="button" id="holic-bulk-import-btn"
-              class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
-              {{ admin_holic_bulk_btn }}
-            </button>
-            <button type="button" id="holic-bulk-view-pending-btn"
-              class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
-              {{ admin_holic_bulk_view_pending }}
-            </button>
-          </div>
-          <p id="holic-bulk-status" class="mt-2 text-xs text-amber-950"></p>
-          <div id="holic-bulk-errors-wrap" class="mt-3 hidden">
-            <p class="text-xs font-semibold text-amber-950">{{ admin_holic_bulk_errors_heading }}</p>
-            <ul id="holic-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
-          </div>
-        </div>
-        <div class="mt-4 pt-4 border-t border-amber-200">
-          <h3 class="text-sm font-semibold text-amber-950">{{ admin_laslocas_bulk_heading }}</h3>
-          <p class="mt-1 text-xs text-amber-900">{{ admin_laslocas_bulk_help }}</p>
-          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label for="laslocas-bulk-category" class="block text-xs font-medium text-amber-950">{{ admin_laslocas_bulk_category_label }}</label>
-              <select id="laslocas-bulk-category"
-                class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white text-sm">
-                {% for cat in laslocas_bulk_categories %}
-                <option value="{{ cat.id }}">{{ cat.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div>
-              <label for="laslocas-bulk-max-pages" class="block text-xs font-medium text-amber-950">{{ admin_laslocas_bulk_max_pages_label }}</label>
-              <input id="laslocas-bulk-max-pages" type="number" min="0" step="1" value="0"
-                class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white text-sm">
-              <p class="mt-1 text-[11px] text-amber-900/90">{{ admin_laslocas_bulk_max_pages_help }}</p>
-            </div>
-          </div>
-          <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 cursor-pointer">
-            <input type="checkbox" id="laslocas-bulk-all-categories" class="mt-0.5 w-4 h-4 accent-amber-600">
-            <span>{{ admin_laslocas_bulk_all_categories }}</span>
-          </label>
-          <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
-            <button type="button" id="laslocas-bulk-import-btn"
-              class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
-              {{ admin_laslocas_bulk_btn }}
-            </button>
-            <button type="button" id="laslocas-bulk-view-pending-btn"
-              class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
-              {{ admin_laslocas_bulk_view_pending }}
-            </button>
-          </div>
-          <p id="laslocas-bulk-status" class="mt-2 text-xs text-amber-950"></p>
-          <div id="laslocas-bulk-errors-wrap" class="mt-3 hidden">
-            <p class="text-xs font-semibold text-amber-950">{{ admin_laslocas_bulk_errors_heading }}</p>
-            <ul id="laslocas-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
-          </div>
-        </div>
-      </section>
-
       <form id="producto-form" class="space-y-4">
         <div>
           <label for="item_title" class="block text-sm font-medium text-gray-700">{{ label_title }}</label>
@@ -292,6 +194,140 @@
           </button>
         </div>
       </form>
+    </div>
+
+    <!-- Panel: Importación masiva -->
+    <div id="panel-bulk" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ admin_bulk_tab_heading }}</h2>
+      <p class="text-sm text-gray-600 mb-6">{{ admin_bulk_tab_help }}</p>
+
+      <section class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h3 class="text-sm font-semibold text-amber-950">{{ admin_provider_heading }}</h3>
+        <p class="mt-1 text-xs text-amber-900">{{ admin_provider_help }}</p>
+        <div class="mt-3 flex flex-col sm:flex-row gap-3">
+          <div class="flex-1">
+            <label for="provider-url" class="block text-xs font-medium text-amber-950">{{ admin_provider_url_label }}</label>
+            <input id="provider-url" type="url" placeholder="{{ admin_provider_url_placeholder }}"
+              class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white">
+          </div>
+          <button type="button" id="provider-import-btn"
+            class="sm:self-end px-4 py-2 rounded-md bg-amber-600 text-white font-bold hover:bg-amber-700 transition">
+            {{ admin_provider_btn }}
+          </button>
+        </div>
+        <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 cursor-pointer">
+          <input type="checkbox" id="provider-status-active" class="mt-0.5 w-4 h-4 accent-amber-600">
+          <span>
+            <span class="font-semibold">{{ admin_provider_status_label }}</span>
+            <span class="block text-amber-900/90">{{ admin_provider_status_help }}</span>
+          </span>
+        </label>
+      </section>
+
+      <section class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h3 class="text-sm font-semibold text-amber-950">{{ admin_nissie_bulk_heading }}</h3>
+        <p class="mt-1 text-xs text-amber-900">{{ admin_nissie_bulk_help }}</p>
+        <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <button type="button" id="nissie-bulk-import-btn"
+            class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
+            {{ admin_nissie_bulk_btn }}
+          </button>
+          <button type="button" id="nissie-bulk-view-pending-btn"
+            class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
+            {{ admin_nissie_bulk_view_pending }}
+          </button>
+        </div>
+        <p id="nissie-bulk-status" class="mt-2 text-xs text-amber-950"></p>
+        <progress id="nissie-bulk-progress" class="mt-2 w-full h-2 accent-amber-700 hidden" value="0" max="100"></progress>
+        <div id="nissie-bulk-stale-wrap" class="mt-2 hidden">
+          <p id="nissie-bulk-stale-msg" class="text-xs text-red-800"></p>
+          <button type="button" id="nissie-bulk-cancel-btn"
+            class="mt-1 text-xs font-semibold text-red-900 underline hover:text-red-950">
+            {{ admin_bulk_cancel_btn }}
+          </button>
+        </div>
+        <div id="nissie-bulk-errors-wrap" class="mt-3 hidden">
+          <p class="text-xs font-semibold text-amber-950">{{ admin_nissie_bulk_errors_heading }}</p>
+          <ul id="nissie-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
+        </div>
+      </section>
+
+      <section class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h3 class="text-sm font-semibold text-amber-950">{{ admin_holic_bulk_heading }}</h3>
+        <p class="mt-1 text-xs text-amber-900">{{ admin_holic_bulk_help }}</p>
+        <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <button type="button" id="holic-bulk-import-btn"
+            class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
+            {{ admin_holic_bulk_btn }}
+          </button>
+          <button type="button" id="holic-bulk-view-pending-btn"
+            class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
+            {{ admin_holic_bulk_view_pending }}
+          </button>
+        </div>
+        <p id="holic-bulk-status" class="mt-2 text-xs text-amber-950"></p>
+        <progress id="holic-bulk-progress" class="mt-2 w-full h-2 accent-amber-700 hidden" value="0" max="100"></progress>
+        <div id="holic-bulk-stale-wrap" class="mt-2 hidden">
+          <p id="holic-bulk-stale-msg" class="text-xs text-red-800"></p>
+          <button type="button" id="holic-bulk-cancel-btn"
+            class="mt-1 text-xs font-semibold text-red-900 underline hover:text-red-950">
+            {{ admin_bulk_cancel_btn }}
+          </button>
+        </div>
+        <div id="holic-bulk-errors-wrap" class="mt-3 hidden">
+          <p class="text-xs font-semibold text-amber-950">{{ admin_holic_bulk_errors_heading }}</p>
+          <ul id="holic-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h3 class="text-sm font-semibold text-amber-950">{{ admin_laslocas_bulk_heading }}</h3>
+        <p class="mt-1 text-xs text-amber-900">{{ admin_laslocas_bulk_help }}</p>
+        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="laslocas-bulk-category" class="block text-xs font-medium text-amber-950">{{ admin_laslocas_bulk_category_label }}</label>
+            <select id="laslocas-bulk-category"
+              class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white text-sm">
+              {% for cat in laslocas_bulk_categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="laslocas-bulk-max-pages" class="block text-xs font-medium text-amber-950">{{ admin_laslocas_bulk_max_pages_label }}</label>
+            <input id="laslocas-bulk-max-pages" type="number" min="0" step="1" value="0"
+              class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white text-sm">
+            <p class="mt-1 text-[11px] text-amber-900/90">{{ admin_laslocas_bulk_max_pages_help }}</p>
+          </div>
+        </div>
+        <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 cursor-pointer">
+          <input type="checkbox" id="laslocas-bulk-all-categories" class="mt-0.5 w-4 h-4 accent-amber-600">
+          <span>{{ admin_laslocas_bulk_all_categories }}</span>
+        </label>
+        <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <button type="button" id="laslocas-bulk-import-btn"
+            class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
+            {{ admin_laslocas_bulk_btn }}
+          </button>
+          <button type="button" id="laslocas-bulk-view-pending-btn"
+            class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
+            {{ admin_laslocas_bulk_view_pending }}
+          </button>
+        </div>
+        <p id="laslocas-bulk-status" class="mt-2 text-xs text-amber-950"></p>
+        <progress id="laslocas-bulk-progress" class="mt-2 w-full h-2 accent-amber-700 hidden" value="0" max="100"></progress>
+        <div id="laslocas-bulk-stale-wrap" class="mt-2 hidden">
+          <p id="laslocas-bulk-stale-msg" class="text-xs text-red-800"></p>
+          <button type="button" id="laslocas-bulk-cancel-btn"
+            class="mt-1 text-xs font-semibold text-red-900 underline hover:text-red-950">
+            {{ admin_bulk_cancel_btn }}
+          </button>
+        </div>
+        <div id="laslocas-bulk-errors-wrap" class="mt-3 hidden">
+          <p class="text-xs font-semibold text-amber-950">{{ admin_laslocas_bulk_errors_heading }}</p>
+          <ul id="laslocas-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
+        </div>
+      </section>
     </div>
 
     <!-- Panel: Lista -->
@@ -546,6 +582,12 @@
       laslocasBulkSkipped: {{ admin_laslocas_bulk_skipped | tojson }},
       laslocasBulkFailed: {{ admin_laslocas_bulk_failed | tojson }},
       laslocasBulkAlreadyRunning: {{ admin_laslocas_bulk_already_running | tojson }},
+      bulkPhaseDiscover: {{ admin_bulk_phase_discover | tojson }},
+      bulkPhaseImport: {{ admin_bulk_phase_import | tojson }},
+      bulkElapsed: {{ admin_bulk_elapsed | tojson }},
+      bulkStaleWarning: {{ admin_bulk_stale_warning | tojson }},
+      bulkCancelBtn: {{ admin_bulk_cancel_btn | tojson }},
+      bulkCancelConfirm: {{ admin_bulk_cancel_confirm | tojson }},
       statusActive: {{ admin_status_active | tojson }},
       statusInactive: {{ admin_status_inactive | tojson }},
       msgEmpty: {{ admin_list_empty | tojson }},
@@ -583,11 +625,13 @@
     let deleteTargetId = null;
 
     const panelNew = document.getElementById('panel-new');
+    const panelBulk = document.getElementById('panel-bulk');
     const panelList = document.getElementById('panel-list');
     const panelBanners = document.getElementById('panel-banners');
     const panelCatalog = document.getElementById('panel-catalog');
     const panelOrders = document.getElementById('panel-orders');
     const tabBtnNew = document.getElementById('tab-btn-new');
+    const tabBtnBulk = document.getElementById('tab-btn-bulk');
     const tabBtnList = document.getElementById('tab-btn-list');
     const tabBtnBanners = document.getElementById('tab-btn-banners');
     const tabBtnCatalog = document.getElementById('tab-btn-catalog');
@@ -641,16 +685,19 @@
 
     function showTab(which) {
       const isNew = which === 'new';
+      const isBulk = which === 'bulk';
       const isList = which === 'list';
       const isBanners = which === 'banners';
       const isCatalog = which === 'catalog';
       const isOrders = which === 'orders';
       panelNew.classList.toggle('hidden', !isNew);
+      if (panelBulk) panelBulk.classList.toggle('hidden', !isBulk);
       panelList.classList.toggle('hidden', !isList);
       panelBanners.classList.toggle('hidden', !isBanners);
       if (panelCatalog) panelCatalog.classList.toggle('hidden', !isCatalog);
       panelOrders.classList.toggle('hidden', !isOrders);
       setTabBtnStyle(tabBtnNew, isNew);
+      setTabBtnStyle(tabBtnBulk, isBulk);
       setTabBtnStyle(tabBtnList, isList);
       setTabBtnStyle(tabBtnBanners, isBanners);
       setTabBtnStyle(tabBtnCatalog, isCatalog);
@@ -668,6 +715,7 @@
     }
 
     tabBtnNew.addEventListener('click', () => showTab('new'));
+    tabBtnBulk.addEventListener('click', () => showTab('bulk'));
     tabBtnList.addEventListener('click', () => showTab('list'));
     tabBtnBanners.addEventListener('click', () => showTab('banners'));
     tabBtnCatalog.addEventListener('click', () => showTab('catalog'));
@@ -1032,26 +1080,81 @@
       }
     });
 
-    let nissieBulkPollTimer = null;
+    const BULK_POLL_MS_RUNNING = 2000;
 
-    function renderNissieBulkRun(run) {
-      const statusEl = document.getElementById('nissie-bulk-status');
-      const errorsWrap = document.getElementById('nissie-bulk-errors-wrap');
-      const errorsList = document.getElementById('nissie-bulk-errors');
+    function formatBulkElapsed(startedAtIso) {
+      if (!startedAtIso) return '0:00';
+      const started = new Date(startedAtIso);
+      if (Number.isNaN(started.getTime())) return '0:00';
+      const sec = Math.max(0, Math.floor((Date.now() - started.getTime()) / 1000));
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function renderBulkRun(run, cfg) {
+      const {
+        statusEl,
+        progressEl,
+        staleWrap,
+        staleMsgEl,
+        cancelBtn,
+        importBtn,
+        errorsWrap,
+        errorsList,
+        labels,
+      } = cfg;
+
       if (!run) {
         statusEl.textContent = '';
+        progressEl.classList.add('hidden');
+        staleWrap.classList.add('hidden');
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+        if (importBtn) importBtn.disabled = false;
+        return;
+      }
+
+      const isRunning = run.status === 'running';
+      if (importBtn) importBtn.disabled = isRunning;
+
+      if (isRunning) {
+        const elapsed = formatBulkElapsed(run.started_at);
+        const detail = run.progress_detail ? ` · ${run.progress_detail}` : '';
+        const discovering = run.phase === 'discovering' || !run.discovered;
+        progressEl.classList.remove('hidden');
+        if (discovering) {
+          progressEl.removeAttribute('value');
+          const discovered = run.discovered || 0;
+          const countText = discovered ? ` · ${discovered} URLs` : '';
+          statusEl.textContent = `${LABELS.bulkPhaseDiscover}${countText}${detail} · ${LABELS.bulkElapsed} ${elapsed}`;
+        } else {
+          progressEl.max = run.discovered || 1;
+          progressEl.value = run.processed || 0;
+          statusEl.textContent = `${LABELS.bulkPhaseImport} ${run.processed || 0}/${run.discovered} · ${run.created} ${labels.created} · ${run.skipped} ${labels.skipped} · ${run.failed} ${labels.failed}${detail} · ${LABELS.bulkElapsed} ${elapsed}`;
+        }
+        if (run.is_stale) {
+          staleWrap.classList.remove('hidden');
+          staleMsgEl.textContent = LABELS.bulkStaleWarning;
+          cancelBtn.classList.remove('hidden');
+          cancelBtn.dataset.runId = String(run.run_id);
+        } else {
+          staleWrap.classList.add('hidden');
+          cancelBtn.classList.add('hidden');
+          delete cancelBtn.dataset.runId;
+        }
         errorsWrap.classList.add('hidden');
         errorsList.innerHTML = '';
         return;
       }
-      if (run.status === 'running') {
-        const processed = run.processed || 0;
-        const total = run.discovered || '?';
-        statusEl.textContent = `${LABELS.nissieBulkRunning} ${processed}/${total}`;
-        errorsWrap.classList.add('hidden');
-        return;
-      }
-      statusEl.textContent = `${LABELS.nissieBulkDone} ${run.created} ${LABELS.nissieBulkCreated}, ${run.skipped} ${LABELS.nissieBulkSkipped}, ${run.failed} ${LABELS.nissieBulkFailed}.`;
+
+      progressEl.classList.add('hidden');
+      staleWrap.classList.add('hidden');
+      cancelBtn.classList.add('hidden');
+      delete cancelBtn.dataset.runId;
+      if (importBtn) importBtn.disabled = false;
+
+      statusEl.textContent = `${labels.done} ${run.created} ${labels.created}, ${run.skipped} ${labels.skipped}, ${run.failed} ${labels.failed}.`;
       const failed = run.failed_items || [];
       if (failed.length) {
         errorsWrap.classList.remove('hidden');
@@ -1064,56 +1167,107 @@
       }
     }
 
-    async function pollNissieBulkRun(runId) {
-      try {
-        const resp = await authFetch('/api/proveedores/importaciones/' + runId);
-        if (!resp.ok) return;
-        const data = await resp.json();
-        renderNissieBulkRun(data);
-        if (data.status === 'running') {
-          nissieBulkPollTimer = setTimeout(() => pollNissieBulkRun(runId), 3000);
-        } else {
-          nissieBulkPollTimer = null;
+    function createBulkRunController(cfg) {
+      let pollTimer = null;
+
+      function clearPoll() {
+        if (pollTimer) {
+          clearTimeout(pollTimer);
+          pollTimer = null;
         }
-      } catch (e) {
-        nissieBulkPollTimer = null;
       }
+
+      async function pollRun(runId) {
+        try {
+          const resp = await authFetch('/api/proveedores/importaciones/' + runId);
+          if (!resp.ok) return;
+          const data = await resp.json();
+          renderBulkRun(data, cfg);
+          if (data.status === 'running') {
+            pollTimer = setTimeout(() => pollRun(runId), BULK_POLL_MS_RUNNING);
+          } else {
+            pollTimer = null;
+          }
+        } catch (e) {
+          pollTimer = null;
+        }
+      }
+
+      async function loadLatest() {
+        try {
+          const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=' + cfg.provider);
+          if (!resp.ok) return;
+          const data = await resp.json();
+          if (data.run) {
+            renderBulkRun(data.run, cfg);
+            if (data.run.status === 'running') {
+              clearPoll();
+              pollTimer = setTimeout(() => pollRun(data.run.run_id), BULK_POLL_MS_RUNNING);
+            }
+          }
+        } catch (e) {}
+      }
+
+      cfg.cancelBtn?.addEventListener('click', async () => {
+        if (!confirm(LABELS.bulkCancelConfirm)) return;
+        const runId = cfg.cancelBtn.dataset.runId;
+        if (!runId) return;
+        try {
+          const resp = await authFetch('/api/proveedores/importaciones/' + runId + '/cancelar', { method: 'POST' });
+          const data = await resp.json().catch(() => ({}));
+          if (data.ok && data.run) {
+            clearPoll();
+            renderBulkRun(data.run, cfg);
+          }
+        } catch (e) {}
+      });
+
+      return { loadLatest, pollRun, clearPoll };
     }
 
-    async function loadLatestNissieBulkRun() {
-      try {
-        const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=nissie');
-        if (!resp.ok) return;
-        const data = await resp.json();
-        if (data.run) {
-          renderNissieBulkRun(data.run);
-          if (data.run.status === 'running') {
-            if (nissieBulkPollTimer) clearTimeout(nissieBulkPollTimer);
-            nissieBulkPollTimer = setTimeout(() => pollNissieBulkRun(data.run.run_id), 3000);
-          }
-        }
-      } catch (e) {}
-    }
+    const nissieBulkCfg = {
+      provider: 'nissie',
+      statusEl: document.getElementById('nissie-bulk-status'),
+      progressEl: document.getElementById('nissie-bulk-progress'),
+      staleWrap: document.getElementById('nissie-bulk-stale-wrap'),
+      staleMsgEl: document.getElementById('nissie-bulk-stale-msg'),
+      cancelBtn: document.getElementById('nissie-bulk-cancel-btn'),
+      importBtn: document.getElementById('nissie-bulk-import-btn'),
+      errorsWrap: document.getElementById('nissie-bulk-errors-wrap'),
+      errorsList: document.getElementById('nissie-bulk-errors'),
+      labels: {
+        confirm: LABELS.nissieBulkConfirm,
+        alreadyRunning: LABELS.nissieBulkAlreadyRunning,
+        done: LABELS.nissieBulkDone,
+        created: LABELS.nissieBulkCreated,
+        skipped: LABELS.nissieBulkSkipped,
+        failed: LABELS.nissieBulkFailed,
+      },
+    };
+    const nissieBulk = createBulkRunController(nissieBulkCfg);
 
     document.getElementById('nissie-bulk-import-btn').addEventListener('click', async () => {
       if (!confirm(LABELS.nissieBulkConfirm)) return;
-      const btn = document.getElementById('nissie-bulk-import-btn');
-      const statusEl = document.getElementById('nissie-bulk-status');
-      btn.disabled = true;
-      statusEl.textContent = LABELS.nissieBulkRunning;
+      nissieBulkCfg.importBtn.disabled = true;
+      renderBulkRun(
+        { status: 'running', phase: 'discovering', started_at: new Date().toISOString() },
+        nissieBulkCfg
+      );
       try {
         const resp = await authFetch('/api/proveedores/nissie/importar-masivo', { method: 'POST' });
         const data = await resp.json().catch(() => ({}));
         if (!data.ok) {
-          statusEl.textContent = data.error || LABELS.nissieBulkAlreadyRunning;
+          nissieBulkCfg.statusEl.textContent = data.error || LABELS.nissieBulkAlreadyRunning;
+          nissieBulkCfg.importBtn.disabled = false;
+          nissieBulkCfg.progressEl.classList.add('hidden');
           return;
         }
-        if (nissieBulkPollTimer) clearTimeout(nissieBulkPollTimer);
-        pollNissieBulkRun(data.run_id);
+        nissieBulk.clearPoll();
+        nissieBulk.pollRun(data.run_id);
       } catch (err) {
-        statusEl.textContent = LABELS.msgError;
-      } finally {
-        btn.disabled = false;
+        nissieBulkCfg.statusEl.textContent = LABELS.msgError;
+        nissieBulkCfg.importBtn.disabled = false;
+        nissieBulkCfg.progressEl.classList.add('hidden');
       }
     });
 
@@ -1125,90 +1279,51 @@
       loadList(1);
     });
 
-    loadLatestNissieBulkRun();
+    nissieBulk.loadLatest();
 
-    let holicBulkPollTimer = null;
-
-    function renderHolicBulkRun(run) {
-      const statusEl = document.getElementById('holic-bulk-status');
-      const errorsWrap = document.getElementById('holic-bulk-errors-wrap');
-      const errorsList = document.getElementById('holic-bulk-errors');
-      if (!run) {
-        statusEl.textContent = '';
-        errorsWrap.classList.add('hidden');
-        errorsList.innerHTML = '';
-        return;
-      }
-      if (run.status === 'running') {
-        const processed = run.processed || 0;
-        const total = run.discovered || '?';
-        statusEl.textContent = `${LABELS.holicBulkRunning} ${processed}/${total}`;
-        errorsWrap.classList.add('hidden');
-        return;
-      }
-      statusEl.textContent = `${LABELS.holicBulkDone} ${run.created} ${LABELS.holicBulkCreated}, ${run.skipped} ${LABELS.holicBulkSkipped}, ${run.failed} ${LABELS.holicBulkFailed}.`;
-      const failed = run.failed_items || [];
-      if (failed.length) {
-        errorsWrap.classList.remove('hidden');
-        errorsList.innerHTML = failed.map(item => `
-          <li><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(item.source_url)}</a>${item.error_message ? ': ' + escapeHtml(item.error_message) : ''}</li>
-        `).join('');
-      } else {
-        errorsWrap.classList.add('hidden');
-        errorsList.innerHTML = '';
-      }
-    }
-
-    async function pollHolicBulkRun(runId) {
-      try {
-        const resp = await authFetch('/api/proveedores/importaciones/' + runId);
-        if (!resp.ok) return;
-        const data = await resp.json();
-        renderHolicBulkRun(data);
-        if (data.status === 'running') {
-          holicBulkPollTimer = setTimeout(() => pollHolicBulkRun(runId), 3000);
-        } else {
-          holicBulkPollTimer = null;
-        }
-      } catch (e) {
-        holicBulkPollTimer = null;
-      }
-    }
-
-    async function loadLatestHolicBulkRun() {
-      try {
-        const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=holic');
-        if (!resp.ok) return;
-        const data = await resp.json();
-        if (data.run) {
-          renderHolicBulkRun(data.run);
-          if (data.run.status === 'running') {
-            if (holicBulkPollTimer) clearTimeout(holicBulkPollTimer);
-            holicBulkPollTimer = setTimeout(() => pollHolicBulkRun(data.run.run_id), 3000);
-          }
-        }
-      } catch (e) {}
-    }
+    const holicBulkCfg = {
+      provider: 'holic',
+      statusEl: document.getElementById('holic-bulk-status'),
+      progressEl: document.getElementById('holic-bulk-progress'),
+      staleWrap: document.getElementById('holic-bulk-stale-wrap'),
+      staleMsgEl: document.getElementById('holic-bulk-stale-msg'),
+      cancelBtn: document.getElementById('holic-bulk-cancel-btn'),
+      importBtn: document.getElementById('holic-bulk-import-btn'),
+      errorsWrap: document.getElementById('holic-bulk-errors-wrap'),
+      errorsList: document.getElementById('holic-bulk-errors'),
+      labels: {
+        confirm: LABELS.holicBulkConfirm,
+        alreadyRunning: LABELS.holicBulkAlreadyRunning,
+        done: LABELS.holicBulkDone,
+        created: LABELS.holicBulkCreated,
+        skipped: LABELS.holicBulkSkipped,
+        failed: LABELS.holicBulkFailed,
+      },
+    };
+    const holicBulk = createBulkRunController(holicBulkCfg);
 
     document.getElementById('holic-bulk-import-btn').addEventListener('click', async () => {
       if (!confirm(LABELS.holicBulkConfirm)) return;
-      const btn = document.getElementById('holic-bulk-import-btn');
-      const statusEl = document.getElementById('holic-bulk-status');
-      btn.disabled = true;
-      statusEl.textContent = LABELS.holicBulkRunning;
+      holicBulkCfg.importBtn.disabled = true;
+      renderBulkRun(
+        { status: 'running', phase: 'discovering', started_at: new Date().toISOString() },
+        holicBulkCfg
+      );
       try {
         const resp = await authFetch('/api/proveedores/holic/importar-masivo', { method: 'POST' });
         const data = await resp.json().catch(() => ({}));
         if (!data.ok) {
-          statusEl.textContent = data.error || LABELS.holicBulkAlreadyRunning;
+          holicBulkCfg.statusEl.textContent = data.error || LABELS.holicBulkAlreadyRunning;
+          holicBulkCfg.importBtn.disabled = false;
+          holicBulkCfg.progressEl.classList.add('hidden');
           return;
         }
-        if (holicBulkPollTimer) clearTimeout(holicBulkPollTimer);
-        pollHolicBulkRun(data.run_id);
+        holicBulk.clearPoll();
+        holicBulk.pollRun(data.run_id);
       } catch (err) {
-        statusEl.textContent = LABELS.msgError;
-      } finally {
-        btn.disabled = false;
+        holicBulkCfg.statusEl.textContent = LABELS.msgError;
+        holicBulkCfg.importBtn.disabled = false;
+        holicBulkCfg.progressEl.classList.add('hidden');
       }
     });
 
@@ -1220,9 +1335,8 @@
       loadList(1);
     });
 
-    loadLatestHolicBulkRun();
+    holicBulk.loadLatest();
 
-    let laslocasBulkPollTimer = null;
     const laslocasCategorySelect = document.getElementById('laslocas-bulk-category');
     const laslocasAllCategoriesCheck = document.getElementById('laslocas-bulk-all-categories');
 
@@ -1234,77 +1348,38 @@
     laslocasAllCategoriesCheck?.addEventListener('change', syncLaslocasBulkCategoryField);
     syncLaslocasBulkCategoryField();
 
-    function renderLaslocasBulkRun(run) {
-      const statusEl = document.getElementById('laslocas-bulk-status');
-      const errorsWrap = document.getElementById('laslocas-bulk-errors-wrap');
-      const errorsList = document.getElementById('laslocas-bulk-errors');
-      if (!run) {
-        statusEl.textContent = '';
-        errorsWrap.classList.add('hidden');
-        errorsList.innerHTML = '';
-        return;
-      }
-      if (run.status === 'running') {
-        const processed = run.processed || 0;
-        const total = run.discovered || '?';
-        statusEl.textContent = `${LABELS.laslocasBulkRunning} ${processed}/${total}`;
-        errorsWrap.classList.add('hidden');
-        return;
-      }
-      statusEl.textContent = `${LABELS.laslocasBulkDone} ${run.created} ${LABELS.laslocasBulkCreated}, ${run.skipped} ${LABELS.laslocasBulkSkipped}, ${run.failed} ${LABELS.laslocasBulkFailed}.`;
-      const failed = run.failed_items || [];
-      if (failed.length) {
-        errorsWrap.classList.remove('hidden');
-        errorsList.innerHTML = failed.map(item => `
-          <li><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(item.source_url)}</a>${item.error_message ? ': ' + escapeHtml(item.error_message) : ''}</li>
-        `).join('');
-      } else {
-        errorsWrap.classList.add('hidden');
-        errorsList.innerHTML = '';
-      }
-    }
-
-    async function pollLaslocasBulkRun(runId) {
-      try {
-        const resp = await authFetch('/api/proveedores/importaciones/' + runId);
-        if (!resp.ok) return;
-        const data = await resp.json();
-        renderLaslocasBulkRun(data);
-        if (data.status === 'running') {
-          laslocasBulkPollTimer = setTimeout(() => pollLaslocasBulkRun(runId), 3000);
-        } else {
-          laslocasBulkPollTimer = null;
-        }
-      } catch (e) {
-        laslocasBulkPollTimer = null;
-      }
-    }
-
-    async function loadLatestLaslocasBulkRun() {
-      try {
-        const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=laslocas');
-        if (!resp.ok) return;
-        const data = await resp.json();
-        if (data.run) {
-          renderLaslocasBulkRun(data.run);
-          if (data.run.status === 'running') {
-            if (laslocasBulkPollTimer) clearTimeout(laslocasBulkPollTimer);
-            laslocasBulkPollTimer = setTimeout(() => pollLaslocasBulkRun(data.run.run_id), 3000);
-          }
-        }
-      } catch (e) {}
-    }
+    const laslocasBulkCfg = {
+      provider: 'laslocas',
+      statusEl: document.getElementById('laslocas-bulk-status'),
+      progressEl: document.getElementById('laslocas-bulk-progress'),
+      staleWrap: document.getElementById('laslocas-bulk-stale-wrap'),
+      staleMsgEl: document.getElementById('laslocas-bulk-stale-msg'),
+      cancelBtn: document.getElementById('laslocas-bulk-cancel-btn'),
+      importBtn: document.getElementById('laslocas-bulk-import-btn'),
+      errorsWrap: document.getElementById('laslocas-bulk-errors-wrap'),
+      errorsList: document.getElementById('laslocas-bulk-errors'),
+      labels: {
+        confirm: LABELS.laslocasBulkConfirm,
+        alreadyRunning: LABELS.laslocasBulkAlreadyRunning,
+        done: LABELS.laslocasBulkDone,
+        created: LABELS.laslocasBulkCreated,
+        skipped: LABELS.laslocasBulkSkipped,
+        failed: LABELS.laslocasBulkFailed,
+      },
+    };
+    const laslocasBulk = createBulkRunController(laslocasBulkCfg);
 
     document.getElementById('laslocas-bulk-import-btn').addEventListener('click', async () => {
       if (!confirm(LABELS.laslocasBulkConfirm)) return;
-      const btn = document.getElementById('laslocas-bulk-import-btn');
-      const statusEl = document.getElementById('laslocas-bulk-status');
       const allCategories = !!laslocasAllCategoriesCheck?.checked;
       const categoryId = laslocasCategorySelect?.value || null;
       const maxPagesRaw = parseInt(document.getElementById('laslocas-bulk-max-pages')?.value || '0', 10);
       const maxPages = Number.isFinite(maxPagesRaw) && maxPagesRaw > 0 ? maxPagesRaw : 0;
-      btn.disabled = true;
-      statusEl.textContent = LABELS.laslocasBulkRunning;
+      laslocasBulkCfg.importBtn.disabled = true;
+      renderBulkRun(
+        { status: 'running', phase: 'discovering', started_at: new Date().toISOString() },
+        laslocasBulkCfg
+      );
       try {
         const resp = await authFetch('/api/proveedores/laslocas/importar-masivo', {
           method: 'POST',
@@ -1317,15 +1392,17 @@
         });
         const data = await resp.json().catch(() => ({}));
         if (!data.ok) {
-          statusEl.textContent = data.error || LABELS.laslocasBulkAlreadyRunning;
+          laslocasBulkCfg.statusEl.textContent = data.error || LABELS.laslocasBulkAlreadyRunning;
+          laslocasBulkCfg.importBtn.disabled = false;
+          laslocasBulkCfg.progressEl.classList.add('hidden');
           return;
         }
-        if (laslocasBulkPollTimer) clearTimeout(laslocasBulkPollTimer);
-        pollLaslocasBulkRun(data.run_id);
+        laslocasBulk.clearPoll();
+        laslocasBulk.pollRun(data.run_id);
       } catch (err) {
-        statusEl.textContent = LABELS.msgError;
-      } finally {
-        btn.disabled = false;
+        laslocasBulkCfg.statusEl.textContent = LABELS.msgError;
+        laslocasBulkCfg.importBtn.disabled = false;
+        laslocasBulkCfg.progressEl.classList.add('hidden');
       }
     });
 
@@ -1337,7 +1414,7 @@
       loadList(1);
     });
 
-    loadLatestLaslocasBulkRun();
+    laslocasBulk.loadLatest();
 
     document.getElementById('producto-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1565,6 +1642,8 @@
       const activeTab = new URLSearchParams(window.location.search).get('tab');
       if (activeTab === 'list') {
         showTab('list');
+      } else if (activeTab === 'bulk') {
+        showTab('bulk');
       } else if (activeTab === 'banners') {
         showTab('banners');
       } else if (activeTab === 'catalog' || activeTab === 'colors' || activeTab === 'sizes') {

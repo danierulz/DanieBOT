@@ -35,7 +35,9 @@ Proveedores objetivo: **Las Locas** (todas las categorías) y **Nissie Denim** (
 | Las Locas | `laslocas.py` | Sí (`LOGIN_EMAIL`, `LOGIN_PASS`) | Descarga + GCS |
 | Nissie | `nissie.py` | No | URL remota |
 
-Import unitario (admin): `POST /api/proveedores/importar`.
+Import unitario (admin): `POST /api/proveedores/importar` — pestaña **Nuevo producto**.
+
+Import masivo (admin): pestaña **Importación masiva** — ver [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md).
 
 Import masivo (CLI): `python -m provider_importers.bulk.runner`.
 

@@ -19,6 +19,7 @@ selenium
 webdriver_manager
 google-cloud-storage
 python-jose
+passlib[bcrypt]
 python-multipart
 
 fastapi==0.115.0

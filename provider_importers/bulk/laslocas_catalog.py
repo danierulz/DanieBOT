@@ -6,7 +6,7 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -49,6 +49,7 @@ def discover_laslocas_product_urls(
     category_id: str | None = None,
     all_categories: bool = False,
     max_pages: int = 0,
+    on_progress: Callable[[str, int], None] | None = None,
 ) -> list[str]:
     http = session or _authenticated_session()
     categories: list[dict[str, str]]
@@ -61,7 +62,13 @@ def discover_laslocas_product_urls(
 
     discovered: list[str] = []
     for category in categories:
-        category_urls = _discover_category_urls(http, category, max_pages=max_pages)
+        category_urls = _discover_category_urls(
+            http,
+            category,
+            max_pages=max_pages,
+            on_progress=on_progress,
+            total_so_far=len(discovered),
+        )
         for url in category_urls:
             if url not in discovered:
                 discovered.append(url)
@@ -73,6 +80,8 @@ def _discover_category_urls(
     category: dict[str, str],
     *,
     max_pages: int,
+    on_progress: Callable[[str, int], None] | None = None,
+    total_so_far: int = 0,
 ) -> list[str]:
     first_url = listing_url_for_category(category, page=1)
     try:
@@ -102,6 +111,12 @@ def _discover_category_urls(
         for url in page_urls:
             if url not in urls:
                 urls.append(url)
+        if on_progress:
+            label = category.get("label") or category.get("id") or "categoría"
+            on_progress(
+                f"Las Locas · {label} · página {page}/{page_limit}",
+                total_so_far + len(urls),
+            )
     return urls
 
 

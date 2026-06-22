@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview logo · {{ brand_name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/css/brand-logo.css">
+  <link rel="stylesheet" href="/static/css/brand-logo-dev.css">
+</head>
+<body class="bg-gray-100 min-h-screen antialiased">
+  <main class="max-w-4xl mx-auto px-4 py-8">
+    <h1 class="text-xl font-bold text-gray-900">Preview logo animado (solo desarrollo)</h1>
+    <p class="mt-2 text-sm text-gray-600">
+      Ruta local: <code class="bg-white px-1 rounded">/dev/brand-logo</code> — requiere
+      <code class="bg-white px-1 rounded">APP_DEBUG=true</code>.
+      En la tienda: <a href="/" class="underline">http://localhost:8080/</a>
+    </p>
+
+    <div id="preview-stage" class="mt-8 rounded-2xl border border-gray-200 bg-white p-6 sm:p-10 shadow-sm">
+      <div id="compare-wrap" class="brand-logo-dev-stage">
+        <div id="layer-png" class="brand-logo-dev-stage__png">
+          <img src="/static/brand/logo-source.png" alt="Referencia PNG" id="ref-png">
+        </div>
+        <div id="layer-diff" class="brand-logo-dev-stage__diff" aria-hidden="true"></div>
+        <div id="layer-svg" class="brand-logo-dev-stage__svg">
+          <a href="/" id="preview-logo-link" class="brand-logo-link" data-logo-animated="false" aria-label="{{ brand_name }}">
+            {% include "partials/brand_logo.html" %}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 brand-logo-dev-controls">
+      <label>
+        Vista
+        <select id="view-mode" class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm bg-white">
+          <option value="overlay">Superpuesto</option>
+          <option value="diff">Diff (desvío)</option>
+          <option value="svg">Solo SVG</option>
+          <option value="png">Solo PNG</option>
+          <option value="split">Lado a lado</option>
+        </select>
+      </label>
+      <label id="opacity-wrap">
+        Opacidad SVG
+        <input type="range" id="svg-opacity" min="0" max="100" value="50">
+        <span id="opacity-val">50%</span>
+      </label>
+    </div>
+
+    <div class="mt-6 brand-logo-dev-controls brand-logo-dev-layers">
+      <p class="w-full text-sm font-semibold text-gray-700">Capas SVG</p>
+      <label><input type="checkbox" id="layer-letters" checked> Letras</label>
+      <label><input type="checkbox" id="layer-jasmine" checked> Jazmín</label>
+      <label><input type="checkbox" id="layer-stem" checked> Tallo</label>
+      <label><input type="checkbox" id="layer-leaves" checked> Hojas</label>
+      <label><input type="checkbox" id="layer-flower" checked> Flor (pétalos/capullos)</label>
+      <span id="logo-meta-counts" class="text-xs text-gray-500"></span>
+    </div>
+
+    <div class="mt-6 brand-logo-dev-controls brand-logo-dev-calibration">
+      <p class="w-full text-sm font-semibold text-gray-700">Calibración (letters / jazmín)</p>
+      <label>Letters X <input type="range" id="cal-letters-tx" min="-40" max="40" value="0"></label>
+      <label>Letters Y <input type="range" id="cal-letters-ty" min="-40" max="40" value="0"></label>
+      <label>Letters scale <input type="range" id="cal-letters-scale" min="90" max="110" value="100"></label>
+      <label>Jasmine X <input type="range" id="cal-jasmine-tx" min="-40" max="40" value="0"></label>
+      <label>Jasmine Y <input type="range" id="cal-jasmine-ty" min="-40" max="40" value="0"></label>
+      <label>Jasmine scale <input type="range" id="cal-jasmine-scale" min="90" max="110" value="100"></label>
+      <button type="button" id="btn-export-calibration" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-semibold hover:bg-gray-50">
+        Exportar calibración
+      </button>
+      <span id="cal-status" class="text-xs text-gray-500"></span>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-3">
+      <button type="button" id="btn-play" class="px-4 py-2 rounded-full bg-gray-900 text-white text-sm font-semibold hover:bg-black">
+        Reproducir animación
+      </button>
+      <button type="button" id="btn-final" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm font-semibold hover:bg-gray-50">
+        Estado final
+      </button>
+      <button type="button" id="btn-reset" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm font-semibold hover:bg-gray-50">
+        Reset (inicio)
+      </button>
+      <button type="button" id="btn-hover" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm font-semibold hover:bg-gray-50">
+        Simular hover
+      </button>
+      <button type="button" id="btn-bg" class="px-4 py-2 rounded-full border border-gray-300 bg-white text-sm font-semibold hover:bg-gray-50">
+        Fondo oscuro
+      </button>
+    </div>
+
+    <p class="mt-4 text-xs text-gray-500">
+      Tip: en la tienda, borrá <code>outfitJazminesLogoPlayed</code> en Session Storage para repetir la animación al cargar.
+    </p>
+  </main>
+
+  <script src="/static/js/brandLogo.js"></script>
+  <script>
+    (function () {
+      var link = document.getElementById('preview-logo-link');
+      var svg = link && link.querySelector('.brand-logo');
+      var stage = document.getElementById('preview-stage');
+      var wrap = document.getElementById('compare-wrap');
+      var layerPng = document.getElementById('layer-png');
+      var layerDiff = document.getElementById('layer-diff');
+      var layerSvg = document.getElementById('layer-svg');
+      var viewMode = document.getElementById('view-mode');
+      var opacityInput = document.getElementById('svg-opacity');
+      var opacityVal = document.getElementById('opacity-val');
+      var opacityWrap = document.getElementById('opacity-wrap');
+      var dark = false;
+      var lettersGroup = svg && svg.querySelector('.brand-logo__letters');
+      var jasmineGroup = svg && svg.querySelector('.brand-logo__jasmine');
+      var calInputs = {
+        letters: {
+          tx: document.getElementById('cal-letters-tx'),
+          ty: document.getElementById('cal-letters-ty'),
+          scale: document.getElementById('cal-letters-scale'),
+        },
+        jasmine: {
+          tx: document.getElementById('cal-jasmine-tx'),
+          ty: document.getElementById('cal-jasmine-ty'),
+          scale: document.getElementById('cal-jasmine-scale'),
+        },
+      };
+      var calStatus = document.getElementById('cal-status');
+      var metaCounts = document.getElementById('logo-meta-counts');
+      var layerChecks = {
+        letters: document.getElementById('layer-letters'),
+        jasmine: document.getElementById('layer-jasmine'),
+        stem: document.getElementById('layer-stem'),
+        leaves: document.getElementById('layer-leaves'),
+        flower: document.getElementById('layer-flower'),
+      };
+
+      fetch('/static/brand/logo-meta.json')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (meta) {
+          if (!meta || !metaCounts) return;
+          metaCounts.textContent =
+            'meta: stem=' + Math.round(meta.stem_length) +
+            ' leaves=' + meta.leaf_count +
+            ' buds=' + meta.bud_count +
+            ' petals=' + meta.petal_count;
+        })
+        .catch(function () {});
+
+      function buildTransform(group) {
+        var tx = Number(group.tx.value);
+        var ty = Number(group.ty.value);
+        var scale = Number(group.scale.value) / 100;
+        var parts = [];
+        if (tx || ty) parts.push('translate(' + tx + ' ' + ty + ')');
+        if (scale !== 1) parts.push('scale(' + scale + ')');
+        return parts.join(' ');
+      }
+
+      function applyCalibration() {
+        if (lettersGroup) {
+          lettersGroup.setAttribute('transform', buildTransform(calInputs.letters));
+        }
+        if (jasmineGroup) {
+          jasmineGroup.setAttribute('transform', buildTransform(calInputs.jasmine));
+        }
+      }
+
+      function readCalibration(data) {
+        ['letters', 'jasmine'].forEach(function (key) {
+          var group = data[key] || {};
+          calInputs[key].tx.value = String(group.tx || 0);
+          calInputs[key].ty.value = String(group.ty || 0);
+          calInputs[key].scale.value = String(Math.round((group.scale || 1) * 100));
+        });
+        applyCalibration();
+      }
+
+      fetch('/static/brand/logo-calibration.json')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) { if (data) readCalibration(data); })
+        .catch(function () {});
+
+      Object.keys(calInputs).forEach(function (key) {
+        ['tx', 'ty', 'scale'].forEach(function (field) {
+          calInputs[key][field].addEventListener('input', applyCalibration);
+        });
+      });
+
+      document.getElementById('btn-export-calibration').addEventListener('click', function () {
+        var payload = {
+          letters: {
+            tx: Number(calInputs.letters.tx.value),
+            ty: Number(calInputs.letters.ty.value),
+            scale: Number(calInputs.letters.scale.value) / 100,
+          },
+          jasmine: {
+            tx: Number(calInputs.jasmine.tx.value),
+            ty: Number(calInputs.jasmine.ty.value),
+            scale: Number(calInputs.jasmine.scale.value) / 100,
+          },
+        };
+        fetch('/dev/brand-logo/calibration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function () {
+            calStatus.textContent = 'Guardado en static/brand/logo-calibration.json — regenerá el HTML para aplicar.';
+          })
+          .catch(function () {
+            calStatus.textContent = 'Error al guardar calibración.';
+          });
+      });
+
+      function applyLayerVisibility() {
+        if (!svg) return;
+        if (lettersGroup) {
+          lettersGroup.style.display = layerChecks.letters.checked ? '' : 'none';
+        }
+        if (jasmineGroup) {
+          jasmineGroup.style.display = layerChecks.jasmine.checked ? '' : 'none';
+        }
+        svg.querySelectorAll('.brand-logo__stem').forEach(function (el) {
+          el.style.display = layerChecks.stem.checked ? '' : 'none';
+        });
+        svg.querySelectorAll('.brand-logo__leaf').forEach(function (el) {
+          el.style.display = layerChecks.leaves.checked ? '' : 'none';
+        });
+        svg.querySelectorAll('.brand-logo__petal, .brand-logo__bud, .brand-logo__flower-center').forEach(function (el) {
+          el.style.display = layerChecks.flower.checked ? '' : 'none';
+        });
+      }
+
+      Object.keys(layerChecks).forEach(function (key) {
+        layerChecks[key].addEventListener('change', applyLayerVisibility);
+      });
+      applyLayerVisibility();
+
+      function applyViewMode() {
+        var mode = viewMode.value;
+        wrap.classList.toggle('brand-logo-dev-stage--side-by-side', mode === 'split');
+        wrap.classList.toggle('brand-logo-dev-stage--diff', mode === 'diff');
+        opacityWrap.style.display = mode === 'overlay' ? '' : 'none';
+
+        if (mode === 'png') {
+          layerPng.style.opacity = '1';
+          layerSvg.style.opacity = '0';
+          layerSvg.style.pointerEvents = 'none';
+          if (layerDiff) layerDiff.style.opacity = '0';
+        } else if (mode === 'svg') {
+          layerPng.style.opacity = '0';
+          layerSvg.style.opacity = '1';
+          layerSvg.style.pointerEvents = '';
+          if (layerDiff) layerDiff.style.opacity = '0';
+        } else if (mode === 'diff') {
+          layerPng.style.opacity = '1';
+          layerSvg.style.opacity = '0.85';
+          layerSvg.style.pointerEvents = '';
+          layerSvg.style.mixBlendMode = 'difference';
+          if (layerDiff) layerDiff.style.opacity = '0';
+        } else if (mode === 'split') {
+          layerPng.style.opacity = '1';
+          layerSvg.style.opacity = '1';
+          layerSvg.style.pointerEvents = '';
+          layerSvg.style.mixBlendMode = '';
+          if (layerDiff) layerDiff.style.opacity = '0';
+        } else {
+          layerPng.style.opacity = '1';
+          layerSvg.style.opacity = String(opacityInput.value / 100);
+          layerSvg.style.pointerEvents = '';
+          layerSvg.style.mixBlendMode = '';
+          if (layerDiff) layerDiff.style.opacity = '0';
+        }
+      }
+
+      opacityInput.addEventListener('input', function () {
+        opacityVal.textContent = opacityInput.value + '%';
+        if (viewMode.value === 'overlay') {
+          layerSvg.style.opacity = String(opacityInput.value / 100);
+        }
+      });
+
+      viewMode.addEventListener('change', applyViewMode);
+
+      document.getElementById('btn-play').addEventListener('click', function () {
+        if (svg && window.brandLogoPlay) window.brandLogoPlay(svg);
+      });
+      document.getElementById('btn-final').addEventListener('click', function () {
+        if (svg && window.brandLogoFinal) window.brandLogoFinal(svg);
+      });
+      document.getElementById('btn-reset').addEventListener('click', function () {
+        if (svg && window.brandLogoReset) window.brandLogoReset(svg);
+      });
+      document.getElementById('btn-hover').addEventListener('click', function () {
+        if (!svg) return;
+        if (window.brandLogoFinal) window.brandLogoFinal(svg);
+        svg.classList.remove('brand-logo--done');
+        svg.classList.add('brand-logo--hover-replay');
+        window.setTimeout(function () {
+          if (window.brandLogoFinal) window.brandLogoFinal(svg);
+        }, 900);
+      });
+      document.getElementById('btn-bg').addEventListener('click', function () {
+        dark = !dark;
+        stage.classList.toggle('bg-gray-900', dark);
+        stage.classList.toggle('bg-white', !dark);
+        this.textContent = dark ? 'Fondo claro' : 'Fondo oscuro';
+      });
+
+      applyViewMode();
+    })();
+  </script>
+</body>
+</html>
