@@ -22,6 +22,32 @@ from database.schemas.ProductCreate import ProductCreate, ProductOut
 from gcs.storage_factory import create_uploader
 from provider_importers.registry import detect_provider, fetch_product
 from provider_importers.types import ImportedProduct, ProviderImportError
+from services.product_variants import sync_product_variants
+from services.provider_import import (
+    ProviderImportPayload,
+    persist_imported_product,
+    product_is_active,
+    provider_description,
+    image_filename_from_url,
+    page_ficha_from_url,
+    truncate as _truncate,
+    match_import_color_ids,
+)
+from services.nissie_bulk_import import (
+    BulkImportConflictError,
+    create_bulk_run,
+    get_active_run,
+    run_nissie_bulk_import,
+    serialize_run,
+)
+from services.holic_bulk_import import (
+    BulkImportConflictError as HolicBulkImportConflictError,
+    create_bulk_run as create_holic_bulk_run,
+    get_active_run as get_holic_active_run,
+    run_holic_bulk_import,
+)
+from services import laslocas_bulk_import as laslocas_bulk
+from database.models.ProviderImportRun import ProviderImportRun
 from scraper_locas.constants import BUCKET_NAME
 #from scraper_locas.scraper_core import scraper_code_main
 import logging
@@ -40,8 +66,8 @@ from database.models.HomeBanner import HomeBanner
 from sqlalchemy import or_
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
-from config import get_template_context
-from config import get_size_codes_for_category
+from config import get_template_context, PRODUCT_DESCRIPTION_MAX_LEN, PRODUCT_ITEM_TITLE_MAX_LEN, APP_DEBUG, build_nav_links
+from provider_importers.bulk.laslocas_catalog import load_laslocas_categories
 from services.colors import (
     color_to_public,
     create_color,
@@ -53,8 +79,27 @@ from services.colors import (
     parse_colors_json,
     sync_product_colors,
 )
+from services.sizes import (
+    create_size,
+    delete_size,
+    get_or_create_size_code,
+    list_all_sizes_admin,
+    list_sizes_public,
+    size_to_public,
+    update_size,
+)
+from services.categories import (
+    category_to_public,
+    create_category,
+    delete_category,
+    list_categories_admin,
+    list_categories_for_nav,
+    list_categories_public,
+    update_category,
+)
 from routes.orders import router as orders_router
 from whatsapp.bot import get_wa_client, init_whatsapp
+from services.email_notify import is_email_notify_configured
 
 
 DB_USER = os.getenv("DB_USER")
@@ -123,6 +168,13 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 def page_context(request: Request, **extra: dict) -> dict:
     """request + textos de marca para plantillas Jinja2."""
     ctx = {"request": request, **get_template_context()}
+    db = SessionLocal()
+    try:
+        nav_cats = list_categories_for_nav(db)
+        ctx["nav_categories"] = nav_cats
+        ctx["nav_links"] = build_nav_links(nav_cats)
+    finally:
+        db.close()
     ctx.update(extra)
     return ctx
 
@@ -140,50 +192,7 @@ def _parse_variants_json(raw: Optional[str]) -> List[dict]:
 
 
 def _sync_product_variants(db: Session, product_id: int, items: List[dict]) -> None:
-    db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete(
-        synchronize_session=False
-    )
-    for it in items:
-        code = (it.get("size_code") or "").strip().upper()
-        if not code:
-            continue
-        size = db.query(Size).filter(Size.code == code).first()
-        if not size:
-            continue
-        color_id_raw = it.get("color_id")
-        color_id = int(color_id_raw) if color_id_raw not in (None, "") else None
-        if color_id is not None:
-            linked = (
-                db.query(ProductColor)
-                .filter(
-                    ProductColor.product_id == product_id,
-                    ProductColor.color_id == color_id,
-                    ProductColor.activo.is_(True),
-                )
-                .first()
-            )
-            if not linked:
-                continue
-        qty = int(it.get("qty_stock_local", 0) or 0)
-        enc = bool(it.get("encargo_habilitado", False))
-        dias_raw = it.get("dias_encargo_estimados")
-        dias_i = int(dias_raw) if dias_raw not in (None, "") else None
-        if qty < 0:
-            qty = 0
-        matrix_cell = color_id is not None
-        if qty == 0 and not enc and not matrix_cell:
-            continue
-        db.add(
-            ProductVariant(
-                product_id=product_id,
-                size_id=size.size_id,
-                color_id=color_id,
-                qty_stock_local=qty,
-                encargo_habilitado=enc,
-                dias_encargo_estimados=dias_i,
-                activo=True,
-            )
-        )
+    sync_product_variants(db, product_id, items)
 
 
 def _list_variant_summary(variants: List[ProductVariant]) -> dict:
@@ -260,6 +269,11 @@ def health_check():
             "signature_validation": bool(app_secret),
             "app_id_set": bool(os.getenv("APP_ID")),
         },
+        "admin_email": {
+            "configured": is_email_notify_configured(),
+            "enabled": os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "true").lower()
+            in ("1", "true", "yes", "on"),
+        },
     }
 
 
@@ -324,7 +338,10 @@ def admin_panel():
     
 @app.get("/admin-panel", response_class=HTMLResponse)
 def admin_panel(request: Request):
-    return templates.TemplateResponse("admin-panel.html", page_context(request))
+    return templates.TemplateResponse(
+        "admin-panel.html",
+        page_context(request, laslocas_bulk_categories=load_laslocas_categories()),
+    )
 
 
 @app.get("/admin-panel/edit/{product_id}", response_class=HTMLResponse)
@@ -418,13 +435,7 @@ def listar_talles(
     category_slug: Optional[str] = Query(None),
     db: Session = Depends(get_db_fastApi),
 ):
-    rows = db.query(Size).order_by(Size.sort_order.asc(), Size.code.asc()).all()
-    if category_slug is not None and str(category_slug).strip():
-        allowed = set(get_size_codes_for_category(category_slug))
-        rows = [s for s in rows if s.code in allowed]
-    return [{"size_id": s.size_id, "code": s.code, "label": s.label} for s in rows]
-
-
+    return list_sizes_public(db, category_slug)
 
 
 @app.get("/api/colors")
@@ -480,34 +491,199 @@ def admin_eliminar_color(
     return {"ok": True, "deleted": True}
 
 
+class SizeCreateIn(BaseModel):
+    code: str
+    label: str
+    size_group: str
+    sort_order: Optional[int] = None
+
+
+class SizeUpdateIn(BaseModel):
+    label: Optional[str] = None
+    size_group: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class CategorySizeGroupIn(BaseModel):
+    size_group: str
+
+
+class CategoryCreateIn(BaseModel):
+    name: str
+    slug: Optional[str] = None
+    size_group: str = "letter"
+    sort_order: Optional[int] = None
+    activo: bool = True
+
+
+class CategoryUpdateIn(BaseModel):
+    name: Optional[str] = None
+    size_group: Optional[str] = None
+    sort_order: Optional[int] = None
+    activo: Optional[bool] = None
+
+
+@app.get("/api/admin/sizes")
+def admin_listar_talles(
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    return list_all_sizes_admin(db)
+
+
+@app.post("/api/admin/sizes")
+def admin_crear_talle(
+    body: SizeCreateIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    row = create_size(
+        db,
+        code=body.code,
+        label=body.label,
+        size_group=body.size_group,
+        sort_order=body.sort_order,
+    )
+    db.commit()
+    db.refresh(row)
+    return {"ok": True, "size": size_to_public(row), "created": True}
+
+
+@app.put("/api/admin/sizes/{size_id}")
+def admin_actualizar_talle(
+    size_id: int,
+    body: SizeUpdateIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    if body.label is None and body.size_group is None and body.sort_order is None:
+        raise HTTPException(status_code=400, detail="Indicá al menos un campo a actualizar.")
+    row = update_size(
+        db,
+        size_id,
+        label=body.label,
+        size_group=body.size_group,
+        sort_order=body.sort_order,
+    )
+    db.commit()
+    db.refresh(row)
+    return {"ok": True, "size": size_to_public(row)}
+
+
+@app.delete("/api/admin/sizes/{size_id}")
+def admin_eliminar_talle(
+    size_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    delete_size(db, size_id)
+    db.commit()
+    return {"ok": True, "deleted": True}
+
+
+@app.get("/api/admin/categories")
+def admin_listar_categorias(
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    return list_categories_admin(db)
+
+
+@app.post("/api/admin/categories")
+def admin_crear_categoria(
+    body: CategoryCreateIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    row = create_category(
+        db,
+        name=body.name,
+        slug=body.slug,
+        size_group=body.size_group,
+        sort_order=body.sort_order,
+        activo=body.activo,
+    )
+    db.commit()
+    db.refresh(row)
+    return {"ok": True, "category": category_to_public(row, product_count=0), "created": True}
+
+
+@app.put("/api/admin/categories/{category_id}")
+def admin_actualizar_categoria(
+    category_id: int,
+    body: CategoryUpdateIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    if body.name is None and body.size_group is None and body.sort_order is None and body.activo is None:
+        raise HTTPException(status_code=400, detail="Indicá al menos un campo a actualizar.")
+    row = update_category(
+        db,
+        category_id,
+        name=body.name,
+        size_group=body.size_group,
+        sort_order=body.sort_order,
+        activo=body.activo,
+    )
+    db.commit()
+    db.refresh(row)
+    usage = db.query(Products).filter(Products.category_id == category_id).count()
+    return {"ok": True, "category": category_to_public(row, product_count=usage)}
+
+
+@app.delete("/api/admin/categories/{category_id}")
+def admin_eliminar_categoria(
+    category_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    delete_category(db, category_id)
+    db.commit()
+    return {"ok": True, "deleted": True}
+
+
+@app.get("/api/admin/categories/size-groups")
+def admin_listar_grupos_categoria(
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    """Deprecated: usar GET /api/admin/categories."""
+    rows = list_categories_admin(db)
+    return [
+        {
+            "category_id": r["category_id"],
+            "slug": r["slug"],
+            "name": r["name"],
+            "size_group": r["size_group"],
+        }
+        for r in rows
+        if r.get("activo", True)
+    ]
+
+
+@app.put("/api/admin/categories/{category_id}/size-group")
+def admin_actualizar_grupo_categoria(
+    category_id: int,
+    body: CategorySizeGroupIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    """Deprecated: usar PUT /api/admin/categories/{id}."""
+    row = update_category(db, category_id, size_group=body.size_group)
+    db.commit()
+    db.refresh(row)
+    return {
+        "ok": True,
+        "category": category_to_public(row),
+    }
+
+
 def _match_import_color_ids(db: Session, color_names: List[str]) -> List[int]:
-    if not color_names:
-        return []
-    ids: List[int] = []
-    for name in color_names:
-        label = (name or "").strip()
-        if not label:
-            continue
-        code = normalize_color_code(label)
-        row = db.query(Color).filter(Color.code == code).first()
-        if not row:
-            row = get_or_create_color(db, label=label)
-        if row.color_id not in ids:
-            ids.append(row.color_id)
-    return ids
+    return match_import_color_ids(db, color_names)
 
 @app.get("/api/categories")
 def listar_categorias(db: Session = Depends(get_db_fastApi)):
-    rows = (
-        db.query(Category)
-        .filter(Category.activo.is_(True))
-        .order_by(Category.sort_order.asc(), Category.name.asc())
-        .all()
-    )
-    return [
-        {"category_id": c.category_id, "slug": c.slug, "name": c.name}
-        for c in rows
-    ]
+    return list_categories_public(db)
 
 
 _BANNER_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov", ".m4v"}
@@ -678,11 +854,21 @@ def listar_productos(
     status_filter: Optional[str] = Query(
         None, pattern="^(activos|inactivos|todos)$"
     ),
+    provider: Optional[str] = Query(
+        None, pattern="^(nissie|sochic|laslocas|holic)$"
+    ),
     db: Session = Depends(get_db_fastApi),
     user: Optional[dict] = Depends(get_optional_user),
 ):
     consulta = db.query(Products)
     consulta = _apply_products_status_filter(consulta, status_filter, bool(user))
+    if provider and user:
+        consulta = consulta.filter(Products.provider == provider)
+    elif provider and not user:
+        raise HTTPException(
+            status_code=403,
+            detail="Se requiere autenticación admin para filtrar por proveedor.",
+        )
     if q and q.strip():
         like = f"%{q.strip()}%"
         consulta = consulta.outerjoin(Category, Products.category_id == Category.category_id).filter(
@@ -760,6 +946,7 @@ def listar_productos(
                 "categoria": _category_public(p.category),
                 "variantes_resumen": _list_variant_summary(list(p.variants or [])),
                 "activo": _product_is_active(p),
+                "provider": p.provider,
             }
         )
     total_pages = ceil(total / per_page) if total else 0
@@ -846,13 +1033,11 @@ class ProviderUrlImportRequest(BaseModel):
     status: bool = False
 
 
-def _truncate(value: Optional[str], max_len: int) -> str:
-    clean = " ".join(str(value or "").split())
-    return clean[:max_len].rstrip()
+class LasLocasBulkImportRequest(BaseModel):
+    category_id: Optional[str] = None
+    all_categories: bool = False
+    max_pages: int = 0
 
-
-PRODUCT_ITEM_TITLE_MAX_LEN = 255
-PRODUCT_DESCRIPTION_MAX_LEN = 255
 
 
 def _validate_product_form_fields(*, item_title: str, description: str) -> None:
@@ -888,40 +1073,19 @@ def _resolve_category_slug(db: Session, slug: Optional[str]) -> Optional[int]:
 
 
 def _ensure_size_code(db: Session, size_code: str) -> str:
-    code = (size_code or "UNICO").strip().upper()[:32] or "UNICO"
-    size = db.query(Size).filter(Size.code == code).first()
-    if not size:
-        db.add(
-            Size(
-                code=code,
-                label="Unico" if code == "UNICO" else code,
-                sort_order=70 if code == "UNICO" else 999,
-            )
-        )
-        db.flush()
-    return code
+    return get_or_create_size_code(db, size_code)
 
 
 def _provider_description(product: ImportedProduct) -> str:
-    parts = []
-    if product.description:
-        parts.append(product.description)
-    if product.colors:
-        parts.append("Colores proveedor: " + ", ".join(product.colors))
-    default = {
-        "sochic": "Producto importado desde So Chic.",
-        "laslocas": "Producto importado desde Las Locas.",
-    }
-    return _truncate(" | ".join(parts) or default.get(product.provider, "Producto importado."), 255)
+    return provider_description(product)
 
 
 def _image_filename_from_url(image_url: str, idx: int, provider: str = "sochic") -> str:
-    filename = os.path.basename(urlparse(image_url).path)
-    return _truncate(filename or f"{provider}-{idx + 1}.jpg", 255)
+    return image_filename_from_url(image_url, idx, provider)
 
 
 def _product_is_active(product: Products) -> bool:
-    return bool(product.status)
+    return product_is_active(product)
 
 
 def _parse_form_bool(value: Optional[str]) -> bool:
@@ -948,99 +1112,26 @@ def _persist_imported_product(
     imported: ImportedProduct,
     payload: ProviderUrlImportRequest,
 ) -> dict:
-    existing = db.query(Products).filter(Products.cod_product == imported.cod_product).first()
-    if existing:
-        return {
-            "ok": True,
-            "created": False,
-            "id": existing.product_id,
-            "provider": imported.provider,
-            "cod_product": existing.cod_product,
-            "activo": _product_is_active(existing),
-        }
-
-    is_sale = imported.is_sale or bool(imported.discount_percent and imported.original_price)
-    base_price = imported.original_price if is_sale else imported.price
-    category_id = (
-        _resolve_category_id(db, str(payload.category_id))
-        if payload.category_id
-        else _resolve_category_slug(db, imported.category_slug)
+    import_payload = ProviderImportPayload(
+        url=payload.url,
+        category_id=payload.category_id,
+        size_code=payload.size_code,
+        encargo_habilitado=payload.encargo_habilitado,
+        dias_encargo_estimados=payload.dias_encargo_estimados,
+        status=payload.status,
     )
-    nuevo = Products(
-        item_title=_truncate(imported.title, 255),
-        price=base_price,
-        cod_product=imported.cod_product,
-        name=_truncate(imported.title, 80),
-        sku=imported.sku,
-        description=_provider_description(imported),
-        category_id=category_id,
-        status=bool(payload.status),
-        is_sale=is_sale,
-        discount_percent=imported.discount_percent if is_sale else None,
-    )
-    db.add(nuevo)
-    db.flush()
-
-    image_count = 0
-    page_ficha = imported.page_ficha or _page_ficha_from_url(imported.source_url)
-
-    for idx, image_url in enumerate(imported.image_urls):
-        db.add(
-            ProductImages(
-                product_id=nuevo.product_id,
-                filename=_image_filename_from_url(image_url, idx, imported.provider),
-                url=image_url,
-                is_main=(image_count == 0),
-            )
-        )
-        image_count += 1
-
-    for filename, data in imported.image_assets:
-        blob_path = f"images/{page_ficha}/{filename}"
-        public_url = uploader.upload_bytes(blob_path, data)
-        db.add(
-            ProductImages(
-                product_id=nuevo.product_id,
-                filename=_truncate(filename, 255),
-                url=public_url,
-                is_main=(image_count == 0),
-            )
-        )
-        image_count += 1
-
-    size_code = _ensure_size_code(db, payload.size_code)
-    _sync_product_variants(
+    return persist_imported_product(
         db,
-        nuevo.product_id,
-        [
-            {
-                "size_code": size_code,
-                "qty_stock_local": 0,
-                "encargo_habilitado": payload.encargo_habilitado,
-                "dias_encargo_estimados": payload.dias_encargo_estimados,
-            }
-        ],
+        imported,
+        import_payload,
+        uploader,
+        sync_variants_fn=sync_product_variants,
+        match_color_ids_fn=match_import_color_ids,
     )
-    import_color_ids = _match_import_color_ids(db, imported.colors)
-    if import_color_ids:
-        sync_product_colors(db, nuevo.product_id, import_color_ids)
-    db.commit()
-    db.refresh(nuevo)
-    return {
-        "ok": True,
-        "created": True,
-        "id": nuevo.product_id,
-        "provider": imported.provider,
-        "cod_product": nuevo.cod_product,
-        "imagenes": image_count,
-        "colores": imported.colors,
-        "activo": _product_is_active(nuevo),
-    }
 
 
 def _page_ficha_from_url(url: str) -> str:
-    path = urlparse(url).path.strip("/")
-    return path.replace("/", "") or "ficha"
+    return page_ficha_from_url(url)
 
 
 def _log_provider_import_failure(provider: str, url: str, error: ProviderImportError) -> None:
@@ -1109,6 +1200,171 @@ def importar_producto_sochic(
     _: dict = Depends(get_current_user),
 ):
     return _import_product_from_url(payload, db)
+
+
+def _nissie_bulk_import_task(run_id: int) -> None:
+    db = SessionLocal()
+    try:
+        bulk_uploader = create_uploader()
+        run_nissie_bulk_import(
+            db,
+            run_id,
+            bulk_uploader,
+            sync_variants_fn=sync_product_variants,
+            match_color_ids_fn=match_import_color_ids,
+        )
+    finally:
+        db.close()
+
+
+def _holic_bulk_import_task(run_id: int) -> None:
+    db = SessionLocal()
+    try:
+        bulk_uploader = create_uploader()
+        run_holic_bulk_import(
+            db,
+            run_id,
+            bulk_uploader,
+            sync_variants_fn=sync_product_variants,
+            match_color_ids_fn=match_import_color_ids,
+        )
+    finally:
+        db.close()
+
+
+def _laslocas_bulk_import_task(
+    run_id: int,
+    *,
+    category_id: str | None,
+    all_categories: bool,
+    max_pages: int,
+) -> None:
+    db = SessionLocal()
+    try:
+        bulk_uploader = create_uploader()
+        laslocas_bulk.run_laslocas_bulk_import(
+            db,
+            run_id,
+            bulk_uploader,
+            sync_variants_fn=sync_product_variants,
+            match_color_ids_fn=match_import_color_ids,
+            category_id=category_id,
+            all_categories=all_categories,
+            max_pages=max_pages,
+        )
+    finally:
+        db.close()
+
+
+@app.post("/api/proveedores/nissie/importar-masivo")
+def importar_catalogo_nissie_masivo(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db_fastApi),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        run = create_bulk_run(db, triggered_by=str(user.get("sub") or "admin"))
+    except BulkImportConflictError as exc:
+        active = get_active_run(db)
+        return {
+            "ok": False,
+            "error": str(exc),
+            "run_id": active.run_id if active else None,
+            "status": active.status if active else None,
+        }
+    background_tasks.add_task(_nissie_bulk_import_task, run.run_id)
+    return {
+        "ok": True,
+        "run_id": run.run_id,
+        "status": run.status,
+        "provider": run.provider,
+    }
+
+
+@app.post("/api/proveedores/holic/importar-masivo")
+def importar_catalogo_holic_masivo(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db_fastApi),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        run = create_holic_bulk_run(db, triggered_by=str(user.get("sub") or "admin"))
+    except HolicBulkImportConflictError as exc:
+        active = get_holic_active_run(db)
+        return {
+            "ok": False,
+            "error": str(exc),
+            "run_id": active.run_id if active else None,
+            "status": active.status if active else None,
+        }
+    background_tasks.add_task(_holic_bulk_import_task, run.run_id)
+    return {
+        "ok": True,
+        "run_id": run.run_id,
+        "status": run.status,
+        "provider": run.provider,
+    }
+
+
+@app.post("/api/proveedores/laslocas/importar-masivo")
+def importar_catalogo_laslocas_masivo(
+    payload: LasLocasBulkImportRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db_fastApi),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        run = laslocas_bulk.create_bulk_run(db, triggered_by=str(user.get("sub") or "admin"))
+    except laslocas_bulk.BulkImportConflictError as exc:
+        active = laslocas_bulk.get_active_run(db)
+        return {
+            "ok": False,
+            "error": str(exc),
+            "run_id": active.run_id if active else None,
+            "status": active.status if active else None,
+        }
+    background_tasks.add_task(
+        _laslocas_bulk_import_task,
+        run.run_id,
+        category_id=payload.category_id,
+        all_categories=payload.all_categories,
+        max_pages=payload.max_pages,
+    )
+    return {
+        "ok": True,
+        "run_id": run.run_id,
+        "status": run.status,
+        "provider": run.provider,
+    }
+
+
+@app.get("/api/proveedores/importaciones/{run_id}")
+def obtener_importacion_proveedor(
+    run_id: int,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    run = db.query(ProviderImportRun).filter(ProviderImportRun.run_id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Importación no encontrada")
+    return serialize_run(db, run)
+
+
+@app.get("/api/proveedores/importaciones/ultima")
+def obtener_ultima_importacion_proveedor(
+    provider: str = Query("nissie", pattern="^(nissie|sochic|laslocas|holic)$"),
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    run = (
+        db.query(ProviderImportRun)
+        .filter(ProviderImportRun.provider == provider)
+        .order_by(ProviderImportRun.run_id.desc())
+        .first()
+    )
+    if not run:
+        return {"ok": True, "run": None}
+    return {"ok": True, "run": serialize_run(db, run)}
 
 
 @app.post("/api/productos")

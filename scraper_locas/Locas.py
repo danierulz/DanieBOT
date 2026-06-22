@@ -20,7 +20,12 @@ from database.models.ProductImages import ProductImages
 from logger import Logger
 from database.dto.ProductDto import ProductDto
 from sqlalchemy.orm import sessionmaker, declarative_base
-from scraper_locas import Locas
+from provider_importers.laslocas import (
+    _extract_price_from_html,
+    _find_product_jsonld,
+    _parse_int,
+    _parse_price_from_offers,
+)
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
@@ -287,34 +292,21 @@ class Locas(webdriver.Chrome):
     # Sku, Name, Price, Description, image, 
     def get_script_and_extract_json(self):
         soup = BeautifulSoup(self.page_source, "html.parser")
-        
-        try:
-            all_data = soup.find_all("script", {"type": "application/ld+json"})
-            
-            for data in all_data:
-                jsn = json.loads(data.string)
-                self.logs.logger.debug('test_get_script() %s', json.dumps(jsn, indent=4))
-            data = [
-            json.loads(x.string) for x in soup.find_all("script", type="application/ld+json")
-            ]
-        except Exception as e:
-            self.logs.logger.debug('all_data %s', all_data)
-            print("aca tenemos un error severo: ", e)
-        
-        for d in data:
-            #print("sku: ", d["sku"])
-            #print("name: ", d["name"])
-            #print("description: ",d["description"])
-            #print("image: ", d["image"])
-            #print("priceCurrency", d["offers"]["priceCurrency"] )
-            #print("price: ", d["offers"]["price"])
-            #print("availability: ", d["offers"]["availability"])
-            #print("itemCondition: ", d["offers"]["itemCondition"])
+        product_json = _find_product_jsonld(soup)
+        if not product_json:
+            self.logs.logger.debug("No Product JSON-LD found on %s", self.current_url)
+            return
 
-            self.product.sku = int(d["sku"])
-            self.product.name = d["name"]
-            self.product.description = d["description"]
-            self.product.price = float(d["offers"]["price"])
+        self.product.sku = _parse_int(product_json.get("sku"))
+        self.product.name = product_json.get("name")
+        self.product.description = product_json.get("description")
+        price = _parse_price_from_offers(product_json.get("offers"))
+        if price is None:
+            price = _extract_price_from_html(soup)
+        if price is not None:
+            self.product.price = float(price)
+        else:
+            print("ERROR PRECIO: no se pudo obtener el precio en", self.current_url)
             
     #def insert_products(self):
     

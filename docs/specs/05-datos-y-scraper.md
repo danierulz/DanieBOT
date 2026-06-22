@@ -46,11 +46,24 @@ Los campos exactos están en `database/models/`. **Cambios de esquema:** usar Al
 
 **Operación:**
 
-- `provider_importers/registry.py` detecta el host (`sochic.com.ar`, `laslocas.com`) y delega al importer.
+- `provider_importers/registry.py` detecta el host (`sochic.com.ar`, `laslocas.com`, `nissiedenim.com.ar`) y delega al importer.
 - **So Chic:** `provider_importers/sochic.py` — HTTP + BeautifulSoup; imágenes por URL remota en `ProductImages`.
 - **Las Locas:** `provider_importers/laslocas.py` — HTTP + BeautifulSoup + login (`LOGIN_EMAIL`, `LOGIN_PASS`); imágenes subidas a GCS (`images/{page_ficha}/...`).
-- `POST /api/proveedores/importar` persiste producto, variantes por encargo (stock local 0).
-- El scraper masivo Selenium en `scraper_locas/` puede migrarse en una fase posterior al mismo importer HTTP.
+- **Nissie Denim:** `provider_importers/nissie.py` — HTTP + JSON-LD ProductGroup; colores y categoría desde breadcrumb.
+- `POST /api/proveedores/importar` persiste producto vía `services/provider_import.py` (variantes por encargo, stock local 0).
+- Cuaderno de migración: [`../scraping-migracion-notas.md`](../scraping-migracion-notas.md).
+
+## Scraping masivo (runner HTTP)
+
+**Propósito:** descubrir fichas en listados paginados e importar en lote sin Selenium.
+
+**Operación:**
+
+- CLI: `python -m provider_importers.bulk.runner` (ver [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md)).
+- Las Locas: categorías en `provider_importers/bulk/laslocas_categories.json`.
+- Nissie: stub en `provider_importers/bulk/nissie_catalog.py` (pendiente selectores de listado).
+
+**Legacy:** el scraper Selenium en `scraper_locas/` queda **deprecated**; no usar para nuevas ingestas.
 
 ## Importador “So Chic” (detalle)
 

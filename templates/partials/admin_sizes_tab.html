@@ -1,0 +1,73 @@
+<div id="panel-sizes" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
+  <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ admin_sizes_tab_heading }}</h2>
+  <p class="text-xs text-gray-600 mb-6">{{ admin_sizes_tab_help }}</p>
+
+  <form id="catalog-size-form" class="space-y-4 mb-8 border-b border-gray-200 pb-8">
+    <input type="hidden" id="catalog-size-id" value="">
+    <div class="flex flex-col lg:flex-row flex-wrap gap-3 items-end">
+      <div class="w-28">
+        <label for="catalog-size-code" class="block text-xs font-medium text-gray-700">{{ admin_sizes_new_code }}</label>
+        <input id="catalog-size-code" type="text" autocomplete="off" maxlength="32"
+          placeholder="{{ admin_sizes_new_code_placeholder }}"
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm font-mono">
+      </div>
+      <div class="flex-1 min-w-[140px]">
+        <label for="catalog-size-label" class="block text-xs font-medium text-gray-700">{{ admin_sizes_new_label }}</label>
+        <input id="catalog-size-label" type="text" autocomplete="off"
+          placeholder="{{ admin_sizes_new_label_placeholder }}"
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm">
+      </div>
+      <div class="w-44">
+        <label for="catalog-size-group" class="block text-xs font-medium text-gray-700">{{ admin_sizes_group_label }}</label>
+        <select id="catalog-size-group"
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm bg-white">
+          <option value="letter">{{ admin_sizes_group_letter }}</option>
+          <option value="numeric">{{ admin_sizes_group_numeric }}</option>
+        </select>
+      </div>
+      <div class="w-24">
+        <label for="catalog-size-order" class="block text-xs font-medium text-gray-700">{{ admin_sizes_col_order }}</label>
+        <input id="catalog-size-order" type="number" min="0" step="1"
+          class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm">
+      </div>
+      <button type="submit" id="catalog-size-submit"
+        class="min-h-[42px] px-4 py-2 rounded-md bg-black text-white text-sm font-semibold hover:bg-gray-900">
+        {{ admin_sizes_btn_add }}
+      </button>
+      <button type="button" id="catalog-size-cancel" class="hidden min-h-[42px] px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50">
+        {{ admin_sizes_btn_cancel }}
+      </button>
+    </div>
+  </form>
+
+  <p id="sizes-catalog-status" class="text-sm text-gray-500 mb-4"></p>
+  <div class="overflow-x-auto rounded-lg border border-gray-200 mb-10">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_sizes_col_code }}</th>
+          <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_sizes_col_label }}</th>
+          <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_sizes_col_group }}</th>
+          <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_sizes_col_order }}</th>
+          <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_sizes_col_actions }}</th>
+        </tr>
+      </thead>
+      <tbody id="sizes-catalog-body" class="divide-y divide-gray-100 bg-white"></tbody>
+    </table>
+  </div>
+
+  <h3 class="text-base font-semibold text-gray-900 mb-1">{{ admin_sizes_categories_heading }}</h3>
+  <p class="text-xs text-gray-600 mb-4">{{ admin_sizes_categories_help }}</p>
+  <p id="sizes-categories-status" class="text-sm text-gray-500 mb-4"></p>
+  <div class="overflow-x-auto rounded-lg border border-gray-200">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_sizes_categories_col_name }}</th>
+          <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_sizes_categories_col_group }}</th>
+        </tr>
+      </thead>
+      <tbody id="sizes-categories-body" class="divide-y divide-gray-100 bg-white"></tbody>
+    </table>
+  </div>
+</div>

@@ -10,3 +10,5 @@ from .Size import Size
 from .Color import Color
 from .ProductColor import ProductColor
 from .ProductVariant import ProductVariant
+from .ProviderImportRun import ProviderImportRun
+from .ProviderImportRunItem import ProviderImportRunItem

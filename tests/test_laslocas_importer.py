@@ -33,6 +33,35 @@ LASLOCAS_HTML = """
 </html>
 """
 
+LASLOCAS_HTML_MULTILINE_JSONLD = """
+<html>
+  <body>
+    <span id="codProd">BRANDY</span>
+    <h1 class="item-title inline">CLÁSICO BRANDY</h1>
+    <script type="application/ld+json">
+      {
+        "@type": "Product",
+        "sku": "3317",
+        "name": "CLÁSICO BRANDY",
+        "description": "linea uno
+linea dos",
+        "offers": {"price": "28400.00", "priceCurrency": "ARS"}
+      }
+    </script>
+  </body>
+</html>
+"""
+
+LASLOCAS_HTML_PRICE_FALLBACK = """
+<html>
+  <body>
+    <span id="codProd">BRANDY</span>
+    <h1 class="item-title inline">CLÁSICO BRANDY</h1>
+    <div class="item-price">$28.400</div>
+  </body>
+</html>
+"""
+
 
 LOGIN_FORM_HTML = """
 <form method="post">
@@ -67,6 +96,21 @@ class LasLocasImporterTest(unittest.TestCase):
         self.assertEqual(product.price, 12500)
         self.assertEqual(product.page_ficha, "ficha-224-jogger-blue-sporty")
         self.assertGreaterEqual(len(product.image_urls), 1)
+
+    def test_parse_product_handles_multiline_jsonld_description(self):
+        product = parse_laslocas_product(
+            LASLOCAS_HTML_MULTILINE_JSONLD,
+            "https://laslocas.com/ficha-3317-clasico-brandy",
+        )
+        self.assertEqual(product.sku, 3317)
+        self.assertEqual(product.price, 28400)
+
+    def test_parse_product_falls_back_to_html_price(self):
+        product = parse_laslocas_product(
+            LASLOCAS_HTML_PRICE_FALLBACK,
+            "https://laslocas.com/ficha-3317-clasico-brandy",
+        )
+        self.assertEqual(product.price, 28400)
 
     def test_rejects_non_ficha_urls(self):
         with self.assertRaises(ProviderImportError):

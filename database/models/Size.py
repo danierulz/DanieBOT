@@ -11,5 +11,6 @@ class Size(Base):
     code = Column(String(32), unique=True, nullable=False, index=True)
     label = Column(String(64), nullable=False)
     sort_order = Column(Integer, nullable=False, default=0)
+    size_group = Column(String(16), nullable=False, default="letter", server_default="letter")
 
     variants = relationship("ProductVariant", back_populates="size")

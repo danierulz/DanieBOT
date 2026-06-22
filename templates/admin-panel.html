@@ -8,6 +8,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/static/js/toast.js"></script>
   <script src="/static/js/authSession.js"></script>
+  <script>
+    window.PRODUCT_FIELD_LIMITS = {
+      titleMax: {{ product_item_title_max_len }},
+      descMax: {{ product_description_max_len }},
+    };
+  </script>
   <script src="/static/js/adminProductFields.js"></script>
   <script>
     const COLOR_LABELS = {
@@ -29,10 +35,46 @@
       nameRequired: {{ admin_colors_name_required | tojson }},
       hexRequired: {{ admin_colors_hex_required | tojson }},
     };
+    const CATALOG_SIZE_LABELS = {
+      empty: {{ admin_sizes_empty_catalog | tojson }},
+      loading: {{ admin_sizes_loading | tojson }},
+      loadErr: {{ admin_sizes_load_err | tojson }},
+      msgError: {{ admin_msg_error | tojson }},
+      msgAdded: {{ admin_sizes_msg_added | tojson }},
+      msgUpdated: {{ admin_sizes_msg_updated | tojson }},
+      msgDeleted: {{ admin_sizes_msg_deleted | tojson }},
+      btnAdd: {{ admin_sizes_btn_add | tojson }},
+      btnUpdate: {{ admin_sizes_btn_update | tojson }},
+      edit: {{ admin_edit | tojson }},
+      del: {{ admin_delete | tojson }},
+      deleteConfirm: {{ admin_sizes_delete_confirm | tojson }},
+      codeRequired: {{ admin_sizes_code_required | tojson }},
+      labelRequired: {{ admin_sizes_label_required | tojson }},
+      groupLetter: {{ admin_sizes_group_letter | tojson }},
+      groupNumeric: {{ admin_sizes_group_numeric | tojson }},
+      categoryUpdated: {{ admin_sizes_categories_msg_updated | tojson }},
+    };
+    const CATALOG_CATEGORY_LABELS = {
+      empty: {{ admin_categories_empty | tojson }},
+      loading: {{ admin_categories_loading | tojson }},
+      loadErr: {{ admin_categories_load_err | tojson }},
+      msgError: {{ admin_msg_error | tojson }},
+      msgAdded: {{ admin_categories_msg_added | tojson }},
+      msgUpdated: {{ admin_categories_msg_updated | tojson }},
+      msgDeleted: {{ admin_categories_msg_deleted | tojson }},
+      btnAdd: {{ admin_categories_btn_add | tojson }},
+      btnUpdate: {{ admin_categories_btn_update | tojson }},
+      edit: {{ admin_edit | tojson }},
+      del: {{ admin_delete | tojson }},
+      deleteConfirm: {{ admin_categories_delete_confirm | tojson }},
+      nameRequired: {{ admin_categories_name_required | tojson }},
+    };
   </script>
   <script src="/static/js/adminColors.js"></script>
   <script src="/static/js/adminProductVariants.js"></script>
   <script src="/static/js/adminColorCatalog.js"></script>
+  <script src="/static/js/adminSizeCatalog.js"></script>
+  <script src="/static/js/adminCategoryCatalog.js"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -53,8 +95,8 @@
       <button type="button" id="tab-btn-banners" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_banners }}
       </button>
-      <button type="button" id="tab-btn-colors" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
-        {{ admin_tab_colors }}
+      <button type="button" id="tab-btn-catalog" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
+        {{ admin_tab_catalog }}
       </button>
       <button type="button" id="tab-btn-orders" class="tab-btn px-4 py-2 font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-800">
         {{ admin_tab_orders }}
@@ -84,6 +126,84 @@
             <span class="block text-amber-900/90">{{ admin_provider_status_help }}</span>
           </span>
         </label>
+        <div class="mt-4 pt-4 border-t border-amber-200">
+          <h3 class="text-sm font-semibold text-amber-950">{{ admin_nissie_bulk_heading }}</h3>
+          <p class="mt-1 text-xs text-amber-900">{{ admin_nissie_bulk_help }}</p>
+          <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <button type="button" id="nissie-bulk-import-btn"
+              class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
+              {{ admin_nissie_bulk_btn }}
+            </button>
+            <button type="button" id="nissie-bulk-view-pending-btn"
+              class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
+              {{ admin_nissie_bulk_view_pending }}
+            </button>
+          </div>
+          <p id="nissie-bulk-status" class="mt-2 text-xs text-amber-950"></p>
+          <div id="nissie-bulk-errors-wrap" class="mt-3 hidden">
+            <p class="text-xs font-semibold text-amber-950">{{ admin_nissie_bulk_errors_heading }}</p>
+            <ul id="nissie-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
+          </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-amber-200">
+          <h3 class="text-sm font-semibold text-amber-950">{{ admin_holic_bulk_heading }}</h3>
+          <p class="mt-1 text-xs text-amber-900">{{ admin_holic_bulk_help }}</p>
+          <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <button type="button" id="holic-bulk-import-btn"
+              class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
+              {{ admin_holic_bulk_btn }}
+            </button>
+            <button type="button" id="holic-bulk-view-pending-btn"
+              class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
+              {{ admin_holic_bulk_view_pending }}
+            </button>
+          </div>
+          <p id="holic-bulk-status" class="mt-2 text-xs text-amber-950"></p>
+          <div id="holic-bulk-errors-wrap" class="mt-3 hidden">
+            <p class="text-xs font-semibold text-amber-950">{{ admin_holic_bulk_errors_heading }}</p>
+            <ul id="holic-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
+          </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-amber-200">
+          <h3 class="text-sm font-semibold text-amber-950">{{ admin_laslocas_bulk_heading }}</h3>
+          <p class="mt-1 text-xs text-amber-900">{{ admin_laslocas_bulk_help }}</p>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="laslocas-bulk-category" class="block text-xs font-medium text-amber-950">{{ admin_laslocas_bulk_category_label }}</label>
+              <select id="laslocas-bulk-category"
+                class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white text-sm">
+                {% for cat in laslocas_bulk_categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="laslocas-bulk-max-pages" class="block text-xs font-medium text-amber-950">{{ admin_laslocas_bulk_max_pages_label }}</label>
+              <input id="laslocas-bulk-max-pages" type="number" min="0" step="1" value="0"
+                class="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md focus:outline-none focus:ring focus:border-amber-600 bg-white text-sm">
+              <p class="mt-1 text-[11px] text-amber-900/90">{{ admin_laslocas_bulk_max_pages_help }}</p>
+            </div>
+          </div>
+          <label class="mt-3 flex items-start gap-2 text-xs text-amber-950 cursor-pointer">
+            <input type="checkbox" id="laslocas-bulk-all-categories" class="mt-0.5 w-4 h-4 accent-amber-600">
+            <span>{{ admin_laslocas_bulk_all_categories }}</span>
+          </label>
+          <div class="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <button type="button" id="laslocas-bulk-import-btn"
+              class="px-4 py-2 rounded-md bg-amber-800 text-white font-bold hover:bg-amber-900 transition">
+              {{ admin_laslocas_bulk_btn }}
+            </button>
+            <button type="button" id="laslocas-bulk-view-pending-btn"
+              class="text-xs font-semibold text-amber-900 underline hover:text-amber-950">
+              {{ admin_laslocas_bulk_view_pending }}
+            </button>
+          </div>
+          <p id="laslocas-bulk-status" class="mt-2 text-xs text-amber-950"></p>
+          <div id="laslocas-bulk-errors-wrap" class="mt-3 hidden">
+            <p class="text-xs font-semibold text-amber-950">{{ admin_laslocas_bulk_errors_heading }}</p>
+            <ul id="laslocas-bulk-errors" class="mt-1 text-xs text-amber-900 space-y-1 max-h-40 overflow-y-auto"></ul>
+          </div>
+        </div>
       </section>
 
       <form id="producto-form" class="space-y-4">
@@ -100,11 +220,11 @@
         </div>
         <div>
           <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
-          <textarea id="description" name="description" rows="3" maxlength="255"
+          <textarea id="description" name="description" rows="5" maxlength="{{ product_description_max_len }}"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
           <p class="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500">
             <span>{{ admin_description_limit_help }}</span>
-            <span id="description-count">0 / 255</span>
+            <span id="description-count">0 / {{ product_description_max_len }}</span>
           </p>
         </div>
 
@@ -136,8 +256,15 @@
         {% include "partials/admin_product_colors.html" %}
 
         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
-          <p class="text-xs text-gray-600 mb-3">{{ admin_variants_help }}</p>
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
+              <p class="text-xs text-gray-600">{{ admin_sizes_select_help }}</p>
+            </div>
+            <a href="/admin-panel?tab=catalog#talles" class="text-xs font-semibold text-black hover:underline shrink-0">
+              {{ admin_sizes_manage_link }} →
+            </a>
+          </div>
           <div class="overflow-x-auto rounded-md border border-gray-200 bg-white">
             <table class="min-w-full text-sm">
               <thead class="bg-gray-100 text-left">
@@ -197,6 +324,17 @@
             <option value="inactivos">{{ admin_list_status_inactive }}</option>
           </select>
         </div>
+        <div class="sm:w-48">
+          <label for="admin-list-provider-filter" class="block text-sm font-medium text-gray-700 mb-1">{{ admin_list_provider_filter_label }}</label>
+          <select id="admin-list-provider-filter"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring focus:border-gray-900 bg-white">
+            <option value="">{{ admin_list_provider_all }}</option>
+            <option value="nissie">{{ admin_list_provider_nissie }}</option>
+            <option value="sochic">{{ admin_list_provider_sochic }}</option>
+            <option value="laslocas">{{ admin_list_provider_laslocas }}</option>
+            <option value="holic">{{ admin_list_provider_holic }}</option>
+          </select>
+        </div>
       </div>
 
       <p id="list-status" class="text-sm text-gray-500 mb-4"></p>
@@ -206,6 +344,7 @@
             <tr>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_photo }}</th>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_title }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_provider }}</th>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_status }}</th>
               <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_price }}</th>
               <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_actions }}</th>
@@ -312,7 +451,7 @@
       </div>
     </div>
 
-    {% include "partials/admin_colors_tab.html" %}
+    {% include "partials/admin_catalog_tab.html" %}
 
     <!-- Panel: Pedidos -->
     <div id="panel-orders" class="hidden bg-white shadow-lg rounded-lg p-6 md:p-8">
@@ -384,6 +523,29 @@
       providerCreated: {{ admin_provider_created | tojson }},
       providerCreatedActive: {{ admin_provider_created_active | tojson }},
       providerExists: {{ admin_provider_exists | tojson }},
+      nissieBulkBtn: {{ admin_nissie_bulk_btn | tojson }},
+      nissieBulkConfirm: {{ admin_nissie_bulk_confirm | tojson }},
+      nissieBulkRunning: {{ admin_nissie_bulk_running | tojson }},
+      nissieBulkDone: {{ admin_nissie_bulk_done | tojson }},
+      nissieBulkCreated: {{ admin_nissie_bulk_created | tojson }},
+      nissieBulkSkipped: {{ admin_nissie_bulk_skipped | tojson }},
+      nissieBulkFailed: {{ admin_nissie_bulk_failed | tojson }},
+      nissieBulkAlreadyRunning: {{ admin_nissie_bulk_already_running | tojson }},
+      holicBulkBtn: {{ admin_holic_bulk_btn | tojson }},
+      holicBulkConfirm: {{ admin_holic_bulk_confirm | tojson }},
+      holicBulkRunning: {{ admin_holic_bulk_running | tojson }},
+      holicBulkDone: {{ admin_holic_bulk_done | tojson }},
+      holicBulkCreated: {{ admin_holic_bulk_created | tojson }},
+      holicBulkSkipped: {{ admin_holic_bulk_skipped | tojson }},
+      holicBulkFailed: {{ admin_holic_bulk_failed | tojson }},
+      holicBulkAlreadyRunning: {{ admin_holic_bulk_already_running | tojson }},
+      laslocasBulkConfirm: {{ admin_laslocas_bulk_confirm | tojson }},
+      laslocasBulkRunning: {{ admin_laslocas_bulk_running | tojson }},
+      laslocasBulkDone: {{ admin_laslocas_bulk_done | tojson }},
+      laslocasBulkCreated: {{ admin_laslocas_bulk_created | tojson }},
+      laslocasBulkSkipped: {{ admin_laslocas_bulk_skipped | tojson }},
+      laslocasBulkFailed: {{ admin_laslocas_bulk_failed | tojson }},
+      laslocasBulkAlreadyRunning: {{ admin_laslocas_bulk_already_running | tojson }},
       statusActive: {{ admin_status_active | tojson }},
       statusInactive: {{ admin_status_inactive | tojson }},
       msgEmpty: {{ admin_list_empty | tojson }},
@@ -423,12 +585,12 @@
     const panelNew = document.getElementById('panel-new');
     const panelList = document.getElementById('panel-list');
     const panelBanners = document.getElementById('panel-banners');
-    const panelColors = document.getElementById('panel-colors');
+    const panelCatalog = document.getElementById('panel-catalog');
     const panelOrders = document.getElementById('panel-orders');
     const tabBtnNew = document.getElementById('tab-btn-new');
     const tabBtnList = document.getElementById('tab-btn-list');
     const tabBtnBanners = document.getElementById('tab-btn-banners');
-    const tabBtnColors = document.getElementById('tab-btn-colors');
+    const tabBtnCatalog = document.getElementById('tab-btn-catalog');
     const tabBtnOrders = document.getElementById('tab-btn-orders');
     const submitBtn = document.getElementById('submit-btn');
 
@@ -440,35 +602,75 @@
       btn.classList.toggle('text-gray-500', !active);
     }
 
+    const catalogSubBtns = {
+      categorias: document.getElementById('catalog-sub-categorias'),
+      talles: document.getElementById('catalog-sub-talles'),
+      colores: document.getElementById('catalog-sub-colores'),
+    };
+    const catalogSections = {
+      categorias: document.getElementById('catalog-section-categorias'),
+      talles: document.getElementById('catalog-section-talles'),
+      colores: document.getElementById('catalog-section-colores'),
+    };
+
+    function setCatalogSubBtnStyle(btn, active) {
+      if (!btn) return;
+      btn.classList.toggle('border-black', active);
+      btn.classList.toggle('text-gray-900', active);
+      btn.classList.toggle('border-transparent', !active);
+      btn.classList.toggle('text-gray-500', !active);
+    }
+
+    function showCatalogSection(section) {
+      const key = section === 'talles' || section === 'colores' ? section : 'categorias';
+      Object.keys(catalogSections).forEach((k) => {
+        if (catalogSections[k]) catalogSections[k].classList.toggle('hidden', k !== key);
+        setCatalogSubBtnStyle(catalogSubBtns[k], k === key);
+      });
+      if (key === 'categorias' && typeof loadCategoriesCatalog === 'function') loadCategoriesCatalog();
+      if (key === 'talles' && typeof loadSizeCatalogTab === 'function') loadSizeCatalogTab();
+      if (key === 'colores' && typeof loadColorsCatalog === 'function') loadColorsCatalog();
+      if (window.location.hash !== '#' + key) {
+        history.replaceState({}, '', window.location.pathname + window.location.search + '#' + key);
+      }
+    }
+
+    Object.entries(catalogSubBtns).forEach(([key, btn]) => {
+      if (btn) btn.addEventListener('click', () => showCatalogSection(key));
+    });
+
     function showTab(which) {
       const isNew = which === 'new';
       const isList = which === 'list';
       const isBanners = which === 'banners';
-      const isColors = which === 'colors';
+      const isCatalog = which === 'catalog';
       const isOrders = which === 'orders';
       panelNew.classList.toggle('hidden', !isNew);
       panelList.classList.toggle('hidden', !isList);
       panelBanners.classList.toggle('hidden', !isBanners);
-      panelColors.classList.toggle('hidden', !isColors);
+      if (panelCatalog) panelCatalog.classList.toggle('hidden', !isCatalog);
       panelOrders.classList.toggle('hidden', !isOrders);
       setTabBtnStyle(tabBtnNew, isNew);
       setTabBtnStyle(tabBtnList, isList);
       setTabBtnStyle(tabBtnBanners, isBanners);
-      setTabBtnStyle(tabBtnColors, isColors);
+      setTabBtnStyle(tabBtnCatalog, isCatalog);
       setTabBtnStyle(tabBtnOrders, isOrders);
       if (isList) {
         listSearch = document.getElementById('admin-search-input').value;
         loadList(listPage);
       }
       if (isBanners) loadBannersList();
-      if (isColors && typeof loadColorsCatalog === 'function') loadColorsCatalog();
+      if (isCatalog) {
+        const hash = (window.location.hash || '').replace('#', '');
+        showCatalogSection(hash || 'categorias');
+      }
       if (isOrders) loadOrdersList();
     }
 
     tabBtnNew.addEventListener('click', () => showTab('new'));
     tabBtnList.addEventListener('click', () => showTab('list'));
     tabBtnBanners.addEventListener('click', () => showTab('banners'));
-    tabBtnColors.addEventListener('click', () => showTab('colors'));
+    tabBtnCatalog.addEventListener('click', () => showTab('catalog'));
     tabBtnOrders.addEventListener('click', () => showTab('orders'));
 
     function showApiError(message, fallback) {
@@ -622,6 +824,10 @@
       if (statusFilter && statusFilter.value) {
         u.searchParams.set('status_filter', statusFilter.value);
       }
+      const providerFilter = document.getElementById('admin-list-provider-filter');
+      if (providerFilter && providerFilter.value) {
+        u.searchParams.set('provider', providerFilter.value);
+      }
       return u.toString();
     }
 
@@ -672,6 +878,9 @@
               <a href="/api/detalle/${p.id}" target="_blank" rel="noopener noreferrer" class="font-medium text-gray-900 hover:underline">${escapeHtml(p.titulo)}</a>
             </td>
             <td class="px-3 py-2 align-middle whitespace-nowrap">
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">${escapeHtml(p.provider || '—')}</span>
+            </td>
+            <td class="px-3 py-2 align-middle whitespace-nowrap">
               <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${p.activo ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}">${p.activo ? LABELS.statusActive : LABELS.statusInactive}</span>
             </td>
             <td class="px-3 py-2 align-middle text-right whitespace-nowrap">$${moneyFmt.format(Number(p.precio) || 0)}</td>
@@ -718,6 +927,10 @@
       }
     });
     document.getElementById('admin-list-status-filter').addEventListener('change', () => {
+      listPage = 1;
+      loadList(1);
+    });
+    document.getElementById('admin-list-provider-filter').addEventListener('change', () => {
       listPage = 1;
       loadList(1);
     });
@@ -818,6 +1031,313 @@
         btn.textContent = LABELS.providerBtn;
       }
     });
+
+    let nissieBulkPollTimer = null;
+
+    function renderNissieBulkRun(run) {
+      const statusEl = document.getElementById('nissie-bulk-status');
+      const errorsWrap = document.getElementById('nissie-bulk-errors-wrap');
+      const errorsList = document.getElementById('nissie-bulk-errors');
+      if (!run) {
+        statusEl.textContent = '';
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+        return;
+      }
+      if (run.status === 'running') {
+        const processed = run.processed || 0;
+        const total = run.discovered || '?';
+        statusEl.textContent = `${LABELS.nissieBulkRunning} ${processed}/${total}`;
+        errorsWrap.classList.add('hidden');
+        return;
+      }
+      statusEl.textContent = `${LABELS.nissieBulkDone} ${run.created} ${LABELS.nissieBulkCreated}, ${run.skipped} ${LABELS.nissieBulkSkipped}, ${run.failed} ${LABELS.nissieBulkFailed}.`;
+      const failed = run.failed_items || [];
+      if (failed.length) {
+        errorsWrap.classList.remove('hidden');
+        errorsList.innerHTML = failed.map(item => `
+          <li><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(item.source_url)}</a>${item.error_message ? ': ' + escapeHtml(item.error_message) : ''}</li>
+        `).join('');
+      } else {
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+      }
+    }
+
+    async function pollNissieBulkRun(runId) {
+      try {
+        const resp = await authFetch('/api/proveedores/importaciones/' + runId);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderNissieBulkRun(data);
+        if (data.status === 'running') {
+          nissieBulkPollTimer = setTimeout(() => pollNissieBulkRun(runId), 3000);
+        } else {
+          nissieBulkPollTimer = null;
+        }
+      } catch (e) {
+        nissieBulkPollTimer = null;
+      }
+    }
+
+    async function loadLatestNissieBulkRun() {
+      try {
+        const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=nissie');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.run) {
+          renderNissieBulkRun(data.run);
+          if (data.run.status === 'running') {
+            if (nissieBulkPollTimer) clearTimeout(nissieBulkPollTimer);
+            nissieBulkPollTimer = setTimeout(() => pollNissieBulkRun(data.run.run_id), 3000);
+          }
+        }
+      } catch (e) {}
+    }
+
+    document.getElementById('nissie-bulk-import-btn').addEventListener('click', async () => {
+      if (!confirm(LABELS.nissieBulkConfirm)) return;
+      const btn = document.getElementById('nissie-bulk-import-btn');
+      const statusEl = document.getElementById('nissie-bulk-status');
+      btn.disabled = true;
+      statusEl.textContent = LABELS.nissieBulkRunning;
+      try {
+        const resp = await authFetch('/api/proveedores/nissie/importar-masivo', { method: 'POST' });
+        const data = await resp.json().catch(() => ({}));
+        if (!data.ok) {
+          statusEl.textContent = data.error || LABELS.nissieBulkAlreadyRunning;
+          return;
+        }
+        if (nissieBulkPollTimer) clearTimeout(nissieBulkPollTimer);
+        pollNissieBulkRun(data.run_id);
+      } catch (err) {
+        statusEl.textContent = LABELS.msgError;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('nissie-bulk-view-pending-btn').addEventListener('click', () => {
+      document.getElementById('admin-list-status-filter').value = 'inactivos';
+      document.getElementById('admin-list-provider-filter').value = 'nissie';
+      listPage = 1;
+      showTab('list');
+      loadList(1);
+    });
+
+    loadLatestNissieBulkRun();
+
+    let holicBulkPollTimer = null;
+
+    function renderHolicBulkRun(run) {
+      const statusEl = document.getElementById('holic-bulk-status');
+      const errorsWrap = document.getElementById('holic-bulk-errors-wrap');
+      const errorsList = document.getElementById('holic-bulk-errors');
+      if (!run) {
+        statusEl.textContent = '';
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+        return;
+      }
+      if (run.status === 'running') {
+        const processed = run.processed || 0;
+        const total = run.discovered || '?';
+        statusEl.textContent = `${LABELS.holicBulkRunning} ${processed}/${total}`;
+        errorsWrap.classList.add('hidden');
+        return;
+      }
+      statusEl.textContent = `${LABELS.holicBulkDone} ${run.created} ${LABELS.holicBulkCreated}, ${run.skipped} ${LABELS.holicBulkSkipped}, ${run.failed} ${LABELS.holicBulkFailed}.`;
+      const failed = run.failed_items || [];
+      if (failed.length) {
+        errorsWrap.classList.remove('hidden');
+        errorsList.innerHTML = failed.map(item => `
+          <li><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(item.source_url)}</a>${item.error_message ? ': ' + escapeHtml(item.error_message) : ''}</li>
+        `).join('');
+      } else {
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+      }
+    }
+
+    async function pollHolicBulkRun(runId) {
+      try {
+        const resp = await authFetch('/api/proveedores/importaciones/' + runId);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderHolicBulkRun(data);
+        if (data.status === 'running') {
+          holicBulkPollTimer = setTimeout(() => pollHolicBulkRun(runId), 3000);
+        } else {
+          holicBulkPollTimer = null;
+        }
+      } catch (e) {
+        holicBulkPollTimer = null;
+      }
+    }
+
+    async function loadLatestHolicBulkRun() {
+      try {
+        const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=holic');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.run) {
+          renderHolicBulkRun(data.run);
+          if (data.run.status === 'running') {
+            if (holicBulkPollTimer) clearTimeout(holicBulkPollTimer);
+            holicBulkPollTimer = setTimeout(() => pollHolicBulkRun(data.run.run_id), 3000);
+          }
+        }
+      } catch (e) {}
+    }
+
+    document.getElementById('holic-bulk-import-btn').addEventListener('click', async () => {
+      if (!confirm(LABELS.holicBulkConfirm)) return;
+      const btn = document.getElementById('holic-bulk-import-btn');
+      const statusEl = document.getElementById('holic-bulk-status');
+      btn.disabled = true;
+      statusEl.textContent = LABELS.holicBulkRunning;
+      try {
+        const resp = await authFetch('/api/proveedores/holic/importar-masivo', { method: 'POST' });
+        const data = await resp.json().catch(() => ({}));
+        if (!data.ok) {
+          statusEl.textContent = data.error || LABELS.holicBulkAlreadyRunning;
+          return;
+        }
+        if (holicBulkPollTimer) clearTimeout(holicBulkPollTimer);
+        pollHolicBulkRun(data.run_id);
+      } catch (err) {
+        statusEl.textContent = LABELS.msgError;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('holic-bulk-view-pending-btn').addEventListener('click', () => {
+      document.getElementById('admin-list-status-filter').value = 'inactivos';
+      document.getElementById('admin-list-provider-filter').value = 'holic';
+      listPage = 1;
+      showTab('list');
+      loadList(1);
+    });
+
+    loadLatestHolicBulkRun();
+
+    let laslocasBulkPollTimer = null;
+    const laslocasCategorySelect = document.getElementById('laslocas-bulk-category');
+    const laslocasAllCategoriesCheck = document.getElementById('laslocas-bulk-all-categories');
+
+    function syncLaslocasBulkCategoryField() {
+      if (!laslocasCategorySelect || !laslocasAllCategoriesCheck) return;
+      laslocasCategorySelect.disabled = laslocasAllCategoriesCheck.checked;
+      laslocasCategorySelect.classList.toggle('opacity-50', laslocasAllCategoriesCheck.checked);
+    }
+    laslocasAllCategoriesCheck?.addEventListener('change', syncLaslocasBulkCategoryField);
+    syncLaslocasBulkCategoryField();
+
+    function renderLaslocasBulkRun(run) {
+      const statusEl = document.getElementById('laslocas-bulk-status');
+      const errorsWrap = document.getElementById('laslocas-bulk-errors-wrap');
+      const errorsList = document.getElementById('laslocas-bulk-errors');
+      if (!run) {
+        statusEl.textContent = '';
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+        return;
+      }
+      if (run.status === 'running') {
+        const processed = run.processed || 0;
+        const total = run.discovered || '?';
+        statusEl.textContent = `${LABELS.laslocasBulkRunning} ${processed}/${total}`;
+        errorsWrap.classList.add('hidden');
+        return;
+      }
+      statusEl.textContent = `${LABELS.laslocasBulkDone} ${run.created} ${LABELS.laslocasBulkCreated}, ${run.skipped} ${LABELS.laslocasBulkSkipped}, ${run.failed} ${LABELS.laslocasBulkFailed}.`;
+      const failed = run.failed_items || [];
+      if (failed.length) {
+        errorsWrap.classList.remove('hidden');
+        errorsList.innerHTML = failed.map(item => `
+          <li><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(item.source_url)}</a>${item.error_message ? ': ' + escapeHtml(item.error_message) : ''}</li>
+        `).join('');
+      } else {
+        errorsWrap.classList.add('hidden');
+        errorsList.innerHTML = '';
+      }
+    }
+
+    async function pollLaslocasBulkRun(runId) {
+      try {
+        const resp = await authFetch('/api/proveedores/importaciones/' + runId);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderLaslocasBulkRun(data);
+        if (data.status === 'running') {
+          laslocasBulkPollTimer = setTimeout(() => pollLaslocasBulkRun(runId), 3000);
+        } else {
+          laslocasBulkPollTimer = null;
+        }
+      } catch (e) {
+        laslocasBulkPollTimer = null;
+      }
+    }
+
+    async function loadLatestLaslocasBulkRun() {
+      try {
+        const resp = await authFetch('/api/proveedores/importaciones/ultima?provider=laslocas');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.run) {
+          renderLaslocasBulkRun(data.run);
+          if (data.run.status === 'running') {
+            if (laslocasBulkPollTimer) clearTimeout(laslocasBulkPollTimer);
+            laslocasBulkPollTimer = setTimeout(() => pollLaslocasBulkRun(data.run.run_id), 3000);
+          }
+        }
+      } catch (e) {}
+    }
+
+    document.getElementById('laslocas-bulk-import-btn').addEventListener('click', async () => {
+      if (!confirm(LABELS.laslocasBulkConfirm)) return;
+      const btn = document.getElementById('laslocas-bulk-import-btn');
+      const statusEl = document.getElementById('laslocas-bulk-status');
+      const allCategories = !!laslocasAllCategoriesCheck?.checked;
+      const categoryId = laslocasCategorySelect?.value || null;
+      const maxPagesRaw = parseInt(document.getElementById('laslocas-bulk-max-pages')?.value || '0', 10);
+      const maxPages = Number.isFinite(maxPagesRaw) && maxPagesRaw > 0 ? maxPagesRaw : 0;
+      btn.disabled = true;
+      statusEl.textContent = LABELS.laslocasBulkRunning;
+      try {
+        const resp = await authFetch('/api/proveedores/laslocas/importar-masivo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category_id: allCategories ? null : categoryId,
+            all_categories: allCategories,
+            max_pages: maxPages,
+          }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!data.ok) {
+          statusEl.textContent = data.error || LABELS.laslocasBulkAlreadyRunning;
+          return;
+        }
+        if (laslocasBulkPollTimer) clearTimeout(laslocasBulkPollTimer);
+        pollLaslocasBulkRun(data.run_id);
+      } catch (err) {
+        statusEl.textContent = LABELS.msgError;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('laslocas-bulk-view-pending-btn').addEventListener('click', () => {
+      document.getElementById('admin-list-status-filter').value = 'inactivos';
+      document.getElementById('admin-list-provider-filter').value = 'laslocas';
+      listPage = 1;
+      showTab('list');
+      loadList(1);
+    });
+
+    loadLatestLaslocasBulkRun();
 
     document.getElementById('producto-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1029,16 +1549,27 @@
       await initVariantsTable();
       if (typeof initColorsUi === 'function') await initColorsUi();
       if (typeof initColorCatalogTab === 'function') initColorCatalogTab();
+      if (typeof initSizeCatalogTab === 'function') initSizeCatalogTab();
+      if (typeof initCategoryCatalogTab === 'function') initCategoryCatalogTab();
       bindSaleToggle();
       resetBannerForm();
       const params = new URLSearchParams(window.location.search);
-      if (params.get('tab') === 'list') {
+      const tabParam = params.get('tab');
+      if (tabParam === 'colors') {
+        params.set('tab', 'catalog');
+        window.history.replaceState({}, '', window.location.pathname + '?' + params.toString() + '#colores');
+      } else if (tabParam === 'sizes') {
+        params.set('tab', 'catalog');
+        window.history.replaceState({}, '', window.location.pathname + '?' + params.toString() + '#talles');
+      }
+      const activeTab = new URLSearchParams(window.location.search).get('tab');
+      if (activeTab === 'list') {
         showTab('list');
-      } else if (params.get('tab') === 'banners') {
+      } else if (activeTab === 'banners') {
         showTab('banners');
-      } else if (params.get('tab') === 'colors') {
-        showTab('colors');
-      } else if (params.get('tab') === 'orders') {
+      } else if (activeTab === 'catalog' || activeTab === 'colors' || activeTab === 'sizes') {
+        showTab('catalog');
+      } else if (activeTab === 'orders') {
         showTab('orders');
       }
       if (params.get('updated') === '1') {

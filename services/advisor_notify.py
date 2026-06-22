@@ -3,6 +3,7 @@ from typing import Optional
 
 from config import get_whatsapp_asesor_number
 from database.models import Order
+from services.email_notify import admin_panel_link_footer, send_admin_email
 from whatsapp.bot import get_wa_client
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,10 @@ def _format_lines_short(order: Order) -> str:
     return "\n".join(parts) if parts else "- (sin líneas)"
 
 
+def _plain_for_email(text: str) -> str:
+    return text.replace("*", "")
+
+
 def _format_order_summary(order: Order) -> str:
     lines = [f"*Pedido {order.order_code}*", f"Estado: {_status_label(order.status)}", ""]
     for it in order.items:
@@ -49,7 +54,12 @@ def notify_advisor_new_web_order(order: Order) -> bool:
         "La clienta debe enviar el mensaje por WhatsApp con este código. "
         "Cuando llegue, el bot lo marcará como recibido."
     ).replace(",", ".")
-    return _send_to_advisor(text)
+    wa_ok = _send_to_advisor(text)
+    email_ok = send_admin_email(
+        f"Nuevo pedido web {order.order_code}",
+        _plain_for_email(text) + admin_panel_link_footer(),
+    )
+    return wa_ok or email_ok
 
 
 def notify_advisor_order_received(
@@ -68,7 +78,12 @@ def notify_advisor_order_received(
         f"{summary}\n\n"
         "Atendé el pedido cuando puedas (stock, envío, pago)."
     )
-    return _send_to_advisor(text)
+    wa_ok = _send_to_advisor(text)
+    email_ok = send_admin_email(
+        f"Pedido confirmado por WhatsApp {order.order_code}",
+        _plain_for_email(text) + admin_panel_link_footer(),
+    )
+    return wa_ok or email_ok
 
 
 def _send_to_advisor(text: str) -> bool:

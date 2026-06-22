@@ -60,6 +60,8 @@ def parse_laslocas_product(html: str, source_url: str) -> ImportedProduct:
     description = _squash_ws(str(json_product.get("description") or ""))
     price = _parse_price_from_offers(json_product.get("offers"))
     if price is None:
+        price = _extract_price_from_html(soup)
+    if price is None:
         raise ProviderImportError("No se pudo detectar el precio del producto Las Locas.")
 
     image_urls = _extract_gallery_urls(soup, source_url)
@@ -168,13 +170,21 @@ def _page_ficha_from_url(url: str) -> str:
     return path.replace("/", "") or "ficha"
 
 
+def _loads_jsonld(raw: str) -> Any:
+    """Parse JSON-LD; Las Locas sometimes embeds raw newlines inside strings."""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return json.loads(raw, strict=False)
+
+
 def _find_product_jsonld(soup: BeautifulSoup) -> dict[str, Any]:
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text()
         if not raw:
             continue
         try:
-            parsed = json.loads(raw)
+            parsed = _loads_jsonld(raw)
         except json.JSONDecodeError:
             continue
         items = parsed if isinstance(parsed, list) else [parsed]
@@ -200,6 +210,25 @@ def _parse_price_from_offers(offers: Any) -> Optional[int]:
     return None
 
 
+def _extract_price_from_html(soup: BeautifulSoup) -> Optional[int]:
+    for selector in ("[class*='price']", ".b2", ".item-price"):
+        for element in soup.select(selector):
+            price = _parse_money_from_text(element.get_text(" ", strip=True))
+            if price is not None:
+                return price
+    return None
+
+
+def _parse_money_from_text(text: str) -> Optional[int]:
+    match = re.search(
+        r"\$\s*(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?)",
+        str(text or ""),
+    )
+    if not match:
+        return None
+    return _parse_money(match.group(1))
+
+
 def _parse_money(value: Any) -> Optional[int]:
     if value is None:
         return None
@@ -207,6 +236,8 @@ def _parse_money(value: Any) -> Optional[int]:
     if not text:
         return None
     try:
+        if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", text):
+            return int(text.replace(".", ""))
         if "," in text and "." in text:
             text = text.replace(".", "").replace(",", ".")
         elif "," in text:

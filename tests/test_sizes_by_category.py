@@ -14,29 +14,13 @@ from sqlalchemy.pool import StaticPool
 
 import database.models  # noqa: F401
 import main
-from config import get_size_codes_for_category, get_size_group_for_category
 from database.init_db import Base
+from database.models.Category import Category
 from database.models.Size import Size
+from services.sizes import get_size_codes_for_category, get_size_group_for_category
 
 
-class SizeGroupsConfigTest(unittest.TestCase):
-    def test_jeans_uses_numeric_group(self):
-        self.assertEqual(get_size_group_for_category("jeans"), "numeric")
-        codes = get_size_codes_for_category("jeans")
-        self.assertIn("36", codes)
-        self.assertNotIn("M", codes)
-
-    def test_remeras_uses_letter_group(self):
-        self.assertEqual(get_size_group_for_category("remeras"), "letter")
-        codes = get_size_codes_for_category("remeras")
-        self.assertIn("M", codes)
-        self.assertNotIn("36", codes)
-
-    def test_unknown_category_defaults_to_letter(self):
-        self.assertEqual(get_size_group_for_category("otra"), "letter")
-
-
-class SizesApiFilterTest(unittest.TestCase):
+class SizeGroupsDbTest(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine(
             "sqlite://",
@@ -47,9 +31,11 @@ class SizesApiFilterTest(unittest.TestCase):
         Base.metadata.create_all(self.engine)
 
         session = self.SessionLocal()
-        session.add(Size(code="M", label="M", sort_order=30))
-        session.add(Size(code="36", label="36", sort_order=76))
-        session.add(Size(code="38", label="38", sort_order=77))
+        session.add(Size(code="M", label="M", sort_order=30, size_group="letter"))
+        session.add(Size(code="36", label="36", sort_order=76, size_group="numeric"))
+        session.add(Size(code="38", label="38", sort_order=77, size_group="numeric"))
+        session.add(Category(slug="jeans", name="Jeans", sort_order=10, activo=True, size_group="numeric"))
+        session.add(Category(slug="remeras", name="Remeras", sort_order=20, activo=True, size_group="letter"))
         session.commit()
         session.close()
 
@@ -62,10 +48,27 @@ class SizesApiFilterTest(unittest.TestCase):
 
         main.app.dependency_overrides[main.get_db_fastApi] = override_db
         self.client = TestClient(main.app)
+        self.db = self.SessionLocal()
 
     def tearDown(self):
+        self.db.close()
         main.app.dependency_overrides.clear()
         Base.metadata.drop_all(self.engine)
+
+    def test_jeans_uses_numeric_group(self):
+        self.assertEqual(get_size_group_for_category(self.db, "jeans"), "numeric")
+        codes = get_size_codes_for_category(self.db, "jeans")
+        self.assertIn("36", codes)
+        self.assertNotIn("M", codes)
+
+    def test_remeras_uses_letter_group(self):
+        self.assertEqual(get_size_group_for_category(self.db, "remeras"), "letter")
+        codes = get_size_codes_for_category(self.db, "remeras")
+        self.assertIn("M", codes)
+        self.assertNotIn("36", codes)
+
+    def test_unknown_category_defaults_to_letter(self):
+        self.assertEqual(get_size_group_for_category(self.db, "otra"), "letter")
 
     def test_sizes_filtered_by_jeans_category(self):
         r = self.client.get("/api/sizes", params={"category_slug": "jeans"})

@@ -6,6 +6,8 @@ from pywa import WhatsApp, filters, types
 from config import get_order_confirmation_reply
 from database.init_db import SessionLocal
 from services.customer_service import get_or_create_customer_by_wa_id, save_customer_email
+from services.categories import list_categories_for_nav
+from services.sizes import get_size_codes_for_category
 from services.order_code import extract_order_code
 from services.order_service import (
     format_order_summary_for_bot,
@@ -32,6 +34,22 @@ _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _pending_email: dict[str, str] = {}
 
 
+def _shop_sizes_resolver(category_slug: str) -> list[str]:
+    db = SessionLocal()
+    try:
+        return get_size_codes_for_category(db, category_slug)
+    finally:
+        db.close()
+
+
+def _shop_categories_resolver() -> list[dict]:
+    db = SessionLocal()
+    try:
+        return list_categories_for_nav(db)
+    finally:
+        db.close()
+
+
 def _send_reply(msg_or_cb, reply) -> None:
     buttons = reply_to_pywa_buttons(reply.buttons)
     kwargs = {"text": reply.text}
@@ -56,7 +74,15 @@ def register_handlers(client) -> None:
             return
         wa_id = cb.from_user.wa_id
         if is_shop_callback(data):
-            _send_reply(cb, shop_handle_callback(wa_id, data))
+            _send_reply(
+                cb,
+                shop_handle_callback(
+                    wa_id,
+                    data,
+                    get_categories_for_nav=_shop_categories_resolver,
+                    get_sizes_for_category=_shop_sizes_resolver,
+                ),
+            )
             return
         _send_reply(cb, reply_for_callback(data))
 
@@ -87,12 +113,23 @@ def register_handlers(client) -> None:
 
             wa_id = msg.from_user.wa_id
             name = msg.from_user.name or ""
-            shop_reply = shop_handle_text(wa_id, text, name)
+            shop_reply = shop_handle_text(
+                wa_id, text, name, get_sizes_for_category=_shop_sizes_resolver
+            )
             if shop_reply is not None:
                 _send_reply(msg, shop_reply)
                 return
 
-            _send_reply(msg, route_text_message(text, name, wa_id))
+            _send_reply(
+                msg,
+                route_text_message(
+                    text,
+                    name,
+                    wa_id,
+                    get_categories_for_nav=_shop_categories_resolver,
+                    get_sizes_for_category=_shop_sizes_resolver,
+                ),
+            )
         except Exception:
             logger.exception("Error respondiendo mensaje WA de %s", msg.from_user.wa_id)
             try:

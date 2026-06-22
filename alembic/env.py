@@ -13,14 +13,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from database.db_url import build_database_url, get_sqlalchemy_connect_args
+from database.db_url import (
+    build_database_url,
+    escape_url_for_alembic_config,
+    get_sqlalchemy_connect_args,
+)
 from database.init_db import Base
 
 # Registrar todos los modelos en Base.metadata
 import database.models  # noqa: F401
 
 config = context.config
-config.set_main_option("sqlalchemy.url", build_database_url())
+config.set_main_option(
+    "sqlalchemy.url", escape_url_for_alembic_config(build_database_url())
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

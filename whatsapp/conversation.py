@@ -123,7 +123,8 @@ def reply_for_intent(intent: Intent, user_name: str = "") -> BotReply:
         return BotReply(
             text=(
                 "📏 *Guía de talles*\n\n"
-                "Trabajamos talles *XS, S, M, L, XL y XXL* (según modelo en la ficha del producto).\n\n"
+                "• *Remeras, camperas, buzos*, etc.: talles *XS, S, M, L, XL y XXL*.\n"
+                "• *Jeans y pantalones*: talles *numéricos* (34, 36, 38, 40, 42…).\n\n"
                 "Tip: si estás entre dos talles, consultanos el calce del jean que te interesa. "
                 "Podés combinar varios talles en el mismo pedido.\n\n"
                 f"Catálogo de jeans: {jeans_url}"
@@ -192,17 +193,34 @@ def reply_for_intent(intent: Intent, user_name: str = "") -> BotReply:
     )
 
 
-def route_text_message(text: str, user_name: str = "", wa_id: str | None = None) -> BotReply:
+def route_text_message(
+    text: str,
+    user_name: str = "",
+    wa_id: str | None = None,
+    *,
+    get_categories_for_nav=None,
+    get_sizes_for_category=None,
+) -> BotReply:
     """Respuesta para texto libre (sin código de pedido)."""
     intent = detect_intent(text)
     if wa_id and intent == Intent.JEANS:
         from whatsapp.shop_flow import start_with_category
 
-        return start_with_category("jeans", wa_id)
+        return start_with_category(
+            "jeans",
+            wa_id,
+            get_categories_for_nav=get_categories_for_nav,
+            get_sizes_for_category=get_sizes_for_category,
+        )
     if wa_id and intent == Intent.CATALOG:
         from whatsapp.shop_flow import CB_SHOP_START, handle_callback
 
-        return handle_callback(wa_id, CB_SHOP_START)
+        return handle_callback(
+            wa_id,
+            CB_SHOP_START,
+            get_categories_for_nav=get_categories_for_nav,
+            get_sizes_for_category=get_sizes_for_category,
+        )
     return reply_for_intent(intent, user_name)
 
 

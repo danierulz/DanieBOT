@@ -44,6 +44,11 @@ def _normalize_database_url(url: str) -> str:
     return u
 
 
+def escape_url_for_alembic_config(url: str) -> str:
+    """Alembic usa ConfigParser: % en contraseñas URL debe duplicarse."""
+    return url.replace("%", "%%")
+
+
 def build_database_url() -> str:
     """Construye la URL PostgreSQL desde variables de entorno."""
     override = os.getenv("DATABASE_URL", "").strip()

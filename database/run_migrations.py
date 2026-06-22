@@ -17,7 +17,11 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 
-from database.db_url import build_database_url, get_sqlalchemy_connect_args
+from database.db_url import (
+    build_database_url,
+    escape_url_for_alembic_config,
+    get_sqlalchemy_connect_args,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +71,7 @@ def apply_pending_migrations() -> None:
         return
 
     cfg = Config("alembic.ini")
-    cfg.set_main_option("sqlalchemy.url", url)
+    cfg.set_main_option("sqlalchemy.url", escape_url_for_alembic_config(url))
     script = ScriptDirectory.from_config(cfg)
     head = script.get_current_head()
 

@@ -15,7 +15,7 @@ class AlembicConfigTest(unittest.TestCase):
 
         cfg = Config("alembic.ini")
         script = ScriptDirectory.from_config(cfg)
-        self.assertEqual(script.get_heads(), ["20260520_0001"])
+        self.assertEqual(script.get_heads(), ["20260621_0006"])
 
     def test_env_imports_metadata(self):
         import database.models  # noqa: F401
@@ -36,11 +36,15 @@ class AlembicConfigTest(unittest.TestCase):
         }
         self.assertTrue(expected.issubset(tables), tables - expected)
 
-    def test_build_database_url_from_env(self):
-        from database.db_url import build_database_url
+    def test_escape_url_for_alembic_config_percent_password(self):
+        from alembic.config import Config
 
-        url = build_database_url()
-        self.assertIn("postgresql", url)
+        from database.db_url import escape_url_for_alembic_config
+
+        raw = "postgresql+psycopg2://bot:Neverl0l%24@localhost:5432/laslocas_dbng"
+        cfg = Config("alembic.ini")
+        cfg.set_main_option("sqlalchemy.url", escape_url_for_alembic_config(raw))
+        self.assertEqual(cfg.get_main_option("sqlalchemy.url"), raw)
 
     def test_build_database_url_cloud_sql_socket(self):
         import os

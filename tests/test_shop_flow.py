@@ -23,15 +23,16 @@ class ShopFlowUrlTest(unittest.TestCase):
     def setUp(self):
         shop_flow._sessions.clear()
 
-    def test_finish_jeans_size_m(self):
+    def test_finish_jeans_size_38(self):
         shop_flow._sessions["wa1"] = shop_flow.ShopSession(
             step=shop_flow.ShopStep.SIZE,
             category_slug="jeans",
             category_name="Jeans",
+            available_sizes=("34", "36", "38", "40", "42"),
         )
-        reply = handle_callback("wa1", f"{PREFIX_SIZE}M")
+        reply = handle_callback("wa1", f"{PREFIX_SIZE}38")
         self.assertIn("cat=jeans", reply.text)
-        self.assertIn("size_code=M", reply.text)
+        self.assertIn("size_code=38", reply.text)
         self.assertIsNone(shop_flow._sessions.get("wa1"))
 
     def test_finish_todos_all_sizes(self):
@@ -63,12 +64,13 @@ class ShopFlowCategoryTest(unittest.TestCase):
             or any("Jean" in t or "Pantal" in t or "Remera" in t for t in titles)
         )
 
-    def test_select_jeans_asks_size(self):
+    def test_select_jeans_asks_numeric_sizes(self):
         reply = handle_callback("wa1", f"{PREFIX_CAT}jeans")
         self.assertIn("talle", reply.text.lower())
         self.assertEqual(shop_flow._sessions["wa1"].category_slug, "jeans")
-        codes = [b.callback_data for b in reply.buttons]
-        self.assertTrue(any(c.startswith(PREFIX_SIZE) for c in codes))
+        titles = [b.title for b in reply.buttons]
+        self.assertIn("34", titles)
+        self.assertIn("36", titles)
 
     def test_start_with_category_skips_to_size(self):
         reply = start_with_category("jeans")
@@ -91,6 +93,12 @@ class ShopFlowTextTest(unittest.TestCase):
         reply = handle_text("wa1", "XL", "")
         self.assertIn("size_code=XL", reply.text)
         self.assertIn("remeras", reply.text)
+
+    def test_type_numeric_size_for_jeans(self):
+        handle_callback("wa1", f"{PREFIX_CAT}jeans")
+        reply = handle_text("wa1", "40", "")
+        self.assertIn("size_code=40", reply.text)
+        self.assertIn("jeans", reply.text)
 
     def test_type_todos_during_session(self):
         handle_callback("wa1", f"{PREFIX_CAT}jeans")

@@ -1,0 +1,5 @@
+# Dependencias para scripts de desarrollo (logo PNG → SVG)
+numpy>=1.26.0
+scikit-image>=0.22.0
+scipy>=1.11.0
+Pillow>=10.0.0

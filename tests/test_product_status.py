@@ -108,7 +108,7 @@ class ProductStatusApiTest(unittest.TestCase):
         self.assertFalse(r.json()["activo"])
 
     def test_create_product_rejects_long_description(self):
-        long_desc = "x" * 256
+        long_desc = "x" * 1025
         r = self.client.post(
             "/api/productos",
             data={
@@ -119,8 +119,8 @@ class ProductStatusApiTest(unittest.TestCase):
             headers=self.admin_headers,
         )
         self.assertEqual(r.status_code, 400)
-        self.assertIn("256", r.json()["detail"])
-        self.assertIn("255", r.json()["detail"])
+        self.assertIn("1025", r.json()["detail"])
+        self.assertIn("1024", r.json()["detail"])
 
     def test_update_product_rejects_long_description(self):
         session = self.SessionLocal()
@@ -131,12 +131,13 @@ class ProductStatusApiTest(unittest.TestCase):
             data={
                 "item_title": "Activo",
                 "price": "1000",
-                "description": "y" * 300,
+                "description": "y" * 1100,
             },
             headers=self.admin_headers,
         )
         self.assertEqual(r.status_code, 400)
-        self.assertIn("300", r.json()["detail"])
+        self.assertIn("1100", r.json()["detail"])
+        self.assertIn("1024", r.json()["detail"])
         self.assertIn("descripción", r.json()["detail"].lower())
 
     def test_import_respects_status_flag(self):

@@ -4,9 +4,9 @@ Estado en memoria por wa_id (mismo patrón que email pendiente).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Callable, Optional
 
 from config import get_catalog_categories
 from services.catalog_urls import build_catalog_url
@@ -29,9 +29,19 @@ PREFIX_SIZE = "SHOP_SIZE:"
 
 # 2 categorías + «Siguiente» en páginas intermedias (máx. 3 botones WhatsApp)
 CATEGORIES_PER_PAGE = 2
-_SIZE_PRIMARY = ("S", "M", "L")
-_SIZE_EXTRA = ("XS", "XL", "XXL")
-_ALL_SIZE_CODES = frozenset({"XS", "S", "M", "L", "XL", "XXL", "UNICO", "ALL"})
+
+# Fallback para tests sin base de datos
+_FALLBACK_SIZE_GROUPS: dict[str, tuple[str, ...]] = {
+    "letter": ("XS", "S", "M", "L", "XL", "XXL", "UNICO"),
+    "numeric": ("34", "36", "38", "40", "42"),
+}
+_FALLBACK_CATEGORY_GROUP: dict[str, str] = {
+    "jeans": "numeric",
+    "pantalones": "numeric",
+}
+
+SizeResolver = Callable[[str], list[str]]
+CategoryResolver = Callable[[], list[dict]]
 
 
 class ShopStep(str, Enum):
@@ -46,6 +56,7 @@ class ShopSession:
     category_name: str = ""
     category_page: int = 0
     size_page: int = 0
+    available_sizes: tuple[str, ...] = field(default_factory=tuple)
 
 
 _sessions: dict[str, ShopSession] = {}
@@ -64,35 +75,102 @@ def clear_session(wa_id: str) -> None:
     _sessions.pop(wa_id, None)
 
 
-def _category_pages() -> list[list[dict]]:
-    cats = get_catalog_categories()
+def _resolve_categories(resolver: CategoryResolver | None) -> list[dict]:
+    if resolver:
+        cats = resolver()
+        if cats:
+            return cats
+    return get_catalog_categories()
+
+
+def _category_pages(categories: list[dict]) -> list[list[dict]]:
     pages: list[list[dict]] = []
-    for i in range(0, len(cats), CATEGORIES_PER_PAGE):
-        pages.append(cats[i : i + CATEGORIES_PER_PAGE])
+    for i in range(0, len(categories), CATEGORIES_PER_PAGE):
+        pages.append(categories[i : i + CATEGORIES_PER_PAGE])
     return pages
 
 
-def _category_label(slug: str) -> str:
+def _category_label(slug: str, categories: list[dict]) -> str:
     if slug == "todos":
         return "Ver todo"
-    for c in get_catalog_categories():
+    for c in categories:
         if c["slug"] == slug:
             return c["name"]
     return slug
 
 
-def start_shop() -> BotReply:
-    return _reply_category_page(0)
+def _fallback_sizes(category_slug: str) -> list[str]:
+    if category_slug == "todos":
+        group = "letter"
+    else:
+        group = _FALLBACK_CATEGORY_GROUP.get(category_slug, "letter")
+    return list(_FALLBACK_SIZE_GROUPS.get(group, _FALLBACK_SIZE_GROUPS["letter"]))
 
 
-def start_with_category(slug: str, wa_id: str | None = None) -> BotReply:
+def _resolve_sizes(category_slug: str, resolver: SizeResolver | None) -> list[str]:
+    if category_slug == "todos":
+        return _fallback_sizes("todos")
+    if resolver:
+        sizes = resolver(category_slug)
+        if sizes:
+            return sizes
+    return _fallback_sizes(category_slug)
+
+
+def _size_button_pages(codes: list[str]) -> list[list[str]]:
+    if not codes:
+        return [[]]
+    if len(codes) <= 3:
+        return [codes]
+    pages: list[list[str]] = []
+    i = 0
+    while i < len(codes):
+        rest = len(codes) - i
+        if rest <= 3:
+            pages.append(codes[i:])
+            break
+        pages.append(codes[i : i + 2])
+        i += 2
+    return pages
+
+
+def _size_help_text(sizes: tuple[str, ...]) -> str:
+    if not sizes:
+        return "_Escribí *todos* para ver sin filtrar por talle._"
+    if sizes[0].isdigit():
+        sample = ", ".join(sizes[:4])
+        return f"_Para otro talle escribí {sample} o *todos* (sin filtrar talle)._"
+    extra = [s for s in sizes if s not in ("S", "M")][:3]
+    sample = ", ".join(extra) if extra else ", ".join(sizes[:3])
+    return f"_Para otro talle escribí {sample} o *todos* (sin filtrar talle)._"
+
+
+def start_shop(*, get_categories_for_nav: CategoryResolver | None = None) -> BotReply:
+    cats = _resolve_categories(get_categories_for_nav)
+    return _reply_category_page(0, categories=cats)
+
+
+def start_with_category(
+    slug: str,
+    wa_id: str | None = None,
+    *,
+    get_categories_for_nav: CategoryResolver | None = None,
+    get_sizes_for_category: SizeResolver | None = None,
+) -> BotReply:
     """Salta a elegir talle (ej. intent «jeans»)."""
-    name = _category_label(slug)
-    return _set_category_and_ask_size(slug, name, wa_id)
+    cats = _resolve_categories(get_categories_for_nav)
+    name = _category_label(slug, cats)
+    sizes = _resolve_sizes(slug, get_sizes_for_category)
+    return _set_category_and_ask_size(slug, name, wa_id, sizes)
 
 
-def _reply_category_page(page: int, wa_id: str | None = None) -> BotReply:
-    pages = _category_pages()
+def _reply_category_page(
+    page: int,
+    wa_id: str | None = None,
+    *,
+    categories: list[dict],
+) -> BotReply:
+    pages = _category_pages(categories)
     if not pages:
         return BotReply(text="No hay categorías configuradas.")
     page = max(0, min(page, len(pages) - 1))
@@ -119,53 +197,54 @@ def _reply_category_page(page: int, wa_id: str | None = None) -> BotReply:
     )
 
 
-def _set_category_and_ask_size(slug: str, name: str, wa_id: str | None = None) -> BotReply:
+def _set_category_and_ask_size(
+    slug: str,
+    name: str,
+    wa_id: str | None,
+    sizes: list[str],
+) -> BotReply:
+    size_tuple = tuple(sizes)
     if wa_id:
         _sessions[wa_id] = ShopSession(
             step=ShopStep.SIZE,
             category_slug=slug,
             category_name=name,
             size_page=0,
+            available_sizes=size_tuple,
         )
-    cat_display = name if slug != "todos" else "todo el catálogo"
-    return BotReply(
-        text=(
-            f"Perfecto: *{cat_display}*.\n\n"
-            "¿Qué talle necesitás?\n"
-            "_Para otro talle escribí XS, XL, XXL o *todos* (sin filtrar talle)._"
-        ),
-        buttons=[
-            ButtonDef("S", f"{PREFIX_SIZE}S"),
-            ButtonDef("M", f"{PREFIX_SIZE}M"),
+    return _reply_size_page(0, slug, name, size_tuple)
+
+
+def _reply_size_page(page: int, slug: str, name: str, sizes: tuple[str, ...]) -> BotReply:
+    codes = list(sizes)
+    pages = _size_button_pages(codes)
+    page = max(0, min(page, len(pages) - 1))
+    chunk = pages[page]
+    has_next = page < len(pages) - 1
+
+    buttons: list[ButtonDef] = []
+    if len(codes) <= 3:
+        buttons = [ButtonDef(code, f"{PREFIX_SIZE}{code}") for code in codes[:3]]
+    elif page == 0:
+        buttons = [
+            ButtonDef(chunk[0], f"{PREFIX_SIZE}{chunk[0]}"),
+            ButtonDef(chunk[1], f"{PREFIX_SIZE}{chunk[1]}"),
             ButtonDef("Más talles", f"{CB_SHOP_SIZE_PAGE}:1"),
-        ],
-    )
+        ]
+    else:
+        for code in chunk[:3]:
+            buttons.append(ButtonDef(code, f"{PREFIX_SIZE}{code}"))
+        if has_next and len(buttons) == 2:
+            buttons.append(ButtonDef("Más talles", f"{CB_SHOP_SIZE_PAGE}:{page + 1}"))
 
+    cat_display = name if slug != "todos" else "todo el catálogo"
+    help_txt = _size_help_text(sizes)
+    if page == 0:
+        intro = f"Perfecto: *{cat_display}*.\n\n¿Qué talle necesitás?\n{help_txt}"
+    else:
+        intro = f"Más talles para *{cat_display}*:\n{help_txt}"
 
-def _reply_size_page(page: int, session: ShopSession) -> BotReply:
-    if page <= 0:
-        return BotReply(
-            text=(
-                f"Talle para *{session.category_name}*:\n"
-                "Elegí S, M o L, o tocá *Más talles*."
-            ),
-            buttons=[
-                ButtonDef("S", f"{PREFIX_SIZE}S"),
-                ButtonDef("M", f"{PREFIX_SIZE}M"),
-                ButtonDef("Más talles", f"{CB_SHOP_SIZE_PAGE}:1"),
-            ],
-        )
-    return BotReply(
-        text=(
-            f"Más talles para *{session.category_name}*:\n"
-            "_Escribí *todos* para ver sin filtrar por talle._"
-        ),
-        buttons=[
-            ButtonDef("L", f"{PREFIX_SIZE}L"),
-            ButtonDef("XS", f"{PREFIX_SIZE}XS"),
-            ButtonDef("XL", f"{PREFIX_SIZE}XL"),
-        ],
-    )
+    return BotReply(text=intro, buttons=buttons[:3])
 
 
 def _finish_with_size(session: ShopSession, size_code: str | None) -> BotReply:
@@ -193,12 +272,19 @@ def _finish_with_size(session: ShopSession, size_code: str | None) -> BotReply:
     )
 
 
-def handle_callback(wa_id: str, data: str) -> BotReply:
+def handle_callback(
+    wa_id: str,
+    data: str,
+    *,
+    get_categories_for_nav: CategoryResolver | None = None,
+    get_sizes_for_category: SizeResolver | None = None,
+) -> BotReply:
     data = (data or "").strip()
+    cats = _resolve_categories(get_categories_for_nav)
 
     if data == CB_SHOP_START or data == CB_SHOP_AGAIN:
         _sessions[wa_id] = ShopSession(step=ShopStep.CATEGORY, category_page=0)
-        return _reply_category_page(0, wa_id)
+        return _reply_category_page(0, wa_id, categories=cats)
 
     if data == CB_SHOP_CANCEL:
         clear_session(wa_id)
@@ -211,37 +297,50 @@ def handle_callback(wa_id: str, data: str) -> BotReply:
             page = int(data.split(":", 1)[1])
         except (IndexError, ValueError):
             page = 0
-        return _reply_category_page(page, wa_id)
+        return _reply_category_page(page, wa_id, categories=cats)
 
     if data.startswith(PREFIX_CAT):
         slug = data.split(":", 1)[1].strip().lower()
-        name = _category_label(slug)
-        return _set_category_and_ask_size(slug, name, wa_id)
+        name = _category_label(slug, cats)
+        sizes = _resolve_sizes(slug, get_sizes_for_category)
+        return _set_category_and_ask_size(slug, name, wa_id, sizes)
 
     if data.startswith(CB_SHOP_SIZE_PAGE + ":"):
         session = _sessions.get(wa_id)
         if not session or session.step != ShopStep.SIZE:
-            return start_shop()
+            return start_shop(get_categories_for_nav=get_categories_for_nav)
         try:
             page = int(data.split(":", 1)[1])
         except (IndexError, ValueError):
             page = 1
         session.size_page = page
-        return _reply_size_page(page, session)
+        return _reply_size_page(
+            page,
+            session.category_slug,
+            session.category_name,
+            session.available_sizes,
+        )
 
     if data.startswith(PREFIX_SIZE):
         code = data.split(":", 1)[1].strip().upper()
         session = _sessions.pop(wa_id, None)
         if not session:
-            return start_shop()
+            return start_shop(get_categories_for_nav=get_categories_for_nav)
         return _finish_with_size(session, code if code != "ALL" else None)
 
     clear_session(wa_id)
-    return start_shop()
+    return start_shop(get_categories_for_nav=get_categories_for_nav)
 
 
-def handle_text(wa_id: str, text: str, user_name: str = "") -> Optional[BotReply]:
+def handle_text(
+    wa_id: str,
+    text: str,
+    user_name: str = "",
+    *,
+    get_sizes_for_category: SizeResolver | None = None,
+) -> Optional[BotReply]:
     """Si hay sesión de tienda activa, interpreta talle o cancelación."""
+    del get_sizes_for_category  # sizes already stored on session
     session = _sessions.get(wa_id)
     if not session:
         return None
@@ -259,14 +358,16 @@ def handle_text(wa_id: str, text: str, user_name: str = "") -> Optional[BotReply
             reply = _finish_with_size(session, None)
             _sessions.pop(wa_id, None)
             return reply
-        if code in _ALL_SIZE_CODES and code != "ALL":
+        allowed = set(session.available_sizes)
+        if code in allowed:
             reply = _finish_with_size(session, code)
             _sessions.pop(wa_id, None)
             return reply
 
-    return BotReply(
-        text="Usá los botones de arriba o escribí un talle (S, M, L, XL…), *todos* o *cancelar*.",
-        buttons=[],
-    )
-
-
+    hint = "Usá los botones de arriba o escribí un talle"
+    if session.available_sizes and session.available_sizes[0].isdigit():
+        hint += f" ({', '.join(session.available_sizes[:3])}…)"
+    else:
+        hint += " (S, M, L, XL…)"
+    hint += ", *todos* o *cancelar*."
+    return BotReply(text=hint, buttons=[])

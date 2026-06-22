@@ -6,6 +6,22 @@ import os
 from datetime import datetime
 
 _BRAND = os.getenv("SITE_BRAND_NAME", "Outfit Jazmines")
+_BRAND_LOGO_ANIMATED = os.getenv("SITE_BRAND_LOGO_ANIMATED", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+APP_DEBUG = os.getenv("APP_DEBUG", "false").lower() in ("1", "true", "yes", "on")
+# Paleta del logo (alineada al PNG: letras negras + jazmín a color)
+_BRAND_LOGO_COLORS = {
+    "letter": os.getenv("SITE_BRAND_LOGO_LETTER", "#111111"),
+    "stem": os.getenv("SITE_BRAND_LOGO_STEM", "#3D6B4F"),
+    "leaf": os.getenv("SITE_BRAND_LOGO_LEAF", "#2F5A40"),
+    "petal": os.getenv("SITE_BRAND_LOGO_PETAL", "#FAFAF8"),
+    "petal_center": os.getenv("SITE_BRAND_LOGO_PETAL_CENTER", "#E8C547"),
+    "bud": os.getenv("SITE_BRAND_LOGO_BUD", "#F5F5F0"),
+}
 _PROMO_BANNER = os.getenv(
     "SITE_PROMO_BANNER",
     "Compra mínima $100.000 · Envío a todo el país",
@@ -39,9 +55,81 @@ def get_site_public_url() -> str:
     return _SITE_PUBLIC_URL.rstrip("/")
 
 
+# Notificación admin por email (SMTP)
+_ADMIN_NOTIFY_EMAIL = os.getenv("ADMIN_NOTIFY_EMAIL", "").strip()
+_SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+_SMTP_PORT = int(os.getenv("SMTP_PORT", "587") or "587")
+_SMTP_USER = os.getenv("SMTP_USER", "").strip()
+_SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
+_SMTP_FROM = os.getenv("SMTP_FROM", "").strip()
+_ADMIN_NOTIFY_EMAIL_ENABLED = os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+
+
+def get_admin_notify_email() -> str:
+    return _ADMIN_NOTIFY_EMAIL
+
+
+def is_admin_notify_email_enabled() -> bool:
+    return _ADMIN_NOTIFY_EMAIL_ENABLED
+
+
+def get_smtp_host() -> str:
+    return _SMTP_HOST
+
+
+def get_smtp_port() -> int:
+    return _SMTP_PORT
+
+
+def get_smtp_user() -> str:
+    return _SMTP_USER
+
+
+def get_smtp_password() -> str:
+    return _SMTP_PASSWORD
+
+
+def get_smtp_from() -> str:
+    return _SMTP_FROM or _SMTP_USER
+
+
+# Fallback para tests de WhatsApp sin base de datos
+_FALLBACK_CATALOG_CATEGORIES = [
+    {"name": "Jeans", "slug": "jeans"},
+    {"name": "Pantalones", "slug": "pantalones"},
+    {"name": "Remeras", "slug": "remeras"},
+]
+
+
 def get_catalog_categories() -> list[dict]:
-    """Categorías del catálogo (slug + name) para menú web y bot WhatsApp."""
-    return list(_NAV_CATEGORIES)
+    """Deprecated: usar list_categories_for_nav(db). Fallback para tests."""
+    return list(_FALLBACK_CATALOG_CATEGORIES)
+
+
+def build_nav_links(categories: list[dict]) -> list[dict]:
+    """Arma nav_links con dropdown Productos desde categorías activas en DB."""
+    children = [{"label": "Ver todo", "href": "/?cat=todos"}]
+    children.extend(
+        {"label": c["name"], "href": f"/?cat={c['slug']}"}
+        for c in categories
+    )
+    return [
+        {"label": "Inicio", "href": "/"},
+        {
+            "label": "Productos",
+            "href": "/?cat=todos",
+            "dropdown": True,
+            "children": children,
+        },
+        {"label": "Sale", "href": "/sale", "highlight": True},
+        {"label": "Contacto", "href": "/contacto"},
+        {"label": "Puntos de venta", "href": "/puntos-de-venta"},
+    ]
 
 
 def get_bot_welcome_text(user_name: str) -> str:
@@ -76,39 +164,10 @@ _STORES = [
     },
 ]
 
-# Categorías del menú Productos (slugs alineados con seed en init_db)
-_NAV_CATEGORIES = [
-    {"name": "Jeans", "slug": "jeans"},
-    {"name": "Pantalones", "slug": "pantalones"},
-    {"name": "Remeras", "slug": "remeras"},
-    {"name": "Camisas", "slug": "camisas"},
-    {"name": "Blusas", "slug": "blusas"},
-    {"name": "Camperas", "slug": "camperas"},
-    {"name": "Vestidos", "slug": "vestidos"},
-    {"name": "Polleras", "slug": "polleras"},
-    {"name": "Buzos", "slug": "buzos"},
-    {"name": "Accesorios", "slug": "accesorios"},
-]
+# Menú principal (Productos se completa en page_context desde DB)
+_NAV_LINKS = build_nav_links([])
 
-_NAV_PRODUCTOS_CHILDREN = [
-    {"label": "Ver todo", "href": "/?cat=todos"},
-    *[
-        {"label": c["name"], "href": f"/?cat={c['slug']}"}
-        for c in _NAV_CATEGORIES
-    ],
-]
-
-# Grupos de talles por tipo de prenda
-SIZE_GROUPS: dict[str, list[str]] = {
-    "letter": ["XS", "S", "M", "L", "XL", "XXL", "UNICO"],
-    "numeric": ["34", "36", "38", "40", "42"],
-}
-
-CATEGORY_SIZE_GROUP: dict[str, str] = {
-    "jeans": "numeric",
-    "pantalones": "numeric",
-}
-
+# Talles: catálogo y grupos por categoría viven en DB (sizes.size_group, categories.size_group).
 DEFAULT_SIZE_GROUP = "letter"
 
 _NUMERIC_SIZE_SEED = [
@@ -120,33 +179,12 @@ _NUMERIC_SIZE_SEED = [
 ]
 
 
-def get_size_group_for_category(category_slug: str | None) -> str:
-    if not category_slug:
-        return DEFAULT_SIZE_GROUP
-    return CATEGORY_SIZE_GROUP.get(str(category_slug).strip().lower(), DEFAULT_SIZE_GROUP)
-
-
-def get_size_codes_for_category(category_slug: str | None) -> list[str]:
-    group = get_size_group_for_category(category_slug)
-    return list(SIZE_GROUPS.get(group, SIZE_GROUPS[DEFAULT_SIZE_GROUP]))
-
-
 def get_numeric_size_seed() -> list[tuple[str, str, int]]:
     return list(_NUMERIC_SIZE_SEED)
 
-# Menú principal
-_NAV_LINKS = [
-    {"label": "Inicio", "href": "/"},
-    {
-        "label": "Productos",
-        "href": "/?cat=todos",
-        "dropdown": True,
-        "children": _NAV_PRODUCTOS_CHILDREN,
-    },
-    {"label": "Sale", "href": "/sale", "highlight": True},
-    {"label": "Contacto", "href": "/contacto"},
-    {"label": "Puntos de venta", "href": "/puntos-de-venta"},
-]
+
+PRODUCT_ITEM_TITLE_MAX_LEN = 255
+PRODUCT_DESCRIPTION_MAX_LEN = 1024
 
 
 def get_template_context() -> dict:
@@ -154,11 +192,16 @@ def get_template_context() -> dict:
     year = datetime.now().year
     return {
         "brand_name": _BRAND,
+        "brand_logo_animated": _BRAND_LOGO_ANIMATED,
+        "brand_logo_colors": _BRAND_LOGO_COLORS,
+        "app_debug": APP_DEBUG,
         "page_title_catalog": f"{_BRAND} - Catálogo",
         "page_title_product": "Detalle de producto",
         "page_title_admin": "Panel Admin",
         "page_title_admin_edit": "Editar producto",
         "page_title_login": "Login Admin",
+        "product_item_title_max_len": PRODUCT_ITEM_TITLE_MAX_LEN,
+        "product_description_max_len": PRODUCT_DESCRIPTION_MAX_LEN,
         "page_title_sale": f"{_BRAND} - Sale",
         "page_title_contact": f"{_BRAND} - Contacto",
         "page_title_stores": f"{_BRAND} - Puntos de venta",
@@ -185,7 +228,7 @@ def get_template_context() -> dict:
         "nav_search_placeholder": "Buscar prendas…",
         "nav_search_aria": "Buscar productos",
         "nav_links": _NAV_LINKS,
-        "nav_categories": _NAV_CATEGORIES,
+        "nav_categories": [],
         "nav_categories_label": "Productos",
         "nav_productos_ver_todo": "Ver todo",
         "admin_tab_banners": "Banners inicio",
@@ -232,9 +275,40 @@ def get_template_context() -> dict:
         "admin_tab_new": "Nuevo producto",
         "admin_tab_list": "Mis productos",
         "admin_tab_orders": "Pedidos",
-        "admin_tab_colors": "Colores",
+        "admin_tab_catalog": "Catálogo",
+        "admin_catalog_tab_heading": "Catálogo de la tienda",
+        "admin_catalog_tab_help": "Gestioná categorías, talles y colores. Los cambios se reflejan en el menú web, WhatsApp y formularios de producto.",
+        "admin_catalog_sub_categories": "Categorías",
+        "admin_catalog_sub_sizes": "Talles",
+        "admin_catalog_sub_colors": "Colores",
+        "admin_categories_tab_heading": "Categorías",
+        "admin_categories_tab_help": "Creá categorías, definí el tipo de talle y el orden del menú. El slug queda fijo al crear (se usa en URLs y filtros).",
+        "admin_categories_new_name": "Nombre",
+        "admin_categories_new_name_placeholder": "Ej. Enteritos",
+        "admin_categories_new_slug": "Slug (URL)",
+        "admin_categories_new_slug_placeholder": "enteritos",
+        "admin_categories_slug_help": "Opcional al crear. Si lo dejás vacío, se genera del nombre. No se puede cambiar después.",
+        "admin_categories_col_name": "Nombre",
+        "admin_categories_col_slug": "Slug",
+        "admin_categories_col_group": "Tipo de talle",
+        "admin_categories_col_order": "Orden",
+        "admin_categories_col_active": "Activa",
+        "admin_categories_col_products": "Productos",
+        "admin_categories_col_actions": "Acciones",
+        "admin_categories_btn_add": "Agregar categoría",
+        "admin_categories_btn_cancel": "Cancelar",
+        "admin_categories_btn_update": "Guardar cambios",
+        "admin_categories_loading": "Cargando categorías…",
+        "admin_categories_empty": "Todavía no hay categorías.",
+        "admin_categories_load_err": "No se pudieron cargar las categorías.",
+        "admin_categories_msg_added": "Categoría creada.",
+        "admin_categories_msg_updated": "Categoría actualizada.",
+        "admin_categories_msg_deleted": "Categoría eliminada.",
+        "admin_categories_delete_confirm": "¿Eliminar categoría \"{name}\"?",
+        "admin_categories_name_required": "Escribí el nombre de la categoría.",
+        "admin_categories_active_label": "Visible en menú y tienda",
         "admin_orders_heading": "Pedidos de la tienda",
-        "admin_orders_help": "Pedidos creados desde la web y confirmados por WhatsApp. El asesor recibe aviso por WhatsApp al registrarse y al confirmar la clienta.",
+        "admin_orders_help": "Pedidos creados desde la web y confirmados por WhatsApp. El asesor recibe aviso por WhatsApp y/o email (SMTP) al registrarse y al confirmar la clienta.",
         "admin_orders_col_code": "Código",
         "admin_orders_col_date": "Fecha",
         "admin_orders_col_customer": "Cliente",
@@ -279,9 +353,9 @@ def get_template_context() -> dict:
         "admin_msg_deleted": "Producto eliminado.",
         "admin_msg_error": "Algo salió mal. Revisá tu sesión o intentá de nuevo.",
         "admin_provider_heading": "Importar desde proveedor",
-        "admin_provider_help": "Pegá un link de So Chic o Las Locas. El producto se carga desactivado; activalo y ajustá el precio cuando quieras publicarlo.",
+        "admin_provider_help": "Pegá un link de So Chic, Las Locas o Nissie Denim. El producto se carga desactivado; activalo y ajustá el precio cuando quieras publicarlo.",
         "admin_provider_url_label": "Link del producto",
-        "admin_provider_url_placeholder": "https://sochic.com.ar/product/... o https://laslocas.com/ficha-...",
+        "admin_provider_url_placeholder": "https://sochic.com.ar/product/... o https://laslocas.com/ficha-... o https://nissiedenim.com.ar/productos/...",
         "admin_provider_btn": "Importar producto",
         "admin_provider_importing": "Importando producto...",
         "admin_provider_created": "Producto importado correctamente (desactivado).",
@@ -289,6 +363,53 @@ def get_template_context() -> dict:
         "admin_provider_exists": "Ese producto ya estaba cargado.",
         "admin_provider_status_label": "Publicar activo al importar",
         "admin_provider_status_help": "Si no lo marcás, el producto queda desactivado hasta activarlo en edición.",
+        "admin_nissie_bulk_heading": "Importación masiva Nissie Denim",
+        "admin_nissie_bulk_help": "Importa todo el catálogo de Nissie. Solo se agregan productos nuevos; los existentes no se modifican. Todo queda desactivado para que revises precio y lo actives.",
+        "admin_nissie_bulk_btn": "Importar catálogo Nissie",
+        "admin_nissie_bulk_confirm": "¿Importar el catálogo completo de Nissie? Solo se agregarán productos nuevos, todos desactivados.",
+        "admin_nissie_bulk_running": "Importación en curso…",
+        "admin_nissie_bulk_done": "Importación finalizada:",
+        "admin_nissie_bulk_created": "creados",
+        "admin_nissie_bulk_skipped": "omitidos",
+        "admin_nissie_bulk_failed": "con error",
+        "admin_nissie_bulk_errors_heading": "Productos con error",
+        "admin_nissie_bulk_view_pending": "Ver pendientes de revisión (Nissie inactivos)",
+        "admin_nissie_bulk_already_running": "Ya hay una importación masiva en curso.",
+        "admin_holic_bulk_heading": "Importación masiva HOLIC",
+        "admin_holic_bulk_help": "Importa todo el catálogo de HOLIC. Solo se agregan productos nuevos; los existentes no se modifican. Todo queda desactivado para que revises precio y lo actives.",
+        "admin_holic_bulk_btn": "Importar catálogo HOLIC",
+        "admin_holic_bulk_confirm": "¿Importar el catálogo completo de HOLIC? Solo se agregarán productos nuevos, todos desactivados.",
+        "admin_holic_bulk_running": "Importación HOLIC en curso…",
+        "admin_holic_bulk_done": "Importación HOLIC finalizada:",
+        "admin_holic_bulk_created": "creados",
+        "admin_holic_bulk_skipped": "omitidos",
+        "admin_holic_bulk_failed": "con error",
+        "admin_holic_bulk_errors_heading": "Productos HOLIC con error",
+        "admin_holic_bulk_view_pending": "Ver pendientes de revisión (HOLIC inactivos)",
+        "admin_holic_bulk_already_running": "Ya hay una importación masiva de HOLIC en curso.",
+        "admin_laslocas_bulk_heading": "Importación masiva Las Locas",
+        "admin_laslocas_bulk_help": "Importa fichas de Las Locas por categoría del mayorista. Requiere LOGIN_EMAIL y LOGIN_PASS en el servidor. Solo productos nuevos, todos desactivados.",
+        "admin_laslocas_bulk_category_label": "Categoría Las Locas",
+        "admin_laslocas_bulk_all_categories": "Todas las categorías",
+        "admin_laslocas_bulk_max_pages_label": "Máx. páginas por categoría",
+        "admin_laslocas_bulk_max_pages_help": "0 = sin límite (recorre todo el listado).",
+        "admin_laslocas_bulk_btn": "Importar Las Locas",
+        "admin_laslocas_bulk_confirm": "¿Iniciar importación masiva de Las Locas? Solo se agregarán productos nuevos, todos desactivados.",
+        "admin_laslocas_bulk_running": "Importación Las Locas en curso…",
+        "admin_laslocas_bulk_done": "Importación Las Locas finalizada:",
+        "admin_laslocas_bulk_created": "creados",
+        "admin_laslocas_bulk_skipped": "omitidos",
+        "admin_laslocas_bulk_failed": "con error",
+        "admin_laslocas_bulk_errors_heading": "Productos Las Locas con error",
+        "admin_laslocas_bulk_view_pending": "Ver pendientes de revisión (Las Locas inactivos)",
+        "admin_laslocas_bulk_already_running": "Ya hay una importación masiva de Las Locas en curso.",
+        "admin_list_provider_filter_label": "Origen",
+        "admin_list_provider_all": "Todos los orígenes",
+        "admin_list_provider_nissie": "Nissie Denim",
+        "admin_list_provider_sochic": "So Chic",
+        "admin_list_provider_laslocas": "Las Locas",
+        "admin_list_provider_holic": "HOLIC",
+        "admin_col_provider": "Origen",
         "admin_list_status_filter_label": "Estado",
         "admin_list_status_all": "Todos",
         "admin_list_status_active": "Solo activos",
@@ -309,7 +430,7 @@ def get_template_context() -> dict:
         "admin_variants_col_days": "Días (estimado)",
         "admin_colors_heading": "Colores disponibles",
         "admin_colors_help": "Marcá los colores en los que se puede pedir esta prenda. La clienta deberá elegir uno al comprar.",
-        "admin_colors_select_help": "Marcá los colores disponibles para esta prenda. Para crear o corregir colores, usá la pestaña Colores.",
+        "admin_colors_select_help": "Marcá los colores disponibles para esta prenda. Para crear o corregir colores, usá la pestaña Catálogo.",
         "admin_colors_manage_link": "Gestionar colores",
         "admin_colors_new_label": "Color nuevo",
         "admin_colors_new_placeholder": "Ej. Verde musgo",
@@ -333,6 +454,39 @@ def get_template_context() -> dict:
         "admin_colors_name_required": "Escribí el nombre del color.",
         "admin_colors_hex_required": "Elegí un tono de color válido.",
         "admin_colors_load_err": "No se pudieron cargar los colores.",
+        "admin_sizes_tab_heading": "Catálogo de talles",
+        "admin_sizes_tab_help": "Creá y editá los talles del catálogo. El tipo de talle por categoría se configura en la sección Categorías.",
+        "admin_sizes_new_code": "Código",
+        "admin_sizes_new_code_placeholder": "Ej. M o 38",
+        "admin_sizes_new_label": "Etiqueta",
+        "admin_sizes_new_label_placeholder": "Ej. M o 38",
+        "admin_sizes_group_label": "Tipo",
+        "admin_sizes_group_letter": "Letra (S, M, L…)",
+        "admin_sizes_group_numeric": "Numérico (34, 36, 38…)",
+        "admin_sizes_btn_add": "Agregar talle",
+        "admin_sizes_btn_cancel": "Cancelar",
+        "admin_sizes_btn_update": "Guardar cambios",
+        "admin_sizes_col_code": "Código",
+        "admin_sizes_col_label": "Etiqueta",
+        "admin_sizes_col_group": "Tipo",
+        "admin_sizes_col_order": "Orden",
+        "admin_sizes_col_actions": "Acciones",
+        "admin_sizes_loading": "Cargando talles…",
+        "admin_sizes_empty_catalog": "Todavía no hay talles en el catálogo.",
+        "admin_sizes_load_err": "No se pudieron cargar los talles.",
+        "admin_sizes_msg_added": "Talle agregado al catálogo.",
+        "admin_sizes_msg_updated": "Talle actualizado.",
+        "admin_sizes_msg_deleted": "Talle eliminado.",
+        "admin_sizes_delete_confirm": "¿Eliminar talle \"{name}\"?",
+        "admin_sizes_code_required": "Escribí el código del talle.",
+        "admin_sizes_label_required": "Escribí la etiqueta del talle.",
+        "admin_sizes_categories_heading": "Tipo de talle por categoría",
+        "admin_sizes_categories_help": "Elegí si cada categoría usa talles con letra o numéricos en la tienda y en WhatsApp.",
+        "admin_sizes_categories_col_name": "Categoría",
+        "admin_sizes_categories_col_group": "Tipo de talle",
+        "admin_sizes_categories_msg_updated": "Categoría actualizada.",
+        "admin_sizes_manage_link": "Gestionar talles",
+        "admin_sizes_select_help": "Completá stock por talle según la categoría del producto. Para crear o corregir talles, usá la pestaña Catálogo.",
         "detail_select_color": "Elegí un color",
         "detail_add_requires_color": "Seleccioná un color antes de agregar al carrito.",
         "admin_label_category": "Categoría",
@@ -359,7 +513,7 @@ def get_template_context() -> dict:
         "label_title": "Título",
         "label_price": "Precio",
         "label_description": "Descripción",
-        "admin_description_limit_help": "Máximo 255 caracteres.",
+        "admin_description_limit_help": "Máximo 1024 caracteres.",
         "admin_btn_upload": "Subir fotos",
         "login_heading": "Login Admin",
         "label_username": "Usuario",

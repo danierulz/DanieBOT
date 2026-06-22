@@ -8,6 +8,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/static/js/toast.js"></script>
   <script src="/static/js/authSession.js"></script>
+  <script>
+    window.PRODUCT_FIELD_LIMITS = {
+      titleMax: {{ product_item_title_max_len }},
+      descMax: {{ product_description_max_len }},
+    };
+  </script>
   <script src="/static/js/adminProductFields.js"></script>
   <script>
     const COLOR_LABELS = {
@@ -50,11 +56,11 @@
         </div>
         <div>
           <label for="description" class="block text-sm font-medium text-gray-700">{{ label_description }}</label>
-          <textarea id="description" name="description" rows="4" maxlength="255"
+          <textarea id="description" name="description" rows="6" maxlength="{{ product_description_max_len }}"
             class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900"></textarea>
           <p class="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500">
             <span>{{ admin_description_limit_help }}</span>
-            <span id="description-count">0 / 255</span>
+            <span id="description-count">0 / {{ product_description_max_len }}</span>
           </p>
         </div>
 
@@ -96,8 +102,15 @@
         {% include "partials/admin_product_colors.html" %}
 
         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
-          <p class="text-xs text-gray-600 mb-3">{{ admin_variants_help }}</p>
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ admin_variants_heading }}</h3>
+              <p class="text-xs text-gray-600">{{ admin_sizes_select_help }}</p>
+            </div>
+            <a href="/admin-panel?tab=catalog#talles" class="text-xs font-semibold text-black hover:underline shrink-0">
+              {{ admin_sizes_manage_link }} →
+            </a>
+          </div>
           <div class="overflow-x-auto rounded-md border border-gray-200 bg-white">
             <table class="min-w-full text-sm">
               <thead class="bg-gray-100 text-left">

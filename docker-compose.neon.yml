@@ -1,0 +1,15 @@
+# App en Docker contra Neon (sin Postgres local).
+#
+#   cp .env.neon.example .env.neon   # pegá DATABASE_URL desde console.neon.tech
+#   docker compose -f docker-compose.yml -f docker-compose.neon.yml up app
+#
+# Migraciones + seeds (una vez):
+#   docker compose -f docker-compose.yml -f docker-compose.neon.yml run --rm app-neon-init
+
+services:
+  app:
+    depends_on: !reset []
+    env_file: !reset
+      - .env.neon
+    ports:
+      - "8080:8080"

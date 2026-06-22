@@ -1,6 +1,7 @@
 (function () {
-  const TITLE_MAX = 255;
-  const DESC_MAX = 255;
+  const limits = typeof window.PRODUCT_FIELD_LIMITS !== 'undefined' ? window.PRODUCT_FIELD_LIMITS : {};
+  const TITLE_MAX = limits.titleMax || 255;
+  const DESC_MAX = limits.descMax || 1024;
 
   function updateCounter(field, counterEl, max) {
     if (!field || !counterEl) return;

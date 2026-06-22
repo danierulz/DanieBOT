@@ -77,7 +77,9 @@ def _ensure_missing_sizes(defaults: list[tuple[str, str, int]]) -> None:
         added = False
         for code, label, order in defaults:
             if code not in existing:
-                session.add(Size(code=code, label=label, sort_order=order))
+                session.add(
+                    Size(code=code, label=label, sort_order=order, size_group="numeric")
+                )
                 added = True
         if added:
             session.commit()
@@ -106,7 +108,7 @@ def _seed_sizes_if_empty() -> None:
             ("UNICO", "Único", 70),
         ]
         for code, label, order in defaults:
-            session.add(Size(code=code, label=label, sort_order=order))
+            session.add(Size(code=code, label=label, sort_order=order, size_group="letter"))
         session.commit()
         print("Talles base insertados (sizes).")
     except Exception as e:
@@ -136,19 +138,27 @@ def _seed_categories_if_empty() -> None:
         if session.query(Category).count() > 0:
             return
         defaults = [
-            ("jeans", "Jeans", 10),
-            ("pantalones", "Pantalones", 20),
-            ("remeras", "Remeras", 30),
-            ("camisas", "Camisas", 40),
-            ("blusas", "Blusas", 50),
-            ("camperas", "Camperas", 60),
-            ("vestidos", "Vestidos", 70),
-            ("polleras", "Polleras", 80),
-            ("buzos", "Buzos", 90),
-            ("accesorios", "Accesorios", 100),
+            ("jeans", "Jeans", 10, "numeric"),
+            ("pantalones", "Pantalones", 20, "numeric"),
+            ("remeras", "Remeras", 30, "letter"),
+            ("camisas", "Camisas", 40, "letter"),
+            ("blusas", "Blusas", 50, "letter"),
+            ("camperas", "Camperas", 60, "letter"),
+            ("vestidos", "Vestidos", 70, "letter"),
+            ("polleras", "Polleras", 80, "letter"),
+            ("buzos", "Buzos", 90, "letter"),
+            ("accesorios", "Accesorios", 100, "letter"),
         ]
-        for slug, name, order in defaults:
-            session.add(Category(slug=slug, name=name, sort_order=order, activo=True))
+        for slug, name, order, size_group in defaults:
+            session.add(
+                Category(
+                    slug=slug,
+                    name=name,
+                    sort_order=order,
+                    activo=True,
+                    size_group=size_group,
+                )
+            )
         session.commit()
         print("Categorías base insertadas (categories).")
     except Exception as e:

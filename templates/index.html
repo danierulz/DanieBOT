@@ -30,6 +30,17 @@
   </div>
 </section>
 
+<section id="catalog-filters" class="bg-white border-b border-gray-100" aria-label="Filtros del catálogo">
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 py-3 space-y-3">
+    <div id="catalog-cats-row" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 [-webkit-overflow-scrolling:touch]"></div>
+    <p id="catalog-sizes-hint" class="text-xs text-gray-500">Elegí una categoría para filtrar por talle.</p>
+    <div id="catalog-sizes-section" class="hidden">
+      <p class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-400 mb-2">Talle</p>
+      <div id="catalog-sizes-row" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 [-webkit-overflow-scrolling:touch]"></div>
+    </div>
+  </div>
+</section>
+
 <main class="flex-1 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full">
 
   <div id="active-filters" class="hidden mb-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700"></div>
@@ -60,6 +71,10 @@
     const BADGE_SALE = {{ label_badge_sale | tojson }};
     const PLACEHOLDER_NO_IMAGE = {{ placeholder_no_image | tojson }};
     const PER_PAGE = 12;
+    const CHIP_ACTIVE = 'inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border bg-black text-white border-black touch-manipulation flex-shrink-0';
+    const CHIP_INACTIVE = 'inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border bg-white text-gray-700 border-gray-200 hover:border-gray-400 touch-manipulation flex-shrink-0';
+
+    let categoryNameMap = { todos: 'Todas' };
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
     function formatPrecio(n) { return moneyFmt.format(Number(n) || 0); }
@@ -163,13 +178,28 @@
       return '/api/productos?' + params.toString();
     }
 
+    function activeFilterCount(state) {
+      let n = 0;
+      if (state.q) n += 1;
+      if (state.cat && state.cat !== 'todos') n += 1;
+      if (state.size_code) n += 1;
+      if (state.sale) n += 1;
+      return n;
+    }
+
     function renderActiveFilters(state) {
       const box = document.getElementById('active-filters');
       const chips = [];
       if (state.q) chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Buscar: "${escHtml(state.q)}" <a href="${updateLink({q:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
-      if (state.cat && state.cat !== 'todos') chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Categoría: ${escHtml(state.cat)} <a href="${updateLink({cat:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      if (state.cat && state.cat !== 'todos') {
+        const catLabel = categoryNameMap[state.cat] || state.cat;
+        chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Categoría: ${escHtml(catLabel)} <a href="${updateLink({cat:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
+      }
       if (state.size_code) chips.push(`<span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full">Talle: ${escHtml(state.size_code)} <a href="${updateLink({size_code:''})}" class="text-gray-500 hover:text-black">×</a></span>`);
       if (state.sale) chips.push(`<span class="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2.5 py-1 rounded-full">Sale <a href="${updateLink({sale:false})}" class="text-red-500 hover:text-red-900">×</a></span>`);
+      if (activeFilterCount(state) > 1) {
+        chips.push(`<a href="${updateLink({q:'', cat:'', size_code:'', sale:false})}" class="inline-flex items-center min-h-[32px] px-2 text-xs font-semibold text-gray-600 hover:text-black underline touch-manipulation">Limpiar todo</a>`);
+      }
       if (!chips.length) { box.classList.add('hidden'); box.innerHTML=''; return; }
       box.classList.remove('hidden');
       box.innerHTML = chips.join('');
@@ -205,6 +235,95 @@
     }
 
     let state = urlState();
+
+    async function applyFilterPatch(patch) {
+      if ('cat' in patch && patch.cat !== state.cat) {
+        state.size_code = '';
+      }
+      Object.assign(state, patch);
+      state.page = 1;
+      setUrl(state);
+      await syncFilterBars();
+      loadProductos();
+    }
+
+    async function loadCategories() {
+      const row = document.getElementById('catalog-cats-row');
+      if (!row) return;
+      try {
+        const r = await fetch('/api/categories');
+        const cats = r.ok ? await r.json() : [];
+        categoryNameMap = { todos: 'Todas' };
+        cats.forEach(c => { categoryNameMap[c.slug] = c.name; });
+        const items = [{ slug: 'todos', name: 'Todas' }].concat(cats);
+        row.innerHTML = items.map(c => {
+          const active = (c.slug === 'todos' && (!state.cat || state.cat === 'todos')) || c.slug === state.cat;
+          const slug = c.slug === 'todos' ? '' : c.slug;
+          return `<button type="button" data-cat="${escHtml(slug)}" class="${active ? CHIP_ACTIVE : CHIP_INACTIVE}">${escHtml(c.name)}</button>`;
+        }).join('');
+        row.querySelectorAll('button[data-cat]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const newCat = btn.getAttribute('data-cat') || '';
+            const currentCat = state.cat && state.cat !== 'todos' ? state.cat : '';
+            if (newCat === currentCat) return;
+            applyFilterPatch({ cat: newCat, size_code: '' });
+          });
+        });
+      } catch (e) {
+        row.innerHTML = '';
+      }
+    }
+
+    async function loadSizes(categorySlug) {
+      const section = document.getElementById('catalog-sizes-section');
+      const hint = document.getElementById('catalog-sizes-hint');
+      const row = document.getElementById('catalog-sizes-row');
+      if (!section || !hint || !row) return;
+
+      if (!categorySlug || categorySlug === 'todos') {
+        section.classList.add('hidden');
+        hint.classList.remove('hidden');
+        row.innerHTML = '';
+        return;
+      }
+
+      hint.classList.add('hidden');
+      section.classList.remove('hidden');
+
+      try {
+        const r = await fetch('/api/sizes?category_slug=' + encodeURIComponent(categorySlug));
+        const sizes = r.ok ? await r.json() : [];
+        const allActive = !state.size_code;
+        let html = `<button type="button" data-size="" class="${allActive ? CHIP_ACTIVE : CHIP_INACTIVE}">Todos los talles</button>`;
+        html += sizes.map(s => {
+          const code = String(s.code || '').toUpperCase();
+          const label = s.label || code;
+          const active = state.size_code === code;
+          return `<button type="button" data-size="${escHtml(code)}" class="${active ? CHIP_ACTIVE : CHIP_INACTIVE}">${escHtml(label)}</button>`;
+        }).join('');
+        row.innerHTML = html;
+        row.querySelectorAll('button[data-size]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const newSize = (btn.getAttribute('data-size') || '').toUpperCase();
+            if (newSize === (state.size_code || '')) return;
+            applyFilterPatch({ size_code: newSize });
+          });
+        });
+      } catch (e) {
+        section.classList.add('hidden');
+        hint.classList.remove('hidden');
+        row.innerHTML = '';
+      }
+    }
+
+    async function syncFilterBars() {
+      await loadCategories();
+      if (state.cat && state.cat !== 'todos') {
+        await loadSizes(state.cat);
+      } else {
+        await loadSizes(null);
+      }
+    }
 
     function loadProductos() {
       showCatalogState(true, true);
@@ -305,8 +424,13 @@
       state.page += 1; setUrl(state); loadProductos(); window.scrollTo({top:0,behavior:'smooth'});
     });
 
-    loadHomeBanners();
-    loadProductos();
+    async function initCatalog() {
+      loadHomeBanners();
+      await syncFilterBars();
+      loadProductos();
+    }
+
+    initCatalog();
   </script>
 
   <script src="/static/js/shoppingCart.js"></script>

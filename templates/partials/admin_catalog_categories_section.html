@@ -1,0 +1,63 @@
+<h3 class="text-base font-semibold text-gray-900 mb-1">{{ admin_categories_tab_heading }}</h3>
+<p class="text-xs text-gray-600 mb-6">{{ admin_categories_tab_help }}</p>
+
+<form id="catalog-category-form" class="space-y-4 mb-8 border-b border-gray-200 pb-8">
+  <input type="hidden" id="catalog-category-id" value="">
+  <div class="flex flex-col lg:flex-row flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-[160px]">
+      <label for="catalog-category-name" class="block text-xs font-medium text-gray-700">{{ admin_categories_new_name }}</label>
+      <input id="catalog-category-name" type="text" autocomplete="off"
+        placeholder="{{ admin_categories_new_name_placeholder }}"
+        class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm">
+    </div>
+    <div class="w-40">
+      <label for="catalog-category-slug" class="block text-xs font-medium text-gray-700">{{ admin_categories_new_slug }}</label>
+      <input id="catalog-category-slug" type="text" autocomplete="off" maxlength="64"
+        placeholder="{{ admin_categories_new_slug_placeholder }}"
+        class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm font-mono">
+    </div>
+    <div class="w-44">
+      <label for="catalog-category-group" class="block text-xs font-medium text-gray-700">{{ admin_sizes_group_label }}</label>
+      <select id="catalog-category-group"
+        class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm bg-white">
+        <option value="letter">{{ admin_sizes_group_letter }}</option>
+        <option value="numeric">{{ admin_sizes_group_numeric }}</option>
+      </select>
+    </div>
+    <div class="w-24">
+      <label for="catalog-category-order" class="block text-xs font-medium text-gray-700">{{ admin_sizes_col_order }}</label>
+      <input id="catalog-category-order" type="number" min="0" step="1"
+        class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900 text-sm">
+    </div>
+    <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer min-h-[42px]">
+      <input type="checkbox" id="catalog-category-active" class="w-4 h-4 accent-black" checked>
+      <span>{{ admin_categories_active_label }}</span>
+    </label>
+    <button type="submit" id="catalog-category-submit"
+      class="min-h-[42px] px-4 py-2 rounded-md bg-black text-white text-sm font-semibold hover:bg-gray-900">
+      {{ admin_categories_btn_add }}
+    </button>
+    <button type="button" id="catalog-category-cancel" class="hidden min-h-[42px] px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50">
+      {{ admin_categories_btn_cancel }}
+    </button>
+  </div>
+  <p class="text-xs text-gray-500">{{ admin_categories_slug_help }}</p>
+</form>
+
+<p id="categories-catalog-status" class="text-sm text-gray-500 mb-4"></p>
+<div class="overflow-x-auto rounded-lg border border-gray-200">
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_categories_col_name }}</th>
+        <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_categories_col_slug }}</th>
+        <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_categories_col_group }}</th>
+        <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_categories_col_order }}</th>
+        <th class="px-3 py-2 text-center font-semibold text-gray-700">{{ admin_categories_col_active }}</th>
+        <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_categories_col_products }}</th>
+        <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_categories_col_actions }}</th>
+      </tr>
+    </thead>
+    <tbody id="categories-catalog-body" class="divide-y divide-gray-100 bg-white"></tbody>
+  </table>
+</div>

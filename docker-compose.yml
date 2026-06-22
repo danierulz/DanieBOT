@@ -1,6 +1,10 @@
-# Desarrollo local: Postgres + app (sin tocar producción).
-#   docker compose up -d db app
-#   .\scripts\dev-init.ps1   (migraciones + seeds)
+# Desarrollo local:
+#   Postgres en Docker:  docker compose up -d db app   (.env.dev → DB_HOST=db)
+#   Neon (sin db local): docker compose -f docker-compose.yml -f docker-compose.neon.yml up app
+#                        (copiá .env.neon.example → .env.neon con DATABASE_URL de Neon)
+#   Solo host:           DATABASE_URL en .env → python main.py
+#   .\scripts\dev-init.ps1   (migraciones + seeds, Postgres local)
+#   .\scripts\dev-neon.ps1     (migraciones + seeds, Neon)
 # Webhook WhatsApp con túnel:
 #   docker compose --profile whatsapp up
 #

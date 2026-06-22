@@ -20,6 +20,7 @@ from database.models.Category import Category
 from database.models.ProductImages import ProductImages
 from database.models.Products import Products
 from database.models.ProductVariant import ProductVariant
+from database.models.ProviderImportRun import ProviderImportRun
 from database.models.Size import Size
 from provider_importers.types import ImportedProduct, ProviderImportError
 
@@ -124,6 +125,38 @@ class ProviderImportEndpointTest(unittest.TestCase):
         finally:
             session.close()
 
+    def test_unified_import_holic_creates_inactive_product(self):
+        imported = ImportedProduct(
+            provider="holic",
+            source_url="https://holiclothing.com.ar/product/remera-1971/",
+            title="Remera 1971",
+            description="Remera de ribb manga larga",
+            price=9400,
+            cod_product="holic-r3846b-1-remera-1971",
+            image_urls=["https://holiclothing.com.ar/wp-content/uploads/main.jpg"],
+            category_slug="remeras",
+            colors=["Negro"],
+        )
+
+        with patch.object(main, "fetch_product", return_value=imported):
+            response = self.client.post(
+                "/api/proveedores/importar",
+                json={"url": imported.source_url, "status": False},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["created"])
+        self.assertEqual(body["provider"], "holic")
+
+        session = self.SessionLocal()
+        try:
+            product = session.query(Products).one()
+            self.assertFalse(product.status)
+            self.assertEqual(product.provider, "holic")
+        finally:
+            session.close()
+
     def test_import_failure_returns_ok_false_without_http_400(self):
         with patch.object(
             main,
@@ -149,6 +182,80 @@ class ProviderImportEndpointTest(unittest.TestCase):
         response = self.client.get("/favicon.ico")
         self.assertEqual(response.status_code, 200)
         self.assertIn("image", response.headers.get("content-type", ""))
+
+    @patch.object(main, "_nissie_bulk_import_task")
+    def test_nissie_bulk_import_starts_run(self, mock_task):
+        response = self.client.post("/api/proveedores/nissie/importar-masivo")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["provider"], "nissie")
+        self.assertEqual(body["status"], "running")
+        mock_task.assert_called_once()
+
+        session = self.SessionLocal()
+        try:
+            run = session.query(ProviderImportRun).one()
+            self.assertEqual(run.provider, "nissie")
+            self.assertEqual(run.status, "running")
+        finally:
+            session.close()
+
+    @patch.object(main, "_holic_bulk_import_task")
+    def test_holic_bulk_import_starts_run(self, mock_task):
+        response = self.client.post("/api/proveedores/holic/importar-masivo")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["provider"], "holic")
+        self.assertEqual(body["status"], "running")
+        mock_task.assert_called_once()
+
+        session = self.SessionLocal()
+        try:
+            run = session.query(ProviderImportRun).one()
+            self.assertEqual(run.provider, "holic")
+            self.assertEqual(run.status, "running")
+        finally:
+            session.close()
+
+    def test_product_list_provider_filter(self):
+        session = self.SessionLocal()
+        session.add(
+            Products(
+                item_title="Nissie Item",
+                price=1000,
+                cod_product="nissie-1",
+                name="Nissie",
+                status=False,
+                provider="nissie",
+            )
+        )
+        session.add(
+            Products(
+                item_title="Manual Item",
+                price=1000,
+                cod_product="manual-1",
+                name="Manual",
+                status=True,
+                provider=None,
+            )
+        )
+        session.commit()
+        session.close()
+
+        main.app.dependency_overrides[main.get_optional_user] = lambda: {"sub": "admin"}
+        try:
+            response = self.client.get(
+                "/api/productos?status_filter=todos&provider=nissie",
+            )
+        finally:
+            main.app.dependency_overrides.pop(main.get_optional_user, None)
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["items"][0]["provider"], "nissie")
 
 
 if __name__ == "__main__":

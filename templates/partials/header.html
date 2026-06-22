@@ -1,15 +1,15 @@
 <!-- Navbar -->
-<header class="sticky top-0 z-40 bg-black text-white shadow-md">
+<header class="sticky top-0 z-40 bg-white text-gray-900 shadow-sm border-b border-gray-200">
   <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 min-h-[52px] sm:min-h-[56px]">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 min-w-0">
       <button id="btn-mobile-menu" type="button"
-        class="lg:hidden inline-flex items-center justify-center min-h-[40px] min-w-[40px] rounded-full hover:bg-white/10 touch-manipulation"
+        class="lg:hidden inline-flex items-center justify-center min-h-[40px] min-w-[40px] rounded-full hover:bg-gray-100 touch-manipulation flex-shrink-0 text-gray-800"
         aria-label="Abrir menú" aria-expanded="false">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/>
         </svg>
       </button>
-      <a href="/" class="text-lg sm:text-2xl font-extrabold text-white hover:text-gray-200 truncate max-w-[42vw] sm:max-w-none">{{ brand_name }}</a>
+      <a href="/" class="text-lg sm:text-2xl font-extrabold text-gray-900 hover:text-black truncate max-w-[42vw] sm:max-w-none">{{ brand_name }}</a>
     </div>
 
     <!-- Buscador desktop -->
@@ -17,7 +17,7 @@
       <div class="relative w-full">
         <input type="search" name="q" value="{{ request.query_params.get('q', '') if request else '' }}"
           placeholder="{{ nav_search_placeholder }}" aria-label="{{ nav_search_aria }}"
-          class="w-full pl-10 pr-3 py-2 rounded-full bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/40">
+          class="w-full pl-10 pr-3 py-2 rounded-full border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
           class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -27,7 +27,7 @@
 
     <div class="flex items-center gap-2 sm:gap-3">
       <button id="btn-mobile-search" type="button"
-        class="lg:hidden inline-flex items-center justify-center min-h-[40px] min-w-[40px] rounded-full hover:bg-white/10 touch-manipulation"
+        class="lg:hidden inline-flex items-center justify-center min-h-[40px] min-w-[40px] rounded-full hover:bg-gray-100 touch-manipulation text-gray-800"
         aria-label="Buscar">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -35,27 +35,27 @@
       </button>
       <button onclick="toggleCarrito()"
         type="button"
-        class="relative inline-flex items-center justify-center min-h-[40px] sm:min-h-[44px] sm:min-w-[44px] sm:px-3 sm:py-2 px-2.5 py-2 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-100 touch-manipulation">
+        class="relative inline-flex items-center justify-center min-h-[40px] sm:min-h-[44px] sm:min-w-[44px] sm:px-3 sm:py-2 px-2.5 py-2 rounded-full bg-gray-900 text-white font-semibold shadow hover:bg-black touch-manipulation">
         <span aria-hidden="true">🛒</span><span id="carrito-count" class="ml-1 sm:ml-2 tabular-nums">0</span>
       </button>
       <button id="btn-login" type="button"
-        class="hidden sm:inline-flex items-center justify-center min-h-[40px] sm:min-h-[44px] px-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-100 touch-manipulation text-sm sm:text-base">
+        class="hidden sm:inline-flex items-center justify-center min-h-[40px] sm:min-h-[44px] px-3 rounded-full border border-gray-300 bg-white text-gray-900 font-semibold shadow-sm hover:bg-gray-50 touch-manipulation text-sm sm:text-base">
         {{ nav_login }}
       </button>
       <button id="btn-admin" type="button"
-        class="hidden sm:inline-flex items-center justify-center min-h-[40px] sm:min-h-[44px] px-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-100 touch-manipulation text-sm sm:text-base">
+        class="hidden sm:inline-flex items-center justify-center min-h-[40px] sm:min-h-[44px] px-3 rounded-full border border-gray-300 bg-white text-gray-900 font-semibold shadow-sm hover:bg-gray-50 touch-manipulation text-sm sm:text-base">
         {{ nav_admin }}
       </button>
     </div>
   </div>
 
   <!-- Buscador mobile colapsable -->
-  <div id="mobile-search" class="lg:hidden hidden border-t border-white/10 bg-black px-3 py-2">
+  <div id="mobile-search" class="lg:hidden hidden border-t border-gray-200 bg-white px-3 py-2">
     <form action="/" method="get" class="flex">
       <div class="relative w-full">
         <input type="search" name="q" value="{{ request.query_params.get('q', '') if request else '' }}"
           placeholder="{{ nav_search_placeholder }}" aria-label="{{ nav_search_aria }}"
-          class="w-full pl-10 pr-3 py-2 rounded-full bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/40">
+          class="w-full pl-10 pr-3 py-2 rounded-full border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
           class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3m1.8-5.2a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -65,13 +65,13 @@
   </div>
 
   <!-- Menú principal -->
-  <nav id="main-nav" class="hidden lg:block border-t border-white/10 bg-black">
+  <nav id="main-nav" class="hidden lg:block border-t border-gray-100 bg-white">
     <div class="max-w-7xl mx-auto px-3 sm:px-4 flex flex-wrap items-center gap-1 sm:gap-2 py-1.5 text-sm">
       {% for link in nav_links %}
         {% if link.dropdown and link.children %}
         <div class="relative group">
           <a href="{{ link.href }}"
-            class="inline-flex items-center gap-1 px-3 py-2 rounded-full hover:bg-white/10 text-gray-200 group-hover:bg-white/10"
+            class="inline-flex items-center gap-1 px-3 py-2 rounded-full hover:bg-gray-100 text-gray-700 group-hover:bg-gray-100"
             aria-haspopup="true">
             {{ link.label }}
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 opacity-70" aria-hidden="true">
@@ -79,10 +79,10 @@
             </svg>
           </a>
           <div class="absolute left-0 top-full pt-1 min-w-[11rem] opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-150 z-50">
-            <div class="rounded-xl border border-white/10 bg-neutral-900 shadow-xl py-1 overflow-hidden">
+            <div class="rounded-xl border border-gray-200 bg-white shadow-lg py-1 overflow-hidden">
               {% for child in link.children %}
               <a href="{{ child.href }}"
-                class="block px-4 py-2.5 text-gray-200 hover:bg-white/10 hover:text-white text-sm whitespace-nowrap">
+                class="block px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-gray-900 text-sm whitespace-nowrap">
                 {{ child.label }}
               </a>
               {% endfor %}
@@ -91,7 +91,7 @@
         </div>
         {% else %}
         <a href="{{ link.href }}"
-          class="inline-flex items-center px-3 py-2 rounded-full hover:bg-white/10 {% if link.highlight %}text-red-400 font-bold hover:text-red-300{% else %}text-gray-200{% endif %}">
+          class="inline-flex items-center px-3 py-2 rounded-full hover:bg-gray-100 {% if link.highlight %}text-red-600 font-bold hover:text-red-700{% else %}text-gray-700{% endif %}">
           {{ link.label }}
         </a>
         {% endif %}
@@ -100,13 +100,13 @@
   </nav>
 
   <!-- Menú mobile colapsable -->
-  <div id="mobile-nav" class="lg:hidden hidden border-t border-white/10 bg-black">
+  <div id="mobile-nav" class="lg:hidden hidden border-t border-gray-200 bg-white">
     <div class="px-2 py-2 grid grid-cols-1 gap-1">
       {% for link in nav_links %}
         {% if link.dropdown and link.children %}
         <div class="nav-mobile-dropdown">
           <button type="button"
-            class="nav-mobile-dropdown-btn w-full flex items-center justify-between px-3 py-3 rounded-lg text-base text-gray-100 hover:bg-white/10 touch-manipulation"
+            class="nav-mobile-dropdown-btn w-full flex items-center justify-between px-3 py-3 rounded-lg text-base text-gray-800 hover:bg-gray-100 touch-manipulation"
             aria-expanded="false">
             <span>{{ link.label }}</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 opacity-70 nav-mobile-chevron transition-transform" aria-hidden="true">
@@ -116,7 +116,7 @@
           <div class="nav-mobile-dropdown-panel hidden pl-2 pb-1 grid grid-cols-1 gap-0.5">
             {% for child in link.children %}
             <a href="{{ child.href }}"
-              class="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white">
+              class="block px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900">
               {{ child.label }}
             </a>
             {% endfor %}
@@ -124,18 +124,18 @@
         </div>
         {% else %}
         <a href="{{ link.href }}"
-          class="block px-3 py-3 rounded-lg text-base hover:bg-white/10 {% if link.highlight %}text-red-400 font-bold{% else %}text-gray-100{% endif %}">
+          class="block px-3 py-3 rounded-lg text-base hover:bg-gray-100 {% if link.highlight %}text-red-600 font-bold{% else %}text-gray-800{% endif %}">
           {{ link.label }}
         </a>
         {% endif %}
       {% endfor %}
-      <div class="border-t border-white/10 mt-1 pt-2 grid grid-cols-2 gap-2 px-2">
+      <div class="border-t border-gray-200 mt-1 pt-2 grid grid-cols-2 gap-2 px-2">
         <button id="btn-login-mobile" type="button"
-          class="inline-flex items-center justify-center min-h-[44px] px-3 rounded-full bg-white text-black font-semibold shadow text-sm">
+          class="inline-flex items-center justify-center min-h-[44px] px-3 rounded-full border border-gray-300 bg-white text-gray-900 font-semibold shadow-sm text-sm">
           {{ nav_login }}
         </button>
         <button id="btn-admin-mobile" type="button"
-          class="hidden inline-flex items-center justify-center min-h-[44px] px-3 rounded-full bg-white text-black font-semibold shadow text-sm">
+          class="hidden inline-flex items-center justify-center min-h-[44px] px-3 rounded-full border border-gray-300 bg-white text-gray-900 font-semibold shadow-sm text-sm">
           {{ nav_admin }}
         </button>
       </div>
@@ -221,7 +221,6 @@
   }
   checkAuth();
 
-  // Toggles mobile
   document.getElementById('btn-mobile-menu')?.addEventListener('click', () => {
     const el = document.getElementById('mobile-nav');
     if (!el) return;
@@ -248,3 +247,4 @@
     });
   });
 </script>
+<script src="/static/js/brandLogo.js"></script>

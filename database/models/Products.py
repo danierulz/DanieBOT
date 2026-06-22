@@ -7,7 +7,7 @@ from database.init_db import Base
 class Products(Base):
     __tablename__ = "products"
     product_id = Column(Integer, primary_key=True, autoincrement=True)
-    description = Column(String(255))
+    description = Column(String(1024))
     price = Column(Integer)
     status = Column(Boolean, default=False)
 #    gallery_photos = Column(ARRAY(String(512)), nullable=True)
@@ -23,6 +23,8 @@ class Products(Base):
     )
     is_sale = Column(Boolean, nullable=False, default=False)
     discount_percent = Column(Integer, nullable=True)
+    provider = Column(String(32), nullable=True, index=True)
+    provider_source_url = Column(String(512), nullable=True)
     extract_date = Column(DateTime(timezone=True), server_default=func.now())
     create_date = Column(DateTime(timezone=True), server_default=func.now())
 
