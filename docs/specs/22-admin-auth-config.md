@@ -17,7 +17,7 @@ Guía para reemplazar `admin` / `admin123` y `supersecretkey` hardcodeados.
 1. Instalar dependencia (si falta):
 
    ```powershell
-   pip install "passlib[bcrypt]"
+   pip install bcrypt
    ```
 
 2. Ejecutar el asistente:

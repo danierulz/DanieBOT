@@ -12,7 +12,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
-from passlib.context import CryptContext
+import bcrypt
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -24,8 +24,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _DEFAULT_DEV_SECRET = "supersecretkey-dev-only"
 _DEFAULT_DEV_USERNAME = "admin"
@@ -114,11 +112,10 @@ def authenticate_admin(username: str, password: str) -> bool:
 
     password_hash = os.getenv("ADMIN_PASSWORD_HASH", "").strip()
     if password_hash:
-        try:
-            return pwd_context.verify(password, password_hash)
-        except ValueError:
-            logger.exception("ADMIN_PASSWORD_HASH inválido")
-            return False
+        if verify_admin_password(password, password_hash):
+            return True
+        logger.warning("Contraseña incorrecta o hash bcrypt inválido.")
+        return False
 
     plain = os.getenv("ADMIN_PASSWORD", "").strip()
     if plain:
@@ -139,7 +136,14 @@ def authenticate_admin(username: str, password: str) -> bool:
 
 
 def hash_admin_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_admin_password(password: str, password_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
