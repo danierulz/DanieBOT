@@ -62,7 +62,7 @@ _SMTP_PORT = int(os.getenv("SMTP_PORT", "587") or "587")
 _SMTP_USER = os.getenv("SMTP_USER", "").strip()
 _SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
 _SMTP_FROM = os.getenv("SMTP_FROM", "").strip()
-_ADMIN_NOTIFY_EMAIL_ENABLED = os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "true").lower() in (
+_ADMIN_NOTIFY_EMAIL_ENABLED = os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "false").lower() in (
     "1",
     "true",
     "yes",

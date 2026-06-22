@@ -271,7 +271,7 @@ def health_check():
         },
         "admin_email": {
             "configured": is_email_notify_configured(),
-            "enabled": os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "true").lower()
+            "enabled": os.getenv("ADMIN_NOTIFY_EMAIL_ENABLED", "false").lower()
             in ("1", "true", "yes", "on"),
         },
     }
