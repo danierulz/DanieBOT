@@ -69,6 +69,7 @@ from database.models.Color import Color
 from database.models.Category import Category
 from database.models.HomeBanner import HomeBanner
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context, PRODUCT_DESCRIPTION_MAX_LEN, PRODUCT_ITEM_TITLE_MAX_LEN, APP_DEBUG, build_nav_links
@@ -1433,17 +1434,15 @@ def crear_producto(
         nuevo = Products(
             item_title=item_title,
             price=price,
-            cod_product="cod",
-            name="test",
-            sku=123,
+            name=_truncate(item_title, 80),
             description=description,
             category_id=_resolve_category_id(db, category_id),
             is_sale=is_sale_b,
             discount_percent=_normalize_discount(is_sale_b, discount_percent),
         )
         db.add(nuevo)
-        db.commit()
-        db.refresh(nuevo)
+        db.flush()
+        nuevo.cod_product = f"P{nuevo.product_id}"
 
         _guardar_imagenes_producto(db, nuevo.product_id, images)
         sync_product_colors(db, nuevo.product_id, parse_colors_json(colors_json))
@@ -1453,6 +1452,16 @@ def crear_producto(
         db.refresh(nuevo)
         return {"ok": True, "id": nuevo.product_id}
 
+    except IntegrityError as e:
+        db.rollback()
+        logging.error(f"Error al crear producto: {e}", exc_info=True)
+        orig = str(getattr(e, "orig", e))
+        if "ix_products_cod_product" in orig or "cod_product" in orig:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe un producto con ese código",
+            )
+        raise HTTPException(status_code=500, detail="Error al crear producto")
     except Exception as e:
         db.rollback()
         logging.error(f"Error al crear producto: {e}", exc_info=True)

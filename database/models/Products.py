@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, func
 from sqlalchemy import String
 from sqlalchemy.orm import relationship
 from database.init_db import Base
@@ -6,6 +6,9 @@ from database.init_db import Base
 
 class Products(Base):
     __tablename__ = "products"
+    __table_args__ = (
+        Index("ix_products_cod_product", "cod_product", unique=True),
+    )
     product_id = Column(Integer, primary_key=True, autoincrement=True)
     description = Column(String(1024))
     price = Column(Integer)

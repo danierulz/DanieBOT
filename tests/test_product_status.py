@@ -107,6 +107,39 @@ class ProductStatusApiTest(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertFalse(r.json()["activo"])
 
+    def test_create_two_manual_products_gets_unique_codes(self):
+        payload = {
+            "item_title": "Remera A",
+            "price": "1000",
+            "description": "manual",
+        }
+        first = self.client.post(
+            "/api/productos",
+            data=payload,
+            headers=self.admin_headers,
+        )
+        second = self.client.post(
+            "/api/productos",
+            data={**payload, "item_title": "Remera B"},
+            headers=self.admin_headers,
+        )
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        first_id = first.json()["id"]
+        second_id = second.json()["id"]
+        self.assertNotEqual(first_id, second_id)
+
+        session = self.SessionLocal()
+        try:
+            first_product = session.query(Products).filter(Products.product_id == first_id).one()
+            second_product = session.query(Products).filter(Products.product_id == second_id).one()
+            self.assertEqual(first_product.cod_product, f"P{first_id}")
+            self.assertEqual(second_product.cod_product, f"P{second_id}")
+            self.assertEqual(first_product.name, "Remera A")
+            self.assertEqual(second_product.name, "Remera B")
+        finally:
+            session.close()
+
     def test_create_product_rejects_long_description(self):
         long_desc = "x" * 1025
         r = self.client.post(
