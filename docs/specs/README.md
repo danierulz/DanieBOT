@@ -16,10 +16,11 @@ Documentación viva del producto y del sistema. **Versión inicial** generada a 
 | [22-admin-auth-config.md](./22-admin-auth-config.md) | **Credenciales admin** (JWT, bcrypt, Secret Manager) |
 | [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md) | **Patrones de identidad e inserción** por proveedor (referencia Nissie) |
 | [06-frontend-y-checkout-whatsapp.md](./06-frontend-y-checkout-whatsapp.md) | Tailwind, carrito, mensaje `wa.me`, formato del pedido |
-| [07-despliegue-y-operaciones.md](./07-despliegue-y-operaciones.md) | GCP, Cloud Run, Cloud Build, secretos, local |
+| [07-despliegue-y-operaciones.md](./07-despliegue-y-operaciones.md) | GCP, Cloud Run, Cloud Build, secretos, local, CI |
 | [14-reduccion-costos-gcp.md](./14-reduccion-costos-gcp.md) | Quitar VPC connector, Cloud SQL socket, pasos en consola |
 | [15-neon-migracion.md](./15-neon-migracion.md) | Cloud SQL → Neon: `DATABASE_URL`, pooler, Alembic, `pg_dump` |
 | [08-estado-actual-y-backlog.md](./08-estado-actual-y-backlog.md) | Qué está hecho, huecos conocidos, mejoras |
+| [historial-trabajo.md](../historial-trabajo.md) | **Historial cronológico** de correcciones y features (leer al retomar un chat) |
 | [10-alembic-migraciones.md](./10-alembic-migraciones.md) | Migraciones de esquema con Alembic (`upgrade`, `stamp` en prod) |
 | [11-desarrollo-local.md](./11-desarrollo-local.md) | Docker Compose, Postgres local, `.env.dev`, ngrok |
 | [12-bot-whatsapp-conversacion.md](./12-bot-whatsapp-conversacion.md) | Intents, copy del bot, tests sin Meta |

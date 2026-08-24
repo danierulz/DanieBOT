@@ -1,11 +1,64 @@
+import logging
+from datetime import datetime, timedelta
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from database.models import Customer, Order, OrderEvent, OrderItem, ProductVariant, Products
 from services.advisor_notify import notify_advisor_new_web_order, notify_advisor_order_received
+from services.app_log import log_event
 from services.colors import product_requires_color, validate_line_color
 from services.order_code import generate_order_code
 from services.pricing import unit_price_for_product
+
+logger = logging.getLogger(__name__)
+
+RETRY_WINDOW_MINUTES = 45
+
+
+def cart_fingerprint(lines: list[dict]) -> str:
+    parts = []
+    for line in lines:
+        parts.append(
+            f"{line.get('product_id')}:{line.get('variant_id') or ''}:{int(line.get('quantity') or 0)}"
+        )
+    return "|".join(sorted(parts))
+
+
+def _fingerprint_from_order(order: Order) -> str:
+    return cart_fingerprint(
+        [
+            {
+                "product_id": it.product_id,
+                "variant_id": it.variant_id,
+                "quantity": it.quantity,
+            }
+            for it in (order.items or [])
+        ]
+    )
+
+
+def _find_recent_pending_duplicate(
+    db: Session, fingerprint: str, *, exclude_order_id: int | None = None
+) -> Order | None:
+    cutoff = datetime.utcnow() - timedelta(minutes=RETRY_WINDOW_MINUTES)
+    q = (
+        db.query(Order)
+        .options(joinedload(Order.items))
+        .filter(
+            Order.status == "enviado_whatsapp",
+            Order.source == "web",
+            Order.created_at >= cutoff,
+        )
+        .order_by(Order.created_at.desc())
+        .limit(30)
+    )
+    for order in q.all():
+        if exclude_order_id and order.order_id == exclude_order_id:
+            continue
+        if _fingerprint_from_order(order) == fingerprint:
+            return order
+    return None
 
 
 def _line_option_parts(line: dict) -> str:
@@ -150,12 +203,35 @@ def create_order_from_cart(
     customer_phone: str | None = None,
     note: str | None = None,
     cart_snapshot: list[dict] | None = None,
-) -> tuple[Order, str]:
+) -> tuple[Order, str, bool]:
     if not items:
         raise HTTPException(status_code=400, detail="El carrito está vacío")
 
     validated_lines = [_validate_line(db, it) for it in items]
     total = round(sum(line["subtotal"] for line in validated_lines), 2)
+    fingerprint = cart_fingerprint(validated_lines)
+
+    existing = _find_recent_pending_duplicate(db, fingerprint)
+    if existing:
+        log_event(
+            logger,
+            "order.retry_same_cart",
+            order_code=existing.order_code,
+            order_id=existing.order_id,
+            total=existing.total,
+            items=[line["title_snapshot"] for line in validated_lines],
+        )
+        db.add(
+            OrderEvent(
+                order_id=existing.order_id,
+                event_type="web_retry",
+                payload={"order_code": existing.order_code, "fingerprint": fingerprint},
+            )
+        )
+        db.commit()
+        db.refresh(existing)
+        mensaje = build_whatsapp_message(existing.order_code, validated_lines, existing.total, note)
+        return existing, mensaje, True
 
     order_code = generate_order_code()
     while db.query(Order).filter(Order.order_code == order_code).first():
@@ -181,6 +257,9 @@ def create_order_from_cart(
                 order_id=new_order.order_id,
                 product_id=line["product_id"],
                 variant_id=line.get("variant_id"),
+                color_id=line.get("color_id"),
+                size_label_snapshot=line.get("size_label_snapshot"),
+                color_label_snapshot=line.get("color_label_snapshot"),
                 title_snapshot=line["title_snapshot"],
                 quantity=line["quantity"],
                 unit_price=line["unit_price"],
@@ -192,15 +271,30 @@ def create_order_from_cart(
         OrderEvent(
             order_id=new_order.order_id,
             event_type="created_web",
-            payload={"order_code": order_code, "total": total},
+            payload={"order_code": order_code, "total": total, "fingerprint": fingerprint},
         )
     )
     db.commit()
     db.refresh(new_order)
 
+    log_event(
+        logger,
+        "order.created_web",
+        order_code=order_code,
+        order_id=new_order.order_id,
+        total=total,
+        items=[
+            {
+                "title": line["title_snapshot"],
+                "product_id": line["product_id"],
+                "quantity": line["quantity"],
+            }
+            for line in validated_lines
+        ],
+    )
     mensaje = build_whatsapp_message(order_code, validated_lines, total, note)
     notify_advisor_new_web_order(new_order)
-    return new_order, mensaje
+    return new_order, mensaje, False
 
 
 def format_order_summary_for_bot(order: Order) -> str:
@@ -246,6 +340,15 @@ def link_order_to_whatsapp(
     )
     db.commit()
     db.refresh(order)
+    log_event(
+        logger,
+        "order.wa_linked",
+        order_code=order.order_code,
+        order_id=order.order_id,
+        wa_id=wa_id,
+        customer_name=customer.display_name,
+        status=order.status,
+    )
     notify_advisor_order_received(
         order,
         customer_name=customer.display_name,

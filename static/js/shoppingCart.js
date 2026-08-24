@@ -55,6 +55,12 @@ function agregarAlCarrito(producto) {
 
 function persistCart() {
   try { localStorage.setItem('carrito_v1', JSON.stringify(carrito)); } catch (e) {}
+  const pending = readPendingWaOrder();
+  if (pending && pending.fp !== cartFingerprint(carrito)) {
+    try { sessionStorage.removeItem('oj_pending_wa_order'); } catch (e) {}
+    const btn = document.getElementById('btn-confirmar');
+    if (btn) btn.textContent = btn.dataset.label || 'Confirmar y enviar por WhatsApp';
+  }
 }
 
 function modoLabel(p) {
@@ -121,6 +127,10 @@ function renderCarrito() {
     }).join('');
     if (btnConfirmar) btnConfirmar.disabled = false;
   }
+  const pending = readPendingWaOrder();
+  if (btnConfirmar && pending && pending.fp === cartFingerprint(carrito)) {
+    markConfirmRetry(btnConfirmar);
+  }
 
   const count = document.getElementById('carrito-count');
   if (count) count.textContent = carrito.reduce((a, p) => a + (p.cantidad || 0), 0);
@@ -164,9 +174,50 @@ function eliminarDelCarrito(index) {
   renderCarrito();
 }
 
+function cartFingerprint(items) {
+  return (items || [])
+    .map((p) => [p.id, p.variant_id || '', p.cantidad || 1].join(':'))
+    .sort()
+    .join('|');
+}
+
+function readPendingWaOrder() {
+  try {
+    return JSON.parse(sessionStorage.getItem('oj_pending_wa_order') || 'null');
+  } catch (e) {
+    return null;
+  }
+}
+
+function savePendingWaOrder(payload) {
+  try {
+    sessionStorage.setItem('oj_pending_wa_order', JSON.stringify(payload));
+  } catch (e) { /* ignore quota */ }
+}
+
+function openWhatsAppCheckout(numero, mensaje) {
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+}
+
+function markConfirmRetry(btn) {
+  if (!btn) return;
+  const retry =
+    (typeof CART_BTN_RETRY !== 'undefined' && CART_BTN_RETRY) ||
+    btn.dataset.retryLabel ||
+    'Reabrir WhatsApp (mismo pedido)';
+  btn.textContent = retry;
+}
+
 async function confirmarPedido() {
   if (!carrito.length) return;
   const btn = document.getElementById('btn-confirmar');
+  const fp = cartFingerprint(carrito);
+  const pending = readPendingWaOrder();
+  if (pending && pending.fp === fp && pending.numero && pending.mensaje) {
+    openWhatsAppCheckout(pending.numero, pending.mensaje);
+    markConfirmRetry(btn);
+    return;
+  }
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Preparando pedido…';
@@ -203,13 +254,22 @@ async function confirmarPedido() {
       alert('Pedido registrado pero falta configuración de WhatsApp.');
       return;
     }
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+    savePendingWaOrder({
+      fp,
+      order_code: data.order_code || '',
+      numero,
+      mensaje,
+    });
+    openWhatsAppCheckout(numero, mensaje);
+    markConfirmRetry(btn);
   } catch (e) {
     alert('Error de conexión. Revisá tu internet e intentá de nuevo.');
   } finally {
     if (btn) {
       btn.disabled = !carrito.length;
-      btn.textContent = btn.dataset.label || 'Confirmar y enviar por WhatsApp';
+      if (!readPendingWaOrder() || readPendingWaOrder().fp !== cartFingerprint(carrito)) {
+        btn.textContent = btn.dataset.label || 'Confirmar y enviar por WhatsApp';
+      }
     }
   }
 }

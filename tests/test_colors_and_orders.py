@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("DB_USER", "test")
 os.environ.setdefault("DB_PASSWORD", "test")
@@ -68,6 +69,7 @@ class ColorsAndOrdersTest(unittest.TestCase):
         )
         session.commit()
         self.product_id = product.product_id
+        self.category_id = cat.category_id
         self.color_id = celeste.color_id
         variant = session.query(ProductVariant).filter_by(product_id=product.product_id).first()
         self.variant_id = variant.variant_id
@@ -86,6 +88,9 @@ class ColorsAndOrdersTest(unittest.TestCase):
             "Authorization": "Bearer "
             + main.create_access_token({"sub": main.ADMIN_USER["username"], "rol": "admin"})
         }
+        self._notify_patch = patch("services.order_service.notify_advisor_new_web_order")
+        self._notify_patch.start()
+        self.addCleanup(self._notify_patch.stop)
 
     def tearDown(self):
         main.app.dependency_overrides.clear()
@@ -98,6 +103,18 @@ class ColorsAndOrdersTest(unittest.TestCase):
         r = self.client.get("/api/colors")
         self.assertEqual(r.status_code, 200)
         self.assertTrue(any(c["code"] == "CELESTE" for c in r.json()))
+
+    def test_admin_list_colors_includes_product_usage(self):
+        r = self.client.get("/api/admin/colors", headers=self.admin_headers)
+        self.assertEqual(r.status_code, 200, r.text)
+        celeste = next(c for c in r.json() if c["code"] == "CELESTE")
+        self.assertEqual(celeste["product_count"], 1)
+        self.assertEqual(celeste["products"][0]["product_id"], self.product_id)
+        self.assertEqual(celeste["products"][0]["title"], "Remera Test")
+
+    def test_admin_list_colors_requires_auth(self):
+        r = self.client.get("/api/admin/colors")
+        self.assertIn(r.status_code, (401, 403))
 
     def test_admin_create_color(self):
         r = self.client.post(
@@ -135,7 +152,9 @@ class ColorsAndOrdersTest(unittest.TestCase):
             headers=self.admin_headers,
         )
         self.assertEqual(r.status_code, 409, r.text)
-        self.assertIn("producto", r.json()["detail"].lower())
+        detail = r.json()["detail"].lower()
+        self.assertIn("producto", detail)
+        self.assertIn("remera test", detail)
 
     def test_admin_delete_color_ok_when_unused(self):
         r = self.client.post(
@@ -169,6 +188,7 @@ class ColorsAndOrdersTest(unittest.TestCase):
                 "price": "10000",
                 "description": "Desc",
                 "status": "1",
+                "category_id": str(self.category_id),
                 "colors_json": f"[{self.color_id}]",
                 "variants_json": (
                     '[{"size_code":"M","color_id":'

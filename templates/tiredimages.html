@@ -50,10 +50,10 @@
         </div>
 
         <div class="mt-6">
-          <p class="text-sm font-semibold text-gray-800">{{ detail_select_size }}</p>
+          <p id="size-section-label" class="text-sm font-semibold text-gray-800">{{ detail_select_size }}</p>
           <div id="size-chips" class="mt-2 flex flex-wrap gap-2"></div>
           <p id="size-empty" class="hidden mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
-            Por ahora no hay talles disponibles para este producto. Consultanos por WhatsApp.
+            {{ detail_cannot_buy }}
           </p>
         </div>
 
@@ -61,7 +61,7 @@
 
         <p id="descripcion" class="mt-6 text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line">—</p>
 
-        <div class="mt-8 flex flex-col sm:flex-row gap-3">
+        <div id="cta-row" class="mt-8 flex flex-col sm:flex-row gap-3">
           <button type="button" id="btn-add-cart" onclick="agregarConVariante()" disabled
             class="flex-1 min-h-[48px] rounded-full bg-gray-300 text-gray-600 font-bold cursor-not-allowed transition touch-manipulation shadow-sm">
             {{ detail_select_size }}
@@ -104,6 +104,7 @@
     const LABEL_SUMMARY_SIZES = {{ detail_summary_sizes | tojson }};
     const LABEL_UNAVAILABLE_IN_COLOR = {{ detail_unavailable_in_color | tojson }};
     const LABEL_UNAVAILABLE_IN_SIZE = {{ detail_unavailable_in_size | tojson }};
+    const LABEL_CANNOT_BUY = {{ detail_cannot_buy | tojson }};
 
     const moneyFmt = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
     function formatPrecio(n) { return moneyFmt.format(Number(n) || 0); }
@@ -124,14 +125,32 @@
       return v && ((v.qty_stock_local || 0) > 0 || !!v.encargo_habilitado);
     }
 
+    function sameColorId(a, b) {
+      if (a == null || b == null) return a == null && b == null;
+      return Number(a) === Number(b);
+    }
+
+    function sameSizeCode(a, b) {
+      return String(a || '') === String(b || '');
+    }
+
     function findVariantForCombo(colorId, sizeCode) {
       const list = allVariants();
-      let v = list.find((x) => x.size_code === sizeCode && x.color_id === colorId);
+      let v = list.find((x) => sameSizeCode(x.size_code, sizeCode) && sameColorId(x.color_id, colorId));
       if (v) return v;
       if (colorId != null) {
-        v = list.find((x) => x.size_code === sizeCode && (x.color_id == null));
+        v = list.find((x) => sameSizeCode(x.size_code, sizeCode) && (x.color_id == null));
       }
       return v || null;
+    }
+
+    function applyDefaultColorSelection() {
+      productColores = productColors();
+      if (productColores.length === 1 && selectedColorId == null) {
+        selectedColorId = productColores[0].color_id;
+        return true;
+      }
+      return false;
     }
 
     function comboAvailable(colorId, sizeCode) {
@@ -254,22 +273,20 @@
       productColores = productColors();
       if (!section || !cont) return;
 
-      if (!productColores.length) {
+      if (!productColores.length || !productIsPurchasable()) {
         section.classList.add('hidden');
-        selectedColorId = null;
+        if (!productColores.length) selectedColorId = null;
         cont.innerHTML = '';
         return;
       }
 
       section.classList.remove('hidden');
-      if (productColores.length === 1 && !selectedColorId) {
-        selectedColorId = productColores[0].color_id;
-      }
+      applyDefaultColorSelection();
 
       const colorsToShow = selectedSizeCode ? productColores : availableColors();
 
       cont.innerHTML = colorsToShow.map((c) => {
-        const sel = selectedColorId === c.color_id;
+        const sel = sameColorId(selectedColorId, c.color_id);
         const avail = selectedSizeCode
           ? comboAvailable(c.color_id, selectedSizeCode)
           : productSizes().some((s) => comboAvailable(c.color_id, s.code));
@@ -303,10 +320,23 @@
       });
     }
 
+    function productIsPurchasable() {
+      return availableSizes().length > 0;
+    }
+
     function renderSizeChips() {
       const cont = document.getElementById('size-chips');
       const empty = document.getElementById('size-empty');
-      const sizesToShow = selectedColorId ? productSizes() : availableSizes();
+      const sizeLabel = document.getElementById('size-section-label');
+      const sizesToShow = productSizes();
+      if (!productIsPurchasable()) {
+        cont.innerHTML = '';
+        if (sizeLabel) sizeLabel.classList.add('hidden');
+        empty.textContent = LABEL_CANNOT_BUY;
+        empty.classList.remove('hidden');
+        return;
+      }
+      if (sizeLabel) sizeLabel.classList.remove('hidden');
       if (!sizesToShow.length) {
         cont.innerHTML = '';
         empty.classList.remove('hidden');
@@ -321,7 +351,7 @@
               ? productColores.some((c) => comboAvailable(c.color_id, s.code))
               : comboAvailable(null, s.code));
         const isInmediato = avail && (findVariantForCombo(selectedColorId, s.code)?.qty_stock_local || 0) > 0;
-        const sel = selectedSizeCode === s.code;
+        const sel = sameSizeCode(selectedSizeCode, s.code);
         let cls;
         if (!avail) {
           cls = 'bg-white text-gray-500 border-gray-200 cursor-not-allowed';
@@ -392,8 +422,16 @@
     function updateCtaState() {
       const btn = document.getElementById('btn-add-cart');
       const buy = document.getElementById('btn-buy-now');
+      const ctaRow = document.getElementById('cta-row');
       const needsColor = productColores.length > 0;
       const v = selectedVariantId ? variantMap[selectedVariantId] : null;
+      if (!productIsPurchasable()) {
+        if (ctaRow) ctaRow.classList.add('hidden');
+        btn.disabled = true;
+        buy.disabled = true;
+        return;
+      }
+      if (ctaRow) ctaRow.classList.remove('hidden');
       if (!v || (needsColor && !selectedColorId)) {
         btn.disabled = true; btn.className = 'flex-1 min-h-[48px] rounded-full bg-gray-300 text-gray-600 font-bold cursor-not-allowed transition touch-manipulation shadow-sm';
         btn.textContent = needsColor && !selectedColorId ? LABEL_SELECT_COLOR : DETAIL_SELECT_PLACEHOLDER;
@@ -422,7 +460,7 @@
       if (!selectedVariantId || !variantMap[selectedVariantId]) return null;
       if (productColores.length && !selectedColorId) return null;
       const v = variantMap[selectedVariantId];
-      const color = productColores.find((c) => c.color_id === selectedColorId);
+      const color = productColores.find((c) => sameColorId(c.color_id, selectedColorId));
       const modo = variantMode(v);
       return {
         ...productActual,
@@ -493,9 +531,10 @@
         selectedSizeCode = null;
         selectedVariantId = null;
         selectedColorId = null;
+        applyDefaultColorSelection();
         renderAvailabilitySummary();
-        renderSizeChips();
         renderColorChips();
+        renderSizeChips();
         updateVariantHint();
         updateCtaState();
 

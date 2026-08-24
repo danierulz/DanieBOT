@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("DB_USER", "test")
 os.environ.setdefault("DB_PASSWORD", "test")
@@ -69,6 +70,9 @@ class OrdersPriceValidationTest(unittest.TestCase):
 
         main.app.dependency_overrides[main.get_db_fastApi] = override_db
         self.client = TestClient(main.app)
+        self._notify_patch = patch("services.order_service.notify_advisor_new_web_order")
+        self._notify_mock = self._notify_patch.start()
+        self.addCleanup(self._notify_patch.stop)
 
     def tearDown(self):
         main.app.dependency_overrides.clear()

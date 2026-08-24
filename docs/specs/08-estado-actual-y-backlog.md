@@ -34,5 +34,6 @@
 
 ## Cómo usar esta lista en el día a día
 
+- El diario de lo que se fue haciendo está en [`docs/historial-trabajo.md`](../historial-trabajo.md).
 - Pasar ítems terminados a una sección **“Hecho”** con fecha o mover a changelog del proyecto.
 - Si un ítem queda obsoleto, tacharlo y explicar por qué (ej. “unificamos solo checkout por wa.me sin Order en DB”).

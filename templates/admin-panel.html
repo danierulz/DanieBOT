@@ -34,6 +34,8 @@
       deleteConfirm: {{ admin_colors_delete_confirm | tojson }},
       nameRequired: {{ admin_colors_name_required | tojson }},
       hexRequired: {{ admin_colors_hex_required | tojson }},
+      unused: {{ admin_colors_unused | tojson }},
+      inactiveBadge: {{ admin_colors_inactive_badge | tojson }},
     };
     const CATALOG_SIZE_LABELS = {
       empty: {{ admin_sizes_empty_catalog | tojson }},
@@ -81,8 +83,14 @@
   {% include "partials/header.html" %}
 
   <main class="max-w-5xl mx-auto px-4 py-8">
-    <h1 class="text-2xl font-bold text-center text-gray-900 mb-2">{{ admin_panel_heading }}</h1>
-    <p id="msg" class="text-center text-sm text-gray-700 min-h-[1.25rem] mb-4"></p>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+      <h1 class="text-2xl font-bold text-center sm:text-left text-gray-900">{{ admin_panel_heading }}</h1>
+      <a href="/admin-panel/ayuda"
+        class="inline-flex items-center justify-center min-h-[40px] px-4 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-semibold hover:bg-gray-50 self-center sm:self-auto">
+        {{ admin_help_link }}
+      </a>
+    </div>
+    <p id="msg" class="text-center sm:text-left text-sm text-gray-700 min-h-[1.25rem] mb-4"></p>
 
     <!-- Pestañas -->
     <div class="flex gap-2 mb-6 border-b border-gray-200">
@@ -611,6 +619,8 @@
       ordersReview: {{ admin_orders_btn_review | tojson }},
       ordersCancel: {{ admin_orders_btn_cancel | tojson }},
       ordersLines: {{ admin_orders_lines | tojson }},
+      ordersPendingWa: {{ admin_orders_pending_wa | tojson }},
+      ordersRetries: {{ admin_orders_retries | tojson }},
     };
     const VARIANT_LABELS = {
       colSize: {{ admin_variants_col_size | tojson }},
@@ -766,14 +776,20 @@
         statusEl.textContent = items.length + ' pedido(s)';
         tbody.innerHTML = items.map(o => {
           const date = o.created_at ? new Date(o.created_at).toLocaleString('es-AR') : '—';
-          const customer = o.customer_name || o.whatsapp_wa_id || '—';
-          const lines = (o.lines || []).map(l =>
-            `${escapeHtml(l.title)} x${l.quantity} ($${moneyFmt.format(l.subtotal)})`
-          ).join('<br>');
+          const customer = o.customer_name || o.whatsapp_wa_id
+            || (o.pending_whatsapp ? LABELS.ordersPendingWa : '—');
+          const lines = (o.lines || []).map(l => {
+            const opts = [l.size ? ('Talle ' + l.size) : '', l.color ? ('Color ' + l.color) : '']
+              .filter(Boolean).join(' · ');
+            return `${escapeHtml(l.title)}${opts ? ' — ' + escapeHtml(opts) : ''} x${l.quantity} ($${moneyFmt.format(l.subtotal)})`;
+          }).join('<br>');
+          const retries = o.retry_count
+            ? `<div class="mt-1 text-[11px] text-amber-800">${escapeHtml(LABELS.ordersRetries.replace('{n}', o.retry_count))}</div>`
+            : '';
           return `<tr class="align-top">
             <td class="px-3 py-3 font-mono text-xs font-semibold">${escapeHtml(o.order_code || '—')}</td>
             <td class="px-3 py-3 text-gray-600 whitespace-nowrap">${escapeHtml(date)}</td>
-            <td class="px-3 py-3">${escapeHtml(customer)}</td>
+            <td class="px-3 py-3">${escapeHtml(customer)}${retries}</td>
             <td class="px-3 py-3"><span class="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium">${escapeHtml(o.status_label || o.status)}</span></td>
             <td class="px-3 py-3 text-right font-semibold tabular-nums">$${moneyFmt.format(o.total)}</td>
             <td class="px-3 py-3 text-right">
