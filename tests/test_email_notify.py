@@ -107,7 +107,9 @@ class AdvisorNotifyEmailIntegrationTest(unittest.TestCase):
         mock_email.assert_called_once()
         subject, body = mock_email.call_args[0]
         self.assertIn("OJ-20260621-TEST", subject)
+        self.assertIn("pendiente", subject.lower())
         self.assertIn("OJ-20260621-TEST", body)
+        self.assertIn("no sabemos", body.lower())
         self.assertIn("/admin-panel", body)
 
     @patch("services.advisor_notify.send_admin_email", return_value=True)

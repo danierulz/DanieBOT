@@ -58,6 +58,55 @@ def list_colors_public(db: Session) -> List[dict]:
     return [color_to_public(c) for c in rows]
 
 
+def list_colors_admin(db: Session) -> List[dict]:
+    from database.models.Products import Products
+
+    colors = db.query(Color).order_by(Color.sort_order.asc(), Color.label.asc()).all()
+    links = (
+        db.query(
+            ProductColor.color_id,
+            Products.product_id,
+            Products.item_title,
+            Products.status,
+        )
+        .join(Products, Products.product_id == ProductColor.product_id)
+        .filter(ProductColor.activo.is_(True))
+        .order_by(Products.item_title.asc())
+        .all()
+    )
+    by_color: dict[int, list[dict]] = {}
+    for color_id, product_id, title, status in links:
+        by_color.setdefault(color_id, []).append(
+            {
+                "product_id": product_id,
+                "title": title or f"#{product_id}",
+                "activo": bool(status),
+            }
+        )
+    out = []
+    for c in colors:
+        products = by_color.get(c.color_id, [])
+        data = color_to_public(c)
+        data["product_count"] = len(products)
+        data["products"] = products
+        out.append(data)
+    return out
+
+
+def _color_usage_titles(db: Session, color_id: int, *, limit: int = 8) -> list[str]:
+    from database.models.Products import Products
+
+    rows = (
+        db.query(Products.item_title)
+        .join(ProductColor, ProductColor.product_id == Products.product_id)
+        .filter(ProductColor.color_id == color_id, ProductColor.activo.is_(True))
+        .order_by(Products.item_title.asc())
+        .limit(limit)
+        .all()
+    )
+    return [title for (title,) in rows if title]
+
+
 def colors_for_product(db: Session, product_id: int, *, active_only: bool = True) -> List[Color]:
     q = (
         db.query(Color)
@@ -179,10 +228,13 @@ def delete_color(db: Session, color_id: int) -> None:
     )
     if usage > 0:
         noun = "producto" if usage == 1 else "productos"
+        titles = _color_usage_titles(db, color_id)
+        named = (", ".join(titles)) if titles else ""
+        extra = f" ({named})" if named else ""
         raise HTTPException(
             status_code=409,
             detail=(
-                f"Este color está en {usage} {noun}. "
+                f"Este color está en {usage} {noun}{extra}. "
                 "Quitá la asignación en esos productos antes de eliminarlo."
             ),
         )

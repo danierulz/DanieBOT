@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title_admin_help }} · {{ brand_name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/js/toast.js"></script>
+  <script src="/static/js/authSession.js"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+  {% include "partials/header.html" %}
+
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <a href="/admin-panel" class="text-sm font-semibold text-gray-600 hover:text-black">{{ admin_help_back }}</a>
+    <h1 class="text-2xl font-bold text-gray-900 mt-3">{{ admin_help_heading }}</h1>
+    <p class="mt-2 text-gray-600">{{ admin_help_lead }}</p>
+
+    <nav class="mt-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+      <p class="font-semibold text-gray-900 mb-2">Índice</p>
+      <ol class="list-decimal list-inside space-y-1 text-gray-700">
+        <li><a class="underline hover:text-black" href="#que-hace">Qué hace el sistema</a></li>
+        <li><a class="underline hover:text-black" href="#panel">Mapa del panel</a></li>
+        <li><a class="underline hover:text-black" href="#idea">Prenda, talle, color y stock</a></li>
+        <li><a class="underline hover:text-black" href="#catalogo">Catálogo base</a></li>
+        <li><a class="underline hover:text-black" href="#publicar">Publicar una prenda</a></li>
+        <li><a class="underline hover:text-black" href="#stock">Actualizar stock</a></li>
+        <li><a class="underline hover:text-black" href="#tienda">Cómo lo ve la clienta</a></li>
+        <li><a class="underline hover:text-black" href="#pedidos">Pedidos</a></li>
+        <li><a class="underline hover:text-black" href="#otras">Otras tareas</a></li>
+        <li><a class="underline hover:text-black" href="#cuidado">Cosas a tener presentes</a></li>
+      </ol>
+    </nav>
+
+    <article class="mt-8 space-y-10 text-gray-800 leading-relaxed">
+      <section id="que-hace" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">1. Qué hace el sistema (y qué no)</h2>
+        <p class="mt-3">La web es una <strong>vitrina</strong>. La clienta recorre el catálogo, elige <strong>color</strong> (si la prenda tiene) y <strong>talle</strong>, arma el carrito y confirma. Se abre <strong>WhatsApp</strong> con el pedido y un código (ej. <span class="font-mono">OJ-20260823-X7K2</span>).</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
+            <p class="font-semibold text-green-900">Lo coordina el sistema</p>
+            <p class="mt-1 text-green-900">Productos, fotos, precios, talles, colores, stock en local, encargos y el estado del pedido.</p>
+          </div>
+          <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+            <p class="font-semibold text-amber-950">Lo coordinás por WhatsApp</p>
+            <p class="mt-1 text-amber-950">Pago, envío, cambios de talle después del pedido y cualquier excepción.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">2. Mapa del panel</h2>
+        <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Pestaña</th>
+                <th class="px-3 py-2 font-semibold">Para qué sirve</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr><td class="px-3 py-2 font-medium">Nuevo producto</td><td class="px-3 py-2">Cargar una prenda a mano.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Importación masiva</td><td class="px-3 py-2">Traer prendas desde So Chic, Las Locas, Nissie o HOLIC.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Mis productos</td><td class="px-3 py-2">Buscar, filtrar, editar o eliminar.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Banners inicio</td><td class="px-3 py-2">Fotos o videos de la home.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Catálogo</td><td class="px-3 py-2">Categorías, talles y colores de toda la tienda.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Pedidos</td><td class="px-3 py-2">Ver pedidos web y cambiar el estado.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="idea" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">3. Prenda, talle, color y stock</h2>
+        <p class="mt-3">Una prenda <strong>no tiene un solo stock</strong>. El stock vive en combinaciones:</p>
+        <ul class="mt-2 list-disc list-inside space-y-1">
+          <li>Si <strong>no</strong> tiene colores: stock por <strong>talle</strong> (S, M, L… o 36, 38, 40…).</li>
+          <li>Si <strong>sí</strong> tiene colores: stock por <strong>talle + color</strong> (ej. M Negro, M Blanco).</li>
+        </ul>
+        <p class="mt-3">En la tienda la clienta ve:</p>
+        <ul class="mt-2 list-disc list-inside space-y-1">
+          <li><strong>Retiro ya</strong>: hay unidades en <em>Uds. en local</em>.</li>
+          <li><strong>Encargo</strong>: marcaste <em>Por encargo</em> (aunque el stock local sea 0).</li>
+          <li>Talle o color <strong>tachado</strong>: 0 unidades y sin encargo → no se puede pedir.</li>
+        </ul>
+        <p class="mt-3">La <strong>categoría</strong> define qué tipo de talles aparecen al editar: jeans y pantalones usan numéricos (34, 36, 38…); el resto, letra (XS, S, M, UNICO…).</p>
+      </section>
+
+      <section id="catalogo" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">4. Catálogo base (hacer esto primero)</h2>
+        <p class="mt-3">En <strong>Catálogo</strong>. Los cambios impactan el menú web, WhatsApp y los formularios de producto.</p>
+        <h3 class="mt-4 font-semibold">Categorías</h3>
+        <p class="mt-1">Nombre, slug (URL; si lo dejás vacío se genera solo y <strong>después no se cambia</strong>), tipo de talle, orden y <em>Visible en menú y tienda</em>. No se puede eliminar una categoría que ya tenga productos.</p>
+        <h3 class="mt-4 font-semibold">Talles</h3>
+        <p class="mt-1">Código (<span class="font-mono">M</span>, <span class="font-mono">38</span>), etiqueta, tipo (Letra / Numérico) y orden. El <strong>código no se edita</strong> después. No se puede borrar un talle en uso.</p>
+        <h3 class="mt-4 font-semibold">Colores</h3>
+        <p class="mt-1">Nombre + tono. En la columna <em>Prendas</em> ves si está <strong>Sin uso</strong> (se puede borrar) o el nombre de cada ficha, con enlace para editarla y destildar el color. No se puede borrar un color que siga asignado.</p>
+      </section>
+
+      <section id="publicar" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">5. Publicar una prenda</h2>
+        <h3 class="mt-4 font-semibold">Alta manual</h3>
+        <ol class="mt-2 list-decimal list-inside space-y-1">
+          <li>Pestaña <strong>Nuevo producto</strong>.</li>
+          <li>Completá Título, Precio, Descripción y Categoría.</li>
+          <li>Si va en promo: <em>Marcar este producto como Sale</em> + descuento %.</li>
+          <li>En <em>Colores disponibles</em>, marcá los colores. Si no marcás ninguno, el stock es solo por talle.</li>
+          <li>En <em>Talles y disponibilidad</em> cargá <em>Uds. en local</em>, <em>Por encargo</em> y <em>Días (estimado)</em> por cada fila.</li>
+          <li>Subí imágenes (la primera es la principal) y tocá <strong>Guardar producto</strong>.</li>
+        </ol>
+        <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><strong>Importante:</strong> al crear a mano la prenda queda <strong>inactiva</strong>. Para marcarla <em>Producto activo</em> hace falta <strong>categoría</strong> y <strong>al menos un talle con unidades en local o por encargo</strong>. Si solo cargás un color y no hay stock, no se puede publicar: en la tienda no se podría comprar. Controlá con <em>Ver en la tienda</em>.</p>
+        <h3 class="mt-4 font-semibold">Importar desde proveedor</h3>
+        <ol class="mt-2 list-decimal list-inside space-y-1">
+          <li>Pestaña <strong>Importación masiva</strong>: pegá el link de una ficha o importá un catálogo entero.</li>
+          <li>Queda <strong>desactivada</strong> para que revises precio, talles y stock (salvo que marques <em>Publicar activo al importar</em>).</li>
+          <li>En <strong>Mis productos</strong> filtrá <em>Solo inactivos</em> + el origen, editá y activá.</li>
+        </ol>
+        <p class="mt-2 text-sm text-gray-600">La importación masiva no pisa productos que ya existen: solo agrega nuevos.</p>
+      </section>
+
+      <section id="stock" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">6. Actualizar stock</h2>
+        <p class="mt-3">No hay una pantalla aparte de inventario. Se cambia <strong>editando la prenda</strong>:</p>
+        <ol class="mt-2 list-decimal list-inside space-y-1">
+          <li><strong>Mis productos</strong> → buscar → <strong>Editar</strong>.</li>
+          <li>Cambiá <em>Uds. en local</em>, <em>Por encargo</em> y/o <em>Días</em>.</li>
+          <li>Guardá.</li>
+        </ol>
+        <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Situación</th>
+                <th class="px-3 py-2 font-semibold">Qué cargar</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr><td class="px-3 py-2">Hay 2 en el local, talle M</td><td class="px-3 py-2"><em>Uds. en local</em> = 2, encargo off</td></tr>
+              <tr><td class="px-3 py-2">No hay, pero se puede pedir</td><td class="px-3 py-2">0 + <em>Por encargo</em> + días estimados</td></tr>
+              <tr><td class="px-3 py-2">Ese talle/color no se vende</td><td class="px-3 py-2">0 y sin encargo (queda tachado)</td></tr>
+              <tr><td class="px-3 py-2">Un solo talle</td><td class="px-3 py-2">Usá talle <strong>UNICO</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-sm text-gray-600">Si la prenda tiene colores, hay que completar <strong>cada casilla</strong> talle + color.</p>
+      </section>
+
+      <section id="tienda" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">7. Cómo lo ve la clienta</h2>
+        <ol class="mt-3 list-decimal list-inside space-y-1">
+          <li>Si hay colores → <em>Elegí un color</em>. Si hay uno solo (ej. Gris), se selecciona solo.</li>
+          <li>Aparece la lista completa de talles de esa prenda: los que tienen stock o encargo se pueden tocar; el resto queda <strong>tachado</strong>.</li>
+          <li>Al cambiar de color, los tachados se actualizan para ese color.</li>
+          <li><em>Agregar al carrito</em> y <em>Confirmar y enviar por WhatsApp</em>.</li>
+        </ol>
+        <p class="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">El sistema chequea stock al confirmar. <strong>El pedido no baja solo</strong> las <em>Uds. en local</em>: cuando confirmás o entregás, bajá el número a mano en la ficha. Si dos clientas piden la última unidad, ambas pueden pasar hasta que lo ajustes.</p>
+      </section>
+
+      <section id="pedidos" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">8. Pedidos</h2>
+        <p class="mt-3">Al tocar <em>Confirmar y enviar por WhatsApp</em> se crea el pedido y el asesor recibe un aviso <strong>sin nombre</strong> (todavía no escribió). Si la clienta toca de nuevo el mismo carrito, se reabre el mismo código y <strong>no se avisa otra vez</strong>. El nombre aparece cuando manda el mensaje al bot: el pedido pasa a <em>Recibido</em> y llega el segundo aviso, ya con quién es.</p>
+        <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Estado</th>
+                <th class="px-3 py-2 font-semibold">Significado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr><td class="px-3 py-2 font-medium">Enviado WA</td><td class="px-3 py-2">Se creó en la web; todavía no mandó el mensaje (o no se vinculó).</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Recibido</td><td class="px-3 py-2">Ya escribió por WhatsApp con el código.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">En revisión</td><td class="px-3 py-2">Lo estás chequeando.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Confirmado</td><td class="px-3 py-2">Pedido aceptado.</td></tr>
+              <tr><td class="px-3 py-2 font-medium">Cancelado</td><td class="px-3 py-2">No se sigue.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3">En <strong>Pedidos</strong> podés filtrar, abrir <em>Detalle</em> y usar <em>Confirmar</em>, <em>En revisión</em> o <em>Cancelar</em>.</p>
+        <p class="mt-2 text-sm text-gray-600">Desde el panel no se puede cambiar talle, color ni cantidad. Eso se habla por WhatsApp. El talle y el color van en el mensaje de WhatsApp; el detalle del panel muestra título y cantidades.</p>
+        <h3 class="mt-4 font-semibold">Rutina al entrar un pedido</h3>
+        <ol class="mt-2 list-decimal list-inside space-y-1">
+          <li>Localizá el código en <strong>Pedidos</strong>.</li>
+          <li>Abrí <em>Detalle</em> y contrastá con la ficha (talle, color, stock).</li>
+          <li>Si corresponde, bajá <em>Uds. en local</em> en esa prenda.</li>
+          <li>Coordiná pago y envío por WhatsApp.</li>
+          <li><em>Confirmar</em> o <em>Cancelar</em>.</li>
+        </ol>
+      </section>
+
+      <section id="otras" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">9. Otras tareas</h2>
+        <ul class="mt-3 list-disc list-inside space-y-2">
+          <li><strong>Mis productos:</strong> buscá por nombre; filtrá Estado (activos/inactivos) y Origen. Para ocultar sin borrar, desmarcá <em>Producto activo</em>.</li>
+          <li><strong>Fotos:</strong> si subís fotos nuevas en edición, <strong>reemplazan todas</strong> las anteriores. Si solo cambiás precio o stock, no toques las imágenes.</li>
+          <li><strong>Sale:</strong> el precio final se calcula solo. En la tienda aparece el badge SALE.</li>
+          <li><strong>Banners inicio:</strong> 1 banner = ancho completo; 2 = mitad y mitad; 3 o más = carrusel.</li>
+        </ul>
+      </section>
+
+      <section id="cuidado" class="scroll-mt-24">
+        <h2 class="text-xl font-bold text-gray-900">10. Cosas a tener presentes</h2>
+        <ol class="mt-3 list-decimal list-inside space-y-1">
+          <li>Alta manual e importados quedan <strong>inactivos</strong> hasta que los actives. El sistema no deja activar si falta categoría o no hay ningún talle con stock o encargo.</li>
+          <li>El stock <strong>no se descuenta solo</strong> al pedir.</li>
+          <li>No hay reserva al agregar al carrito: el control es al confirmar.</li>
+          <li>Encargo permite vender sin stock local.</li>
+          <li>Cambio de talle post-pedido = WhatsApp + ajuste manual de stock.</li>
+          <li>No se cobra ni se despacha desde el panel.</li>
+          <li>No se puede borrar talle, color o categoría en uso.</li>
+          <li>Eliminar un producto no se deshace.</li>
+        </ol>
+      </section>
+    </article>
+
+    <p class="mt-10 text-center">
+      <a href="/admin-panel"
+        class="inline-flex items-center justify-center min-h-[44px] px-5 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900">
+        {{ admin_help_back }}
+      </a>
+    </p>
+  </main>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof ensureValidSession === 'function') ensureValidSession();
+    });
+  </script>
+</body>
+
+</html>

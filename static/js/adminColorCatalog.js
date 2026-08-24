@@ -71,10 +71,48 @@
       return;
     }
 
-    if (status) status.textContent = catalogRows.length + ' color(es)';
+    const unusedLabel = labels().unused || 'Sin uso';
+    const inactiveLabel = labels().inactiveBadge || 'inactiva';
+    const unusedCount = catalogRows.filter((c) => !(c.product_count > 0)).length;
+    if (status) {
+      status.textContent =
+        catalogRows.length +
+        ' color(es) · ' +
+        unusedCount +
+        ' sin uso (se pueden eliminar)';
+    }
     tbody.innerHTML = catalogRows
       .map((c) => {
         const hex = c.hex || '#888888';
+        const products = Array.isArray(c.products) ? c.products : [];
+        const count = c.product_count != null ? c.product_count : products.length;
+        let usageHtml;
+        if (!count) {
+          usageHtml =
+            '<span class="inline-flex px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">' +
+            escapeHtml(unusedLabel) +
+            '</span>';
+        } else {
+          usageHtml =
+            '<div class="flex flex-col gap-1">' +
+            products
+              .map((p) => {
+                const title = escapeHtml(p.title || '#' + p.product_id);
+                const badge = p.activo
+                  ? ''
+                  : ' <span class="text-gray-500">(' + escapeHtml(inactiveLabel) + ')</span>';
+                return (
+                  '<a href="/admin-panel/edit/' +
+                  encodeURIComponent(p.product_id) +
+                  '" class="text-black font-medium hover:underline">' +
+                  title +
+                  '</a>' +
+                  badge
+                );
+              })
+              .join('') +
+            '</div>';
+        }
         return `
         <tr class="hover:bg-gray-50">
           <td class="px-3 py-2 align-middle">
@@ -82,6 +120,7 @@
           </td>
           <td class="px-3 py-2 align-middle font-medium text-gray-900">${escapeHtml(c.label)}</td>
           <td class="px-3 py-2 align-middle font-mono text-xs text-gray-600">${escapeHtml(hex)}</td>
+          <td class="px-3 py-2 align-middle text-sm text-gray-800">${usageHtml}</td>
           <td class="px-3 py-2 align-middle text-right whitespace-nowrap space-x-3">
             <button type="button" class="catalog-edit-btn text-black font-semibold hover:underline" data-id="${c.color_id}">${escapeHtml(labels().edit || 'Editar')}</button>
             <button type="button" class="catalog-del-btn text-red-600 font-semibold hover:underline" data-id="${c.color_id}">${escapeHtml(labels().del || 'Eliminar')}</button>
@@ -113,7 +152,7 @@
     const status = document.getElementById('colors-catalog-status');
     if (status) status.textContent = labels().loading || 'Cargando…';
     try {
-      const res = await fetch('/api/colors');
+      const res = await authFetch('/api/admin/colors');
       if (!res.ok) throw new Error('fail');
       catalogRows = await res.json();
       renderTable();

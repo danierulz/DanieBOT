@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("DB_USER", "test")
 os.environ.setdefault("DB_PASSWORD", "test")
@@ -69,6 +70,9 @@ class OrdersEndpointTest(unittest.TestCase):
 
         main.app.dependency_overrides[main.get_db_fastApi] = override_db
         self.client = TestClient(main.app)
+        self._notify_patch = patch("services.order_service.notify_advisor_new_web_order")
+        self._notify_mock = self._notify_patch.start()
+        self.addCleanup(self._notify_patch.stop)
 
     def tearDown(self):
         main.app.dependency_overrides.clear()
@@ -94,6 +98,44 @@ class OrdersEndpointTest(unittest.TestCase):
         self.assertRegex(data["order_code"], r"^OJ-\d{8}-[A-HJ-NP-Z2-9]{4}$")
         self.assertIn(data["order_code"], data["mensaje"])
         self.assertIn("whatsapp_number", data)
+        self.assertFalse(data.get("reused"))
+
+    def test_same_cart_reuses_order_and_notifies_once(self):
+        payload = {
+            "items": [
+                {
+                    "id": self.product_id,
+                    "titulo": "Remera Test",
+                    "precio": 10000,
+                    "cantidad": 2,
+                }
+            ],
+        }
+        first = self.client.post("/api/whatsapp/pedido", json=payload)
+        second = self.client.post("/api/whatsapp/pedido", json=payload)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(first.json()["order_code"], second.json()["order_code"])
+        self.assertFalse(first.json()["reused"])
+        self.assertTrue(second.json()["reused"])
+        self.assertEqual(self._notify_mock.call_count, 1)
+
+    def test_unknown_product_is_rejected(self):
+        response = self.client.post(
+            "/api/whatsapp/pedido",
+            json={
+                "items": [
+                    {
+                        "id": 99999,
+                        "titulo": "Remera Test",
+                        "precio": 10000,
+                        "cantidad": 1,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("no encontrado", response.json()["detail"].lower())
 
     def test_empty_cart_400(self):
         response = self.client.post("/api/whatsapp/pedido", json={"items": []})

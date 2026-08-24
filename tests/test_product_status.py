@@ -16,7 +16,10 @@ import database.models  # noqa: F401
 import main
 from auth.auth import create_access_token
 from database.init_db import Base
+from database.models.Category import Category
+from database.models.ProductVariant import ProductVariant
 from database.models.Products import Products
+from database.models.Size import Size
 
 
 class ProductStatusApiTest(unittest.TestCase):
@@ -172,6 +175,75 @@ class ProductStatusApiTest(unittest.TestCase):
         self.assertIn("1100", r.json()["detail"])
         self.assertIn("1024", r.json()["detail"])
         self.assertIn("descripción", r.json()["detail"].lower())
+
+    def test_cannot_activate_without_category_or_stock(self):
+        session = self.SessionLocal()
+        product_id = session.query(Products).filter(Products.cod_product == "I1").one().product_id
+        session.close()
+        r = self.client.put(
+            f"/api/productos/{product_id}",
+            data={
+                "item_title": "Inactivo",
+                "price": "2000",
+                "description": "d",
+                "status": "1",
+                "variants_json": "[]",
+            },
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 400, r.text)
+        detail = r.json()["detail"].lower()
+        self.assertIn("activar", detail)
+        self.assertIn("categoría", detail)
+
+    def test_can_activate_with_category_and_stock(self):
+        session = self.SessionLocal()
+        cat = Category(slug="remeras", name="Remeras", sort_order=1, activo=True)
+        size = Size(code="M", label="M", sort_order=10)
+        session.add(cat)
+        session.add(size)
+        session.flush()
+        category_id = cat.category_id
+        product_id = session.query(Products).filter(Products.cod_product == "I1").one().product_id
+        session.commit()
+        session.close()
+        r = self.client.put(
+            f"/api/productos/{product_id}",
+            data={
+                "item_title": "Inactivo",
+                "price": "2000",
+                "description": "d",
+                "status": "1",
+                "category_id": str(category_id),
+                "variants_json": '[{"size_code":"M","qty_stock_local":1,"encargo_habilitado":false}]',
+            },
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 200, r.text)
+        session = self.SessionLocal()
+        try:
+            p = session.query(Products).filter(Products.product_id == product_id).one()
+            self.assertTrue(p.status)
+            self.assertEqual(session.query(ProductVariant).filter_by(product_id=product_id).count(), 1)
+        finally:
+            session.close()
+
+    def test_can_save_inactive_without_stock(self):
+        session = self.SessionLocal()
+        product_id = session.query(Products).filter(Products.cod_product == "I1").one().product_id
+        session.close()
+        r = self.client.put(
+            f"/api/productos/{product_id}",
+            data={
+                "item_title": "Borrador",
+                "price": "2000",
+                "description": "d",
+                "status": "0",
+                "variants_json": "[]",
+            },
+            headers=self.admin_headers,
+        )
+        self.assertEqual(r.status_code, 200, r.text)
 
     def test_import_respects_status_flag(self):
         from provider_importers.types import ImportedProduct

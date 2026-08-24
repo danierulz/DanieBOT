@@ -33,10 +33,16 @@
         <a href="/admin-panel?tab=list" class="text-sm font-semibold text-gray-600 hover:text-black">{{ admin_btn_back_list }}</a>
         <h1 class="text-2xl font-bold text-gray-900 mt-2">{{ admin_edit_heading }} <span class="text-gray-500 font-mono text-lg">#{{ edit_product_id }}</span></h1>
       </div>
-      <a href="/api/detalle/{{ edit_product_id }}" target="_blank" rel="noopener noreferrer"
-        class="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-semibold hover:bg-gray-50 shrink-0">
-        {{ admin_detail_open_hint }}
-      </a>
+      <div class="flex flex-wrap gap-2 shrink-0">
+        <a href="/admin-panel/ayuda"
+          class="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-semibold hover:bg-gray-50">
+          {{ admin_help_link }}
+        </a>
+        <a href="/api/detalle/{{ edit_product_id }}" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-semibold hover:bg-gray-50">
+          {{ admin_detail_open_hint }}
+        </a>
+      </div>
     </div>
 
     <p id="msg" class="text-center text-sm text-gray-700 min-h-[1.25rem] mb-4"></p>
@@ -81,6 +87,7 @@
               <span class="text-xs text-gray-700">{{ admin_product_active_help }}</span>
             </span>
           </label>
+          <p id="publish-checklist" class="hidden mt-2 text-xs text-amber-950 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"></p>
         </div>
 
         <div class="border border-red-200 rounded-lg p-4 bg-red-50">
@@ -152,6 +159,10 @@
       msgUpdated: {{ admin_msg_updated | tojson }},
       msgError: {{ admin_msg_error | tojson }},
       msgLoadErr: {{ admin_list_load_error | tojson }},
+      publishNeedCategory: {{ admin_publish_need_category | tojson }},
+      publishNeedPrice: {{ admin_publish_need_price | tojson }},
+      publishNeedStock: {{ admin_publish_need_stock | tojson }},
+      publishBlocked: {{ admin_publish_blocked | tojson }},
     };
     const VARIANT_LABELS = {
       colSize: {{ admin_variants_col_size | tojson }},
@@ -193,6 +204,37 @@
       };
       cb.addEventListener('change', sync);
       sync();
+    }
+
+    function getActivationBlockers() {
+      const blockers = [];
+      const cat = document.getElementById('category_id');
+      if (!cat || !String(cat.value || '').trim()) blockers.push(LABELS.publishNeedCategory);
+      const price = parseInt((document.getElementById('price') || {}).value, 10);
+      if (!price || price <= 0) blockers.push(LABELS.publishNeedPrice);
+      let rows = [];
+      try {
+        rows = JSON.parse(typeof collectVariants === 'function' ? collectVariants() : '[]');
+      } catch (e) {
+        rows = [];
+      }
+      const sellable = rows.some((r) => (r.qty_stock_local || 0) > 0 || !!r.encargo_habilitado);
+      if (!sellable) blockers.push(LABELS.publishNeedStock);
+      return blockers;
+    }
+
+    function refreshPublishChecklist() {
+      const box = document.getElementById('publish-checklist');
+      const statusCb = document.getElementById('status');
+      if (!box || !statusCb) return;
+      const blockers = getActivationBlockers();
+      if (statusCb.checked && blockers.length) {
+        box.textContent = LABELS.publishBlocked + ' ' + blockers.join(' ');
+        box.classList.remove('hidden');
+      } else {
+        box.textContent = '';
+        box.classList.add('hidden');
+      }
     }
 
     function showApiError(message, fallback) {
@@ -240,6 +282,15 @@
     async function submitPut() {
       if (typeof validateProductFieldLimits === 'function' && !validateProductFieldLimits()) {
         return;
+      }
+      const statusCb = document.getElementById('status');
+      if (statusCb && statusCb.checked) {
+        const blockers = getActivationBlockers();
+        if (blockers.length) {
+          refreshPublishChecklist();
+          showApiError(LABELS.publishBlocked + ' ' + blockers.join(' '), LABELS.msgError);
+          return;
+        }
       }
       const msg = document.getElementById('msg');
       const form = document.getElementById('producto-form');
@@ -293,6 +344,22 @@
       await initColorsUi();
       bindSaleToggle();
       await loadProduct();
+      ['category_id', 'price', 'status'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', refreshPublishChecklist);
+        if (el && id === 'price') el.addEventListener('input', refreshPublishChecklist);
+      });
+      const variantsBody = document.getElementById('variants-table-body');
+      if (variantsBody) {
+        variantsBody.addEventListener('input', refreshPublishChecklist);
+        variantsBody.addEventListener('change', refreshPublishChecklist);
+      }
+      document.addEventListener('change', (e) => {
+        if (e.target && e.target.classList && e.target.classList.contains('pc-color-cb')) {
+          refreshPublishChecklist();
+        }
+      });
+      refreshPublishChecklist();
     });
   </script>
 

@@ -4,6 +4,7 @@ import re
 from pywa import WhatsApp, filters, types
 
 from config import get_order_confirmation_reply
+from services.app_log import log_event
 from database.init_db import SessionLocal
 from services.customer_service import get_or_create_customer_by_wa_id, save_customer_email
 from services.categories import list_categories_for_nav
@@ -92,14 +93,17 @@ def register_handlers(client) -> None:
         if not text:
             return
 
-        logger.info(
-            "WA mensaje texto de %s (%s): %s",
-            msg.from_user.wa_id,
-            msg.from_user.name or "?",
-            text[:120],
+        order_code = extract_order_code(text)
+        log_event(
+            logger,
+            "wa.inbound",
+            wa_id=msg.from_user.wa_id,
+            name=msg.from_user.name or "",
+            preview=text[:160],
+            has_order_code=bool(order_code),
+            order_code=order_code,
         )
         try:
-            order_code = extract_order_code(text)
             if order_code:
                 _handle_order_message(msg, order_code)
                 return
@@ -145,6 +149,13 @@ def _handle_order_message(msg: types.Message, order_code: str):
     try:
         order = get_order_by_code(db, order_code)
         if not order:
+            log_event(
+                logger,
+                "order.wa_code_unknown",
+                order_code=order_code,
+                wa_id=msg.from_user.wa_id,
+                name=msg.from_user.name or "",
+            )
             msg.reply_text(
                 f"No encontramos el pedido *{order_code}*. "
                 "Si acabás de confirmar en la web, esperá unos segundos e intentá de nuevo."

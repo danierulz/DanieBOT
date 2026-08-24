@@ -29,6 +29,7 @@ from database.schemas.ProductCreate import ProductCreate, ProductOut
 from gcs.storage_factory import create_uploader
 from provider_importers.registry import detect_provider, fetch_product
 from provider_importers.types import ImportedProduct, ProviderImportError
+from services.product_activation import activation_blockers, format_activation_error
 from services.product_variants import sync_product_variants
 from services.provider_import import (
     ProviderImportPayload,
@@ -80,6 +81,7 @@ from services.colors import (
     get_or_create_color,
     update_color,
     delete_color,
+    list_colors_admin,
     list_colors_public,
     normalize_color_code,
     parse_colors_json,
@@ -384,6 +386,14 @@ def admin_edit_product(request: Request, product_id: int):
     )
 
 
+@app.get("/admin-panel/ayuda", response_class=HTMLResponse)
+def admin_help(request: Request):
+    return templates.TemplateResponse(
+        "admin-help.html",
+        page_context(request),
+    )
+
+
 # Utilizado en tireadimages.html para mostrar el detalle del producto. Recibe el ID por URL y lo pasa a la plantilla
 @app.get("/api/detalle/{product_id}", response_class=HTMLResponse)
 async def read_item(request: Request, product_id: int):
@@ -483,6 +493,14 @@ class ColorCreateIn(BaseModel):
 class ColorUpdateIn(BaseModel):
     label: Optional[str] = None
     hex: Optional[str] = None
+
+
+@app.get("/api/admin/colors")
+def admin_listar_colores(
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    return list_colors_admin(db)
 
 
 @app.post("/api/admin/colors")
@@ -1511,9 +1529,26 @@ def actualizar_producto(
         sync_product_colors(db, product_id, parse_colors_json(colors_json))
         db.flush()
         _sync_product_variants(db, product_id, _parse_variants_json(variants_json))
+        db.flush()
+        if producto.status:
+            blockers = activation_blockers(
+                category_id=producto.category_id,
+                price=producto.price,
+                variants=db.query(ProductVariant).filter(
+                    ProductVariant.product_id == product_id
+                ).all(),
+            )
+            if blockers:
+                raise HTTPException(
+                    status_code=400,
+                    detail=format_activation_error(blockers),
+                )
         db.commit()
         db.refresh(producto)
         return {"ok": True, "id": producto.product_id}
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         logging.error(f"Error al actualizar producto: {e}", exc_info=True)

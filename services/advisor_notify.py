@@ -3,6 +3,7 @@ from typing import Optional
 
 from config import get_whatsapp_asesor_number
 from database.models import Order
+from services.app_log import log_event
 from services.email_notify import admin_panel_link_footer, send_admin_email
 from whatsapp.bot import get_wa_client
 
@@ -46,18 +47,28 @@ def _format_order_summary(order: Order) -> str:
 def notify_advisor_new_web_order(order: Order) -> bool:
     """Avisa al asesor que se registró un pedido desde la web (antes de que la clienta envíe WA)."""
     text = (
-        f"🛒 *Nuevo pedido web*\n\n"
+        f"🛒 *Nuevo pedido web — pendiente de WhatsApp*\n\n"
         f"Código: *{order.order_code}*\n"
         f"Estado: {_status_label(order.status)}\n"
         f"Total: ${order.total:,.0f}\n\n"
         f"{_format_lines_short(order)}\n\n"
-        "La clienta debe enviar el mensaje por WhatsApp con este código. "
-        "Cuando llegue, el bot lo marcará como recibido."
+        "Todavía *no sabemos quién es*: la clienta confirmó en la web pero "
+        "aún no envió el mensaje al bot. No es un pedido confirmado.\n"
+        "Si ves varios avisos seguidos, pueden ser reintentos del mismo carrito "
+        "(el sistema reutiliza el código cuando es el mismo pedido)."
     ).replace(",", ".")
     wa_ok = _send_to_advisor(text)
     email_ok = send_admin_email(
-        f"Nuevo pedido web {order.order_code}",
+        f"Nuevo pedido web {order.order_code} (pendiente WA)",
         _plain_for_email(text) + admin_panel_link_footer(),
+    )
+    log_event(
+        logger,
+        "advisor.notify",
+        kind="new_web",
+        order_code=order.order_code,
+        wa_ok=wa_ok,
+        email_ok=email_ok,
     )
     return wa_ok or email_ok
 
@@ -82,6 +93,16 @@ def notify_advisor_order_received(
     email_ok = send_admin_email(
         f"Pedido confirmado por WhatsApp {order.order_code}",
         _plain_for_email(text) + admin_panel_link_footer(),
+    )
+    log_event(
+        logger,
+        "advisor.notify",
+        kind="received",
+        order_code=order.order_code,
+        customer_name=who,
+        wa_id=customer_wa_id,
+        wa_ok=wa_ok,
+        email_ok=email_ok,
     )
     return wa_ok or email_ok
 
