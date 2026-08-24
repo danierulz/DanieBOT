@@ -416,6 +416,29 @@
       <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ admin_banners_heading }}</h2>
       <p class="text-xs text-gray-600 mb-6">{{ admin_banners_help }}</p>
 
+      <div class="mb-8 border-b border-gray-200 pb-8">
+        <h3 class="text-base font-semibold text-gray-900">{{ admin_promo_heading }}</h3>
+        <p class="text-xs text-gray-600 mt-1 mb-4">{{ admin_promo_help }}</p>
+        <form id="promo-bar-form" class="space-y-3">
+          <div>
+            <label for="promo-bar-text" class="block text-sm font-medium text-gray-700">{{ admin_promo_label_text }}</label>
+            <input id="promo-bar-text" type="text" maxlength="{{ admin_promo_text_max }}"
+              class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-gray-900">
+          </div>
+          <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+            <input type="checkbox" id="promo-bar-activo" value="1" checked class="w-4 h-4 accent-black">
+            <span class="font-medium">{{ admin_promo_label_active }}</span>
+          </label>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="submit" class="px-4 py-2 rounded-md bg-black text-white font-bold hover:bg-gray-900">
+              {{ admin_promo_btn_save }}
+            </button>
+            <p id="promo-bar-status" class="text-sm text-gray-500"></p>
+          </div>
+        </form>
+      </div>
+
+      <h3 class="text-base font-semibold text-gray-900 mb-4">{{ admin_banners_media_heading }}</h3>
       <form id="banner-form" class="space-y-4 mb-8 border-b border-gray-200 pb-8">
         <input type="hidden" id="banner-id" value="">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -612,6 +635,7 @@
       bannerDeleteConfirm: {{ admin_banners_delete_confirm | tojson }},
       bannerTypeImage: {{ admin_banners_type_image | tojson }},
       bannerTypeVideo: {{ admin_banners_type_video | tojson }},
+      promoMsgSaved: {{ admin_promo_msg_saved | tojson }},
       ordersEmpty: {{ admin_orders_empty | tojson }},
       ordersLoadErr: {{ admin_orders_load_error | tojson }},
       ordersMsgUpdated: {{ admin_orders_msg_updated | tojson }},
@@ -716,7 +740,10 @@
         listSearch = document.getElementById('admin-search-input').value;
         loadList(listPage);
       }
-      if (isBanners) loadBannersList();
+      if (isBanners) {
+        loadPromoBar();
+        loadBannersList();
+      }
       if (isCatalog) {
         const hash = (window.location.hash || '').replace('#', '');
         showCatalogSection(hash || 'categorias');
@@ -1510,6 +1537,48 @@
       document.getElementById('banner-submit-btn').textContent = LABELS.bannerSave;
       document.getElementById('banner-cancel-btn').classList.add('hidden');
     }
+
+    async function loadPromoBar() {
+      const status = document.getElementById('promo-bar-status');
+      const textEl = document.getElementById('promo-bar-text');
+      const activoEl = document.getElementById('promo-bar-activo');
+      if (!textEl || !activoEl) return;
+      try {
+        const r = await authFetch('/api/admin/promo-banner');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        textEl.value = data.text || '';
+        activoEl.checked = data.activo !== false;
+      } catch (e) {
+        if (status) status.textContent = LABELS.msgLoadErr;
+        console.error(e);
+      }
+    }
+
+    document.getElementById('promo-bar-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('promo-bar-status');
+      try {
+        const r = await authFetch('/api/admin/promo-banner', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: document.getElementById('promo-bar-text').value,
+            activo: document.getElementById('promo-bar-activo').checked,
+          }),
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.detail || r.statusText);
+        }
+        const data = await r.json();
+        document.getElementById('promo-bar-text').value = data.text || '';
+        document.getElementById('promo-bar-activo').checked = data.activo !== false;
+        if (status) status.textContent = LABELS.promoMsgSaved;
+      } catch (e) {
+        showApiError(e.message, LABELS.msgError);
+      }
+    });
 
     async function loadBannersList() {
       const tbody = document.getElementById('banners-table-body');

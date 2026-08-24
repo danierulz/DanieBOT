@@ -11,7 +11,7 @@
   {% include "partials/header.html" %}
 
   <div class="sticky top-[52px] sm:top-[56px] z-30 bg-red-600 text-white text-center text-xs sm:text-sm leading-snug py-2 sm:py-2.5 px-3 sm:px-4 font-semibold tracking-wide shadow-sm">
-    🔥 SALE · Descuentos por tiempo limitado · {{ promo_banner_text }}
+    🔥 SALE · Descuentos por tiempo limitado{% if promo_banner_visible and promo_banner_text %} · {{ promo_banner_text }}{% endif %}
   </div>
 
   <section class="bg-gradient-to-b from-red-50 via-white to-[#fafafa] py-6 sm:py-8 border-b border-red-100">

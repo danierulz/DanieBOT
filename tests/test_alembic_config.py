@@ -15,7 +15,7 @@ class AlembicConfigTest(unittest.TestCase):
 
         cfg = Config("alembic.ini")
         script = ScriptDirectory.from_config(cfg)
-        self.assertEqual(script.get_heads(), ["20260621_0006"])
+        self.assertEqual(script.get_heads(), ["20260823_0008"])
 
     def test_env_imports_metadata(self):
         import database.models  # noqa: F401
@@ -27,6 +27,7 @@ class AlembicConfigTest(unittest.TestCase):
             "sizes",
             "customers",
             "home_banners",
+            "site_settings",
             "products",
             "orders",
             "product_images",

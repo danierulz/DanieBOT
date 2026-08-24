@@ -1,5 +1,6 @@
 from .Category import Category
 from .HomeBanner import HomeBanner
+from .SiteSetting import SiteSetting
 from .Products import Products
 from .ProductImages import ProductImages
 from .Customer import Customer

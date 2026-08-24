@@ -43,6 +43,7 @@ class AdminPanelTemplateTest(unittest.TestCase):
         self.assertIn("Manual de la administradora", response.text)
         self.assertIn("Talles y disponibilidad", response.text)
         self.assertIn("no se avisa otra vez", response.text)
+        self.assertIn("franja negra", response.text)
         self.assertIn("/admin-panel", response.text)
 
     def test_product_detail_selects_color_before_sizes(self):
