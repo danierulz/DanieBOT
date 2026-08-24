@@ -8,9 +8,9 @@ from enum import Enum
 from typing import Optional
 
 from config import (
-    _PROMO_BANNER,
     _STORES,
     get_bot_welcome_text,
+    get_default_promo_banner_text,
     get_site_public_url,
 )
 
@@ -27,6 +27,15 @@ CB_EMAIL_SI = "EMAIL_SI"
 CB_EMAIL_NO = "EMAIL_NO"
 CB_EMAIL_CONSENT_SI = "EMAIL_CONSENT_SI"
 CB_EMAIL_CONSENT_NO = "EMAIL_CONSENT_NO"
+
+
+def _promo_banner_line() -> str:
+    try:
+        from services.site_settings import get_promo_banner_text
+
+        return get_promo_banner_text() or get_default_promo_banner_text()
+    except Exception:
+        return get_default_promo_banner_text()
 
 
 class Intent(str, Enum):
@@ -140,7 +149,7 @@ def reply_for_intent(intent: Intent, user_name: str = "") -> BotReply:
         return BotReply(
             text=(
                 "🚚 *Envíos y compra mínima*\n\n"
-                f"{_PROMO_BANNER}\n\n"
+                f"{_promo_banner_line()}\n\n"
                 "Después de confirmar en la web, enviá el mensaje con tu *código de pedido* "
                 "y un asesor te confirma costo de envío, medios de pago y tiempos."
             ),

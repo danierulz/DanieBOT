@@ -64,6 +64,7 @@ def seed_reference_data() -> None:
     _ensure_missing_sizes(get_numeric_size_seed())
     _seed_colors_if_empty()
     _seed_categories_if_empty()
+    _seed_promo_banner_if_missing()
 
 
 def _ensure_missing_sizes(defaults: list[tuple[str, str, int]]) -> None:
@@ -164,6 +165,32 @@ def _seed_categories_if_empty() -> None:
     except Exception as e:
         session.rollback()
         print(f"No se pudieron insertar categorías base: {e}")
+    finally:
+        session.close()
+
+
+def _seed_promo_banner_if_missing() -> None:
+    from config import get_default_promo_banner_text
+    from database.models.SiteSetting import SiteSetting
+    from services.site_settings import PROMO_ACTIVO_KEY, PROMO_TEXT_KEY
+
+    session = SessionLocal()
+    try:
+        existing = {row.key for row in session.query(SiteSetting.key).all()}
+        added = False
+        if PROMO_TEXT_KEY not in existing:
+            session.add(
+                SiteSetting(key=PROMO_TEXT_KEY, value=get_default_promo_banner_text())
+            )
+            added = True
+        if PROMO_ACTIVO_KEY not in existing:
+            session.add(SiteSetting(key=PROMO_ACTIVO_KEY, value="1"))
+            added = True
+        if added:
+            session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"No se pudo insertar la franja promocional: {e}")
     finally:
         session.close()
 

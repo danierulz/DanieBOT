@@ -23,6 +23,16 @@ No poner teléfonos, tokens ni secretos.
 
 ---
 
+## 2026-08-23 — Franja negra editable en Banners inicio
+
+- **Problema / pedido:** la barra negra “Compra mínima $100.000 · Envío a todo el país” estaba fija en `config.py` / `SITE_PROMO_BANNER`. Querían editarla desde **Banners inicio**.
+- **Qué se hizo:** tabla `site_settings` + formulario arriba de los banners de imagen. El mismo texto alimenta home, Sale, pie y la respuesta de envío/compra mínima del bot. Se puede ocultar (desactivar o vaciar).
+- **Archivos clave:** `services/site_settings.py`, `database/models/SiteSetting.py`, `alembic/versions/20260823_0008_site_settings.py`, `main.py`, `templates/admin-panel.html`, `templates/index.html`
+- **Cómo verificar:** Admin → Banners inicio → cambiar texto → recargar `/`. En prod: `python -m alembic upgrade head`.
+- **Pendiente:** hay que **desplegar** y correr la migración.
+
+---
+
 ## 2026-08-23 — Pedidos web, reintentos y logs (Log Explorer)
 
 - **Problema / pedido:** En producción la gente arma el carrito y confirma, pero muchas no mandan el WhatsApp al bot. El pedido ya existía en la web y el asesor recibía un aviso **sin saber quién era**. Cada toque de confirmar creaba **otro** pedido y **otro** aviso. También llegaba un aviso de “Remera Test” / producto que no está en la tienda. Pedían más control en Log Explorer para trackear el embudo.

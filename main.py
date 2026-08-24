@@ -74,6 +74,7 @@ from sqlalchemy.exc import IntegrityError
 from database.init_db import SessionLocal
 from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context, PRODUCT_DESCRIPTION_MAX_LEN, PRODUCT_ITEM_TITLE_MAX_LEN, APP_DEBUG, build_nav_links
+from services.site_settings import get_promo_banner, set_promo_banner
 from provider_importers.bulk.laslocas_catalog import load_laslocas_categories
 from services.colors import (
     color_to_public,
@@ -181,6 +182,12 @@ def page_context(request: Request, **extra: dict) -> dict:
         nav_cats = list_categories_for_nav(db)
         ctx["nav_categories"] = nav_cats
         ctx["nav_links"] = build_nav_links(nav_cats)
+        try:
+            promo = get_promo_banner(db)
+            ctx["promo_banner_text"] = promo["text"]
+            ctx["promo_banner_visible"] = bool(promo["activo"] and promo["text"])
+        except Exception:
+            ctx.setdefault("promo_banner_visible", True)
     finally:
         db.close()
     ctx.update(extra)
@@ -781,6 +788,28 @@ def _banner_admin(b: HomeBanner) -> dict:
     d = _banner_public(b)
     d["activo"] = b.activo
     return d
+
+
+class PromoBannerIn(BaseModel):
+    text: str = ""
+    activo: bool = True
+
+
+@app.get("/api/admin/promo-banner")
+def admin_obtener_promo_banner(
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    return get_promo_banner(db)
+
+
+@app.put("/api/admin/promo-banner")
+def admin_guardar_promo_banner(
+    body: PromoBannerIn,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    return set_promo_banner(db, body.text, body.activo)
 
 
 @app.get("/api/home-banners")

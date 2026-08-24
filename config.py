@@ -32,6 +32,10 @@ _PROMO_BANNER = os.getenv(
     "Compra mínima $100.000 · Envío a todo el país",
 )
 
+
+def get_default_promo_banner_text() -> str:
+    return _PROMO_BANNER
+
 # Redes
 _SOCIAL_FACEBOOK = os.getenv(
     "SITE_FACEBOOK_URL",
@@ -218,6 +222,7 @@ def get_template_context() -> dict:
         "page_title_contact": f"{_BRAND} - Contacto",
         "page_title_stores": f"{_BRAND} - Puntos de venta",
         "promo_banner_text": _PROMO_BANNER,
+        "promo_banner_visible": True,
         "hero_headline": "Colección destacada",
         "hero_subtitle": "Stock para retiro inmediato + opción a encargo",
         "footer_copyright": f"© {year} {_BRAND}",
@@ -246,7 +251,15 @@ def get_template_context() -> dict:
         "nav_productos_ver_todo": "Ver todo",
         "admin_tab_banners": "Banners inicio",
         "admin_banners_heading": "Banners de la página de inicio",
-        "admin_banners_help": "Banners en la home (~⅓ de pantalla en móvil). 1 banner = ancho completo; 2 = mitad cada uno; 3+ = carrusel. Preferí WebP/JPEG o MP4 corto (sin audio); evitá GIF pesados.",
+        "admin_banners_help": "Arriba: la franja negra de compra mínima / envío. Abajo: banners de imagen o video (~⅓ de pantalla en móvil). 1 banner = ancho completo; 2 = mitad cada uno; 3+ = carrusel. Preferí WebP/JPEG o MP4 corto (sin audio); evitá GIF pesados.",
+        "admin_promo_heading": "Franja negra superior",
+        "admin_promo_help": "Texto que se ve en la home (barra negra), en Sale y en el pie. Si la desactivás o dejás el texto vacío, no se muestra.",
+        "admin_promo_label_text": "Texto de la franja",
+        "admin_promo_label_active": "Visible",
+        "admin_promo_btn_save": "Guardar franja",
+        "admin_promo_msg_saved": "Franja actualizada.",
+        "admin_promo_text_max": 200,
+        "admin_banners_media_heading": "Banners de imagen o video",
         "admin_banners_col_image": "Vista previa",
         "admin_banners_col_type": "Tipo",
         "admin_banners_col_title": "Título",
