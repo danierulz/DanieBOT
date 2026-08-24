@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    env:
+      DB_USER: test
+      DB_PASSWORD: test
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt httpx
+      - name: Run unittest suite
+        run: python -m unittest discover -s tests
