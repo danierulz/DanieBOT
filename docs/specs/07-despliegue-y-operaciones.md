@@ -90,7 +90,7 @@ La suite vive en `tests/` (`unittest.TestCase`). En local, el mismo comando que 
 python -m unittest discover -s tests
 ```
 
-GitHub Actions (`.github/workflows/tests.yml`) corre eso en cada **pull request** y en cada **push a `main`**. Python 3.10, `requirements.txt` + `httpx`, y `JWT_SECRET_KEY` dummy (en CI no hay `.env`). No despliega: solo valida. Cloud Build sigue siendo el que publica en Cloud Run.
+GitHub Actions (`.github/workflows/tests.yml`) corre eso en cada **pull request** y en cada **push a `main`**. Python 3.10, `requirements.txt` + `httpx`, y `JWT_SECRET_KEY` / `ADMIN_USERNAME` dummy (en CI no hay `.env` ni Postgres). No despliega: solo valida. Cloud Build sigue siendo el que publica en Cloud Run.
 
 Para que un PR rojo **no se pueda mergear**: en GitHub, *Settings → Branches → Add branch protection rule* sobre `main` → *Require status checks to pass before merging* → check **`tests`**.
 

@@ -16,6 +16,7 @@ jobs:
       DB_PORT: "5432"
       DB_NAME: test
       JWT_SECRET_KEY: ci-test-jwt-secret-not-for-prod
+      ADMIN_USERNAME: ci-admin
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
