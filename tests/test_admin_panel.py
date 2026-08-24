@@ -9,14 +9,32 @@ os.environ.setdefault("DB_PORT", "5432")
 os.environ.setdefault("DB_NAME", "test")
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import database.models  # noqa: F401
 import main
 from config import get_template_context
+from database.init_db import Base
 
 
 class AdminPanelTemplateTest(unittest.TestCase):
     def setUp(self):
+        self.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        Base.metadata.create_all(self.engine)
+        self._orig_session_local = main.SessionLocal
+        main.SessionLocal = self.SessionLocal
         self.client = TestClient(main.app)
+
+    def tearDown(self):
+        main.SessionLocal = self._orig_session_local
+        Base.metadata.drop_all(self.engine)
 
     def test_admin_panel_renders(self):
         response = self.client.get("/admin-panel")

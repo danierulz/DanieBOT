@@ -82,8 +82,23 @@ python -m alembic stamp head
 
 Detalle: [10-alembic-migraciones.md](./10-alembic-migraciones.md).
 
+## Tests (CI)
+
+La suite vive en `tests/` (`unittest.TestCase`). En local, el mismo comando que CI:
+
+```bash
+python -m unittest discover -s tests
+```
+
+GitHub Actions (`.github/workflows/tests.yml`) corre eso en cada **pull request** y en cada **push a `main`**. Python 3.10, `requirements.txt` + `httpx`, y `JWT_SECRET_KEY` / `ADMIN_USERNAME` dummy (en CI no hay `.env` ni Postgres). No despliega: solo valida. Cloud Build sigue siendo el que publica en Cloud Run.
+
+Para que un PR rojo **no se pueda mergear**: en GitHub, *Settings → Branches → Add branch protection rule* sobre `main` → *Require status checks to pass before merging* → check **`tests`**.
+
+`tests/local_uploader_test.py` usa pytest; `unittest discover` no lo recoge (solo `test*.py`).
+
 ## Checklist pre-deploy
 
+- [ ] Check `tests` verde en GitHub Actions (o `python -m unittest discover -s tests` en local)
 - [ ] Tests manuales webhook GET/POST
 - [ ] Base alcanzable desde Cloud Run (Cloud SQL instance + rol `Cloud SQL Client` en la SA de Run)
 - [ ] Secrets actualizados en Secret Manager

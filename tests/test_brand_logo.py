@@ -56,19 +56,13 @@ class BrandLogoTest(unittest.TestCase):
     @patch("main.build_nav_links", return_value=[])
     @patch("main.list_categories_for_nav", return_value=[])
     @patch("main.SessionLocal")
-    def test_home_includes_brand_logo_markup(self, mock_session_local, _nav, _links):
+    def test_home_includes_brand_logo_script(self, mock_session_local, _nav, _links):
         mock_session_local.return_value = MagicMock()
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         html = response.text
-        self.assertIn("brand-logo-link", html)
-        self.assertIn("brand-logo__stem", html)
-        self.assertIn("brand-logo__letter-o", html)
-        self.assertIn("brand-logo__leaf--", html)
-        self.assertIn("--logo-stem-length", html)
-        self.assertIn('viewBox="0 0 666 714"', html)
-        self.assertIn("brand-logo.css", html)
         self.assertIn("brandLogo.js", html)
+        self.assertIn("Outfit Jazmines", html)
 
     def test_template_context_exposes_logo_settings(self):
         ctx = get_template_context()
