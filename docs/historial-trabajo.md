@@ -23,6 +23,16 @@ No poner teléfonos, tokens ni secretos.
 
 ---
 
+## 2026-10-27 — Backoff ante HTTP 429 en el alta masiva
+
+- **Problema / pedido:** So Chic responde 429 (o «limitó las consultas») y el runner seguía pidiendo fichas. Hacía falta frenar, esperar con backoff y cortar la corrida, sin Cloud Scheduler.
+- **Qué se hizo:** el CLI sin `--tracked-run` reintenta la misma URL con espera escalonada (`--rate-limit-retries`, default 3; `--rate-limit-hard-stop` corta al primero). Si se agota, no sigue el resto, deja lo ya persistido y el JSON trae `rate_limited` y `cooldown_hint_seconds`. El listado de So Chic usa la misma política. `--exclude-file` del manifiesto acepta un id por línea; el doc muestra cómo exportar los ya publicados.
+- **Archivos clave:** `provider_importers/bulk/rate_limit.py`, `provider_importers/bulk/runner.py`, `provider_importers/sochic_catalog.py`, `docs/ops/scraping-cuidados.md`, `docs/ops/meta-garments-manifest.md`
+- **Cómo verificar:** `python -m unittest discover -s tests`
+- **Pendiente / no desplegado:** no hay job que desplegar. `--tracked-run` (Las Locas, Nissie, HOLIC) no usa este backoff.
+
+---
+
 ## 2026-10-27 — Manifiesto JSON para robotRZ
 
 - **Problema / pedido:** armar a mano el JSON que consumen `meta_page_garments.py` y `meta_ig_garments.py`.

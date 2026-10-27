@@ -34,6 +34,11 @@ from provider_importers.bulk.holic_catalog import discover_holic_product_urls
 from provider_importers.bulk.laslocas_catalog import discover_laslocas_product_urls
 from provider_importers.bulk.markup import apply_price_markup
 from provider_importers.bulk.nissie_catalog import discover_nissie_product_urls
+from provider_importers.bulk.rate_limit import (
+    RateLimitExceeded,
+    call_with_rate_limit_backoff,
+    policy_from_options,
+)
 from provider_importers.bulk.sochic_catalog import discover_sochic_product_urls
 from provider_importers.bulk.types import BulkImportOptions, BulkImportSummary
 from provider_importers.holic import fetch_holic_product
@@ -58,7 +63,7 @@ _FETCHERS = {
 }
 
 
-def discover_urls(options: BulkImportOptions) -> list[str]:
+def discover_urls(options: BulkImportOptions, policy=None) -> list[str]:
     if options.urls:
         return list(options.urls)
     brand = get_brand(options.provider)
@@ -83,6 +88,7 @@ def discover_urls(options: BulkImportOptions) -> list[str]:
         return discover_sochic_product_urls(
             category_slug=options.category_id,
             max_pages=options.max_pages,
+            rate_limit_policy=policy or policy_from_options(options),
         )
     raise SystemExit(
         f"No hay descubrimiento masivo para {brand.id} (mode={brand.mode}). "
@@ -90,11 +96,47 @@ def discover_urls(options: BulkImportOptions) -> list[str]:
     )
 
 
+def _emit_summary(summary: BulkImportSummary, options: BulkImportOptions) -> None:
+    printed = summary.to_dict()
+    printed["skip_existing"] = options.skip_existing
+    printed["limit"] = options.limit
+    printed["delay_ms"] = options.delay_ms
+    printed["price_markup_percent"] = options.price_markup_percent
+    print(json.dumps(printed, ensure_ascii=False, indent=2))
+
+
+def _mark_rate_limited(
+    summary: BulkImportSummary,
+    exc: RateLimitExceeded,
+    *,
+    where: str,
+    aborted_remaining: int,
+) -> None:
+    summary.rate_limited = True
+    summary.cooldown_hint_seconds = int(exc.cooldown_hint_seconds)
+    summary.stopped_during = where
+    summary.aborted_remaining = aborted_remaining
+    summary.rate_limit_attempts = exc.attempts
+
+
 def run_bulk_import_cli(options: BulkImportOptions) -> BulkImportSummary:
     from database.models.Products import Products
 
     summary = BulkImportSummary(provider=options.provider)
-    urls = discover_urls(options)
+    policy = policy_from_options(options)
+    try:
+        urls = discover_urls(options, policy)
+    except RateLimitExceeded as exc:
+        summary.discovered = len(exc.partial_urls)
+        summary.errors.append({"url": "listing", "error": str(exc), "code": "rate_limit"})
+        _mark_rate_limited(
+            summary,
+            exc,
+            where=exc.where or "listing",
+            aborted_remaining=len(exc.partial_urls),
+        )
+        _emit_summary(summary, options)
+        return summary
     summary.discovered = len(urls)
     known = read_known_source_urls() if options.skip_existing else set()
     selection = select_import_urls(
@@ -138,14 +180,43 @@ def run_bulk_import_cli(options: BulkImportOptions) -> BulkImportSummary:
             if row[0]
         }
 
-        for url in selection.to_fetch:
+        pending = list(selection.to_fetch)
+        for index, url in enumerate(pending):
             try:
-                imported = fetcher(url)
-                if imported.cod_product in existing_codes:
-                    remember_source_url(db, imported.cod_product, url)
-                    summary.skipped += 1
-                    continue
+                imported = call_with_rate_limit_backoff(
+                    lambda url=url: fetcher(url),
+                    policy,
+                    sleep=time.sleep,
+                )
+            except RateLimitExceeded as exc:
+                summary.failed += 1
+                summary.errors.append({"url": url, "error": str(exc), "code": "rate_limit"})
+                _mark_rate_limited(
+                    summary,
+                    exc,
+                    where="product",
+                    aborted_remaining=len(pending) - index - 1,
+                )
+                break
+            except ProviderImportError as exc:
+                summary.failed += 1
+                summary.errors.append({"url": url, "error": str(exc)})
+                if options.delay_ms > 0:
+                    time.sleep(options.delay_ms / 1000.0)
+                continue
+            except Exception as exc:
+                summary.failed += 1
+                summary.errors.append({"url": url, "error": str(exc)})
+                if options.delay_ms > 0:
+                    time.sleep(options.delay_ms / 1000.0)
+                continue
 
+            if imported.cod_product in existing_codes:
+                remember_source_url(db, imported.cod_product, url)
+                summary.skipped += 1
+                continue
+
+            try:
                 apply_price_markup(imported, options.price_markup_percent)
                 result = persist_imported_product(
                     db,
@@ -155,27 +226,23 @@ def run_bulk_import_cli(options: BulkImportOptions) -> BulkImportSummary:
                     sync_variants_fn=sync_product_variants,
                     match_color_ids_fn=match_import_color_ids,
                 )
-                if result.get("created"):
-                    existing_codes.add(imported.cod_product)
-                    summary.created += 1
-                else:
-                    summary.skipped += 1
             except ProviderImportError as exc:
                 summary.failed += 1
                 summary.errors.append({"url": url, "error": str(exc)})
             except Exception as exc:
                 summary.failed += 1
                 summary.errors.append({"url": url, "error": str(exc)})
+            else:
+                if result.get("created"):
+                    existing_codes.add(imported.cod_product)
+                    summary.created += 1
+                else:
+                    summary.skipped += 1
 
             if options.delay_ms > 0:
                 time.sleep(options.delay_ms / 1000.0)
 
-    printed = summary.to_dict()
-    printed["skip_existing"] = options.skip_existing
-    printed["limit"] = options.limit
-    printed["delay_ms"] = options.delay_ms
-    printed["price_markup_percent"] = options.price_markup_percent
-    print(json.dumps(printed, ensure_ascii=False, indent=2))
+    _emit_summary(summary, options)
     return summary
 
 
@@ -255,6 +322,8 @@ def build_parser() -> argparse.ArgumentParser:
             "--max-pages 1 --limit 5 --dry-run\n"
             "  python -m provider_importers.bulk.runner --provider sochic "
             "--max-pages 1 --limit 5 --price-markup-percent 30 --dry-run\n"
+            "  python -m provider_importers.bulk.runner --provider sochic "
+            "--max-pages 1 --limit 5 --delay-ms 8000 --rate-limit-retries 3\n"
             "Siempre --dry-run antes de escribir. "
             "Guía: docs/specs/17-scraping-masivo-proveedores.md y "
             "docs/ops/scraping-cuidados.md"
@@ -296,6 +365,41 @@ def build_parser() -> argparse.ArgumentParser:
             "Recargo sobre price y original_price después del fetch y antes de persistir. "
             "0 = precio del proveedor. 10 = +10%%. Redondea al entero (empate hacia arriba)."
         ),
+    )
+    parser.add_argument(
+        "--rate-limit-retries",
+        type=int,
+        default=3,
+        help=(
+            "Reintentos después del primer HTTP 429 (o cuerpo de rate limit). "
+            "Default 3. 0 corta en el primer 429, igual que --rate-limit-hard-stop."
+        ),
+    )
+    parser.add_argument(
+        "--rate-limit-backoff-seconds",
+        type=float,
+        default=15.0,
+        help="Primera espera antes de reintentar un 429. Después se duplica. Default 15.",
+    )
+    parser.add_argument(
+        "--rate-limit-max-backoff-seconds",
+        type=float,
+        default=120.0,
+        help="Tope de cada espera de backoff. Default 120.",
+    )
+    parser.add_argument(
+        "--rate-limit-cooldown-seconds",
+        type=int,
+        default=600,
+        help=(
+            "Valor que se imprime en cooldown_hint_seconds al cortar la corrida. "
+            "No duerme ese tiempo ni agenda nada. Default 600."
+        ),
+    )
+    parser.add_argument(
+        "--rate-limit-hard-stop",
+        action="store_true",
+        help="Al primer 429 corta el resto de la corrida, sin espera ni reintento.",
     )
     parser.add_argument(
         "--skip-existing",
@@ -364,6 +468,11 @@ def _options_from_args(args, brand) -> BulkImportOptions:
         limit=args.limit,
         skip_existing=args.skip_existing,
         price_markup_percent=args.price_markup_percent,
+        rate_limit_retries=args.rate_limit_retries,
+        rate_limit_backoff_seconds=args.rate_limit_backoff_seconds,
+        rate_limit_max_backoff_seconds=args.rate_limit_max_backoff_seconds,
+        rate_limit_cooldown_seconds=args.rate_limit_cooldown_seconds,
+        rate_limit_hard_stop=args.rate_limit_hard_stop,
     )
 
 
@@ -381,6 +490,20 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--max-pages no puede ser negativo")
     if not math.isfinite(args.price_markup_percent):
         parser.error("--price-markup-percent debe ser un número finito")
+    if args.rate_limit_retries < 0:
+        parser.error("--rate-limit-retries no puede ser negativo")
+    if (
+        not math.isfinite(args.rate_limit_backoff_seconds)
+        or args.rate_limit_backoff_seconds <= 0
+    ):
+        parser.error("--rate-limit-backoff-seconds tiene que ser un número mayor a 0")
+    if (
+        not math.isfinite(args.rate_limit_max_backoff_seconds)
+        or args.rate_limit_max_backoff_seconds <= 0
+    ):
+        parser.error("--rate-limit-max-backoff-seconds tiene que ser un número mayor a 0")
+    if args.rate_limit_cooldown_seconds < 0:
+        parser.error("--rate-limit-cooldown-seconds no puede ser negativo")
 
     brand = get_brand(args.provider)
     print(NOTEBOOK_BANNER, file=sys.stderr)
@@ -429,7 +552,7 @@ def main(argv: list[str] | None = None) -> int:
         summary = run_bulk_import_cli(_options_from_args(args, brand))
     except ProviderImportError as exc:
         raise SystemExit(str(exc)) from exc
-    return 1 if summary.failed else 0
+    return 1 if summary.failed or summary.rate_limited else 0
 
 
 if __name__ == "__main__":

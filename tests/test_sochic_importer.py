@@ -145,6 +145,41 @@ class SoChicImporterTest(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "rate_limit")
         self.assertIn("limitó las consultas", str(ctx.exception))
 
+    def test_fetch_maps_rate_limit_body_without_status_429(self):
+        response = requests.Response()
+        response.status_code = 403
+        response.encoding = "utf-8"
+        response._content = "El sitio limitó las consultas".encode()
+        response.url = "https://sochic.com.ar/product/campera-friza-young-leaders/"
+        http_error = requests.HTTPError("403 Client Error", response=response)
+
+        with patch("provider_importers.sochic.requests.get", return_value=response) as get:
+            with patch.object(response, "raise_for_status", side_effect=http_error):
+                with self.assertRaises(ProviderImportError) as ctx:
+                    fetch_sochic_product(
+                        "https://sochic.com.ar/product/campera-friza-young-leaders/"
+                    )
+
+        self.assertEqual(get.call_count, 1)
+        self.assertEqual(ctx.exception.code, "rate_limit")
+        self.assertIn("limitó las consultas", str(ctx.exception))
+
+    def test_fetch_maps_rate_limit_body_on_http_200(self):
+        response = requests.Response()
+        response.status_code = 200
+        response.encoding = "utf-8"
+        response._content = b"<html>too many requests</html>"
+        response.url = "https://sochic.com.ar/product/campera-friza-young-leaders/"
+
+        with patch("provider_importers.sochic.requests.get", return_value=response) as get:
+            with self.assertRaises(ProviderImportError) as ctx:
+                fetch_sochic_product(
+                    "https://sochic.com.ar/product/campera-friza-young-leaders/"
+                )
+
+        self.assertEqual(get.call_count, 1)
+        self.assertEqual(ctx.exception.code, "rate_limit")
+
 
 if __name__ == "__main__":
     unittest.main()

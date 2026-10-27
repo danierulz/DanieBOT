@@ -35,6 +35,7 @@ from services.meta_manifest import (
     main,
     manifest_id,
     parse_exclude_tokens,
+    read_exclude_file,
     render_manifest,
     select_products,
     strip_provider_suffix,
@@ -179,6 +180,18 @@ class CaptionAndImagesTest(unittest.TestCase):
         )
         self.assertEqual(parse_exclude_tokens('[{"id": "sochic-300"}, 292]'), ["sochic-300", "292"])
 
+    def test_read_exclude_file_one_id_per_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ya-publicados.txt"
+            path.write_text(
+                "# publicados en Graph\nsochic-300\n\ndenim-292\n3515\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                read_exclude_file(str(path)),
+                ["sochic-300", "denim-292", "3515"],
+            )
+
 
 class ManifestBytesTest(unittest.TestCase):
     def test_utf8_without_bom(self):
@@ -275,6 +288,34 @@ class CliDryRunTest(unittest.TestCase):
             self.assertEqual(parsed[0]["id"], "sochic-300")
             self.assertIn("escrito:", buf.getvalue())
             self.assertIn("imágenes=2", buf.getvalue())
+
+    def test_exclude_file_one_id_per_line_reaches_the_query(self):
+        product = _product()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "lote.json"
+            published = Path(tmp) / "ya-publicados.txt"
+            published.write_text(
+                "# ya publicados\nsochic-300\ndenim-292\n\n3515\n",
+                encoding="utf-8",
+            )
+            with patch("services.meta_manifest.fetch_products", return_value=[product]) as fetch:
+                with redirect_stdout(io.StringIO()):
+                    code = main(
+                        [
+                            "--provider",
+                            "sochic",
+                            "--exclude-file",
+                            str(published),
+                            "--output",
+                            str(output),
+                            "--dry-run",
+                        ]
+                    )
+            self.assertEqual(code, 0)
+            self.assertEqual(
+                fetch.call_args.kwargs["exclude"],
+                {"sochic-300", "denim-292", "3515"},
+            )
 
 
 class SqliteLoadTest(unittest.TestCase):

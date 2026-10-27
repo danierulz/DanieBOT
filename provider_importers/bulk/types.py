@@ -22,6 +22,11 @@ class BulkImportOptions:
     limit: int = 0
     skip_existing: bool = True
     price_markup_percent: float = 0.0
+    rate_limit_retries: int = 3
+    rate_limit_backoff_seconds: float = 15.0
+    rate_limit_max_backoff_seconds: float = 120.0
+    rate_limit_cooldown_seconds: int = 600
+    rate_limit_hard_stop: bool = False
 
 
 @dataclass
@@ -33,9 +38,14 @@ class BulkImportSummary:
     failed: int = 0
     skipped_existing: int = 0
     errors: list[dict[str, str]] = field(default_factory=list)
+    rate_limited: bool = False
+    cooldown_hint_seconds: int = 0
+    aborted_remaining: int = 0
+    stopped_during: str = ""
+    rate_limit_attempts: int = 0
 
     def to_dict(self) -> dict:
-        return {
+        payload = {
             "provider": self.provider,
             "discovered": self.discovered,
             "created": self.created,
@@ -44,4 +54,11 @@ class BulkImportSummary:
             "failed": self.failed,
             "processed": self.created + self.skipped + self.failed,
             "errors": self.errors,
+            "rate_limited": self.rate_limited,
+            "cooldown_hint_seconds": self.cooldown_hint_seconds,
+            "aborted_remaining": self.aborted_remaining,
         }
+        if self.rate_limited:
+            payload["stopped_during"] = self.stopped_during
+            payload["rate_limit_attempts"] = self.rate_limit_attempts
+        return payload

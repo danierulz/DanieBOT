@@ -38,9 +38,11 @@ python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit
 python -m provider_importers.bulk.runner --provider sochic --category camperas --max-pages 1 --limit 5 --dry-run
 
 python -m provider_importers.bulk.runner --provider sochic --limit 5 --no-skip-existing --dry-run
+
+python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --delay-ms 8000 --rate-limit-retries 3 --dry-run
 ```
 
-El JSON de dry-run trae `discovered`, `would_skip_existing`, `would_fetch` y `price_markup_percent`.
+El JSON de dry-run trae `discovered`, `would_skip_existing`, `would_fetch` y `price_markup_percent`. Si una corrida que escribe corta por 429, el JSON trae `rate_limited: true` y `cooldown_hint_seconds` ([scraping-cuidados.md](../ops/scraping-cuidados.md)).
 
 ## Manifiesto para robotRZ
 

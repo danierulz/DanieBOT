@@ -8,6 +8,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from provider_importers.bulk.rate_limit import is_rate_limited, response_is_rate_limited
 from provider_importers.types import ImportedProduct, ProviderImportError  # noqa: F401
 
 __all__ = [
@@ -42,10 +43,7 @@ def fetch_sochic_product(url: str) -> ImportedProduct:
         response.raise_for_status()
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else None
-        body_snippet = ""
-        if exc.response is not None:
-            body_snippet = (exc.response.text or "")[:200].lower()
-        if status == 429 or "too many request" in body_snippet:
+        if is_rate_limited(exc):
             raise ProviderImportError(
                 "So Chic limitó las consultas (demasiados pedidos). "
                 "Esperá unos minutos e intentá de nuevo.",
@@ -60,6 +58,12 @@ def fetch_sochic_product(url: str) -> ImportedProduct:
             f"No se pudo acceder a So Chic: {exc}",
             code="network_error",
         ) from exc
+    if response_is_rate_limited(response):
+        raise ProviderImportError(
+            "So Chic limitó las consultas (demasiados pedidos). "
+            "Esperá unos minutos e intentá de nuevo.",
+            code="rate_limit",
+        )
     return parse_sochic_product(response.text, response.url)
 
 
