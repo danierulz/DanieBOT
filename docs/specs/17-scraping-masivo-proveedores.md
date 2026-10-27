@@ -40,7 +40,7 @@ Import unitario (admin): `POST /api/proveedores/importar` — pestaña **Nuevo p
 
 Import masivo (admin): pestaña **Importación masiva** — ver [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md).
 
-Import masivo (CLI, notebook): `python -m provider_importers.bulk.runner`. Cheatsheet de comandos: [23-bulk-import-notebook.md](./23-bulk-import-notebook.md).
+Import masivo (CLI, notebook): `python -m provider_importers.bulk.runner`. Cheatsheet de comandos: [23-bulk-import-notebook.md](./23-bulk-import-notebook.md). Checklist de corrida (pausas, 429, recargo): [scraping-cuidados.md](../ops/scraping-cuidados.md).
 
 Patrones de identidad, deduplicación e inserción: [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md). La pestaña admin sigue en [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md); no reemplaza esta política.
 
@@ -112,12 +112,13 @@ La alta masiva de catálogo corre en la **PC del desarrollador** (`python -m pro
 
 **No** crear Cloud Scheduler, Cloud Run Jobs ni un cron de GitHub Actions para este scrape. Un barrido de fichas mantiene el proceso despierto el tiempo del catálogo: en Cloud Run se paga CPU/egress y, si se dispara desde la pestaña admin, el `BackgroundTasks` de esa instancia puede morir a mitad de corrida (el run queda colgado). El servicio de la tienda en Cloud Run no es el lugar de estos imports.
 
-- **Dry-run primero.** `--dry-run` no fetchea fichas ni inserta. Imprime `discovered`, `would_skip_existing`, `would_fetch` y las URLs que sí se bajarían.
+- **Dry-run primero.** `--dry-run` no fetchea fichas ni inserta. Imprime `discovered`, `would_skip_existing`, `would_fetch`, `price_markup_percent` y las URLs que sí se bajarían.
 - **Ya importados, antes del fetch.** `--skip-existing` es el default. Si la URL ya está en `products.provider_source_url`, o en un ítem `created`/`skipped` de `provider_import_run_items` cuyo `cod_product` sigue existiendo, no se llama a `fetch_*`. `--no-skip-existing` vuelve a scrapear (refresh de red). Igual **no pisa** la fila: el `cod_product` existente se salta después del fetch y no actualiza precio ni `status`.
 - **Hueco de URLs viejas.** Un producto cargado por URL unitaria antes de que se guardara `provider_source_url`, y sin ítem de corrida, no se puede reconocer por URL. Esa ficha se descarga una vez; si el `cod_product` ya está, no se duplica y se completa `provider_source_url` para la próxima corrida.
 - **Reanudar.** Volvé a lanzar el mismo comando. Lo ya mapeado no se scrapea. Lo que falló (sin fila) se reintenta.
 - **Tope.** `--limit N` cuenta solo fichas nuevas, después del filtro. `--max-pages` acota el listado de Las Locas y de So Chic. Nissie y HOLIC ignoran `--category` y `--max-pages` (el descubrimiento recorre el catálogo; el tope de fichas es `--limit`).
-- **Pausa.** `--delay-ms` entre fichas del CLI sin `--tracked-run`. Si se omite, sale de `default_delay_ms` en `brands.json` (So Chic: 2000 ms; el sitio responde 429). Las páginas de listado usan `LISTING_PAGE_DELAY_SECONDS` (1 s). `--tracked-run` (Las Locas, Nissie, HOLIC) usa `REQUEST_DELAY_SECONDS` de `provider_importers/bulk/delays.py`.
+- **Pausa.** `--delay-ms` entre fichas del CLI sin `--tracked-run`. Si se omite, sale de `default_delay_ms` en `brands.json` (So Chic: 5000 ms; el sitio responde 429). Las páginas de listado usan `LISTING_PAGE_DELAY_SECONDS` (1 s). `--tracked-run` (Las Locas, Nissie, HOLIC) usa `REQUEST_DELAY_SECONDS` de `provider_importers/bulk/delays.py`.
+- **Recargo.** `--price-markup-percent` (float, default 0) multiplica `price` y, si viene, `original_price` por `1 + percent/100` después del fetch y antes de persistir. Redondea al entero (empate hacia arriba). `0` no cambia nada. No corre con `--tracked-run`: el CLI corta. El procedimiento está en [scraping-cuidados.md](../ops/scraping-cuidados.md).
 - **Alta inactiva.** Sin `--status-active` los productos nuevos quedan con `status=false`.
 
 ## So Chic — listado

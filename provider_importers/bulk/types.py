@@ -21,6 +21,7 @@ class BulkImportOptions:
     urls: list[str] = field(default_factory=list)
     limit: int = 0
     skip_existing: bool = True
+    price_markup_percent: float = 0.0
 
 
 @dataclass
