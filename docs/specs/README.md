@@ -11,7 +11,8 @@ Documentación viva del producto y del sistema. **Versión inicial** generada a 
 | [03-arquitectura-y-stack.md](./03-arquitectura-y-stack.md) | Componentes, tecnologías, diagrama lógico |
 | [04-api-y-contratos.md](./04-api-y-contratos.md) | Rutas HTTP relevantes, payloads, integraciones |
 | [05-datos-y-scraper.md](./05-datos-y-scraper.md) | Modelo de datos, scraping “Las Locas”, GCS |
-| [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md) | Runner HTTP masivo Las Locas / Nissie, migración desde Selenium |
+| [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md) | Runner HTTP masivo (notebook only; sin Cloud Scheduler) |
+| [23-bulk-import-notebook.md](./23-bulk-import-notebook.md) | **Comandos** de alta masiva en la PC (política en el 17) |
 | [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md) | **Pestaña admin** importación masiva (separada de Nuevo producto), progreso y API |
 | [22-admin-auth-config.md](./22-admin-auth-config.md) | **Credenciales admin** (JWT, bcrypt, Secret Manager) |
 | [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md) | **Patrones de identidad e inserción** por proveedor (referencia Nissie) |

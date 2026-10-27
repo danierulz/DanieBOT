@@ -57,28 +57,30 @@ class LasLocasBulkImportTest(unittest.TestCase):
         uploader = MagicMock()
         uploader.upload_bytes.return_value = "https://storage.googleapis.com/bucket/a.jpg"
 
-        with patch("services.laslocas_bulk_import.discover_laslocas_product_urls", return_value=urls):
-            with patch("services.laslocas_bulk_import.fetch_laslocas_product") as fetch_mock:
-                fetch_mock.side_effect = [
-                    imported,
-                    ProviderImportError("No se pudo detectar el precio"),
-                ]
-                with patch("services.laslocas_bulk_import.persist_imported_product") as persist_mock:
-                    persist_mock.return_value = {
-                        "ok": True,
-                        "created": True,
-                        "id": 7,
-                        "provider": "laslocas",
-                        "cod_product": "LL-NEW",
-                        "activo": False,
-                    }
-                    run_laslocas_bulk_import(
-                        session,
-                        run.run_id,
-                        uploader,
-                        sync_variants_fn=MagicMock(),
-                        match_color_ids_fn=MagicMock(return_value=[]),
-                    )
+        with patch("services.laslocas_bulk_import._authenticated_session", return_value=MagicMock()):
+            with patch("services.laslocas_bulk_import.discover_laslocas_product_urls", return_value=urls):
+                with patch("services.laslocas_bulk_import.time.sleep"):
+                    with patch("services.laslocas_bulk_import.fetch_laslocas_product") as fetch_mock:
+                        fetch_mock.side_effect = [
+                            imported,
+                            ProviderImportError("No se pudo detectar el precio"),
+                        ]
+                        with patch("services.laslocas_bulk_import.persist_imported_product") as persist_mock:
+                            persist_mock.return_value = {
+                                "ok": True,
+                                "created": True,
+                                "id": 7,
+                                "provider": "laslocas",
+                                "cod_product": "LL-NEW",
+                                "activo": False,
+                            }
+                            run_laslocas_bulk_import(
+                                session,
+                                run.run_id,
+                                uploader,
+                                sync_variants_fn=MagicMock(),
+                                match_color_ids_fn=MagicMock(return_value=[]),
+                            )
 
         session.refresh(run)
         self.assertEqual(run.status, "completed")

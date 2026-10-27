@@ -23,6 +23,16 @@ No poner teléfonos, tokens ni secretos.
 
 ---
 
+## 2026-10-27 — Alta masiva solo en el notebook
+
+- **Problema / pedido:** parametrizar Las Locas y el resto de marcas para correr el catálogo en la PC. Cloud Run / Scheduler salen caros y el `BackgroundTasks` del admin puede morir a mitad. So Chic no tenía descubrimiento masivo. El skip de `cod_product` ocurría después del fetch (So Chic responde 429).
+- **Qué se hizo:** `provider_importers/bulk/brands.json` alimenta el CLI (`--list-brands`, `--provider`, `--limit`, `--skip-existing` default). So Chic pagina `https://sochic.com.ar/shop/` (y `--category`). Las URLs ya guardadas en `provider_source_url` o en ítems de corrida exitosos no se scrapean. `persist_imported_product` guarda esa URL. Política en el spec 17: no Cloud Scheduler, no Cloud Run Job, no cron de Actions.
+- **Archivos clave:** `provider_importers/bulk/brands.json`, `provider_importers/bulk/runner.py`, `provider_importers/sochic_catalog.py`, `provider_importers/bulk/existing.py`, `docs/specs/17-scraping-masivo-proveedores.md`, `docs/specs/23-bulk-import-notebook.md`
+- **Cómo verificar:** `python -m unittest tests.test_bulk_brands tests.test_sochic_catalog tests.test_nissie_bulk_import tests.test_holic_bulk_import tests.test_laslocas_bulk_import`
+- **Pendiente / no desplegado:** no hay job que desplegar. La corrida real sigue siendo manual en el notebook.
+
+---
+
 ## 2026-08-23 — Franja negra editable en Banners inicio
 
 - **Problema / pedido:** la barra negra “Compra mínima $100.000 · Envío a todo el país” estaba fija en `config.py` / `SITE_PROMO_BANNER`. Querían editarla desde **Banners inicio**.

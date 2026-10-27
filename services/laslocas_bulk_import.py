@@ -12,6 +12,12 @@ from database.models.ProviderImportRun import ProviderImportRun
 from database.models.ProviderImportRunItem import ProviderImportRunItem
 from database.models.Products import Products
 from provider_importers.bulk.delays import REQUEST_DELAY_SECONDS
+from provider_importers.bulk.existing import (
+    import_progress_detail,
+    record_preskipped,
+    remember_source_url,
+    split_existing_urls,
+)
 from provider_importers.bulk.laslocas_catalog import discover_laslocas_product_urls
 from provider_importers.laslocas import _authenticated_session, fetch_laslocas_product
 from provider_importers.types import ProviderImportError
@@ -58,6 +64,8 @@ def run_laslocas_bulk_import(
     category_id: str | None = None,
     all_categories: bool = False,
     max_pages: int = 0,
+    limit: int = 0,
+    skip_existing: bool = True,
 ) -> None:
     run = db.query(ProviderImportRun).filter(ProviderImportRun.run_id == run_id).one()
     session = _authenticated_session()
@@ -72,12 +80,19 @@ def run_laslocas_bulk_import(
             max_pages=max_pages,
             on_progress=on_progress,
         )
+        skipped_urls, urls = split_existing_urls(
+            db,
+            urls,
+            skip_existing=skip_existing,
+            limit=limit,
+        )
+        record_preskipped(db, run, skipped_urls, _log_item)
         set_run_phase(
             db,
             run,
             phase="importing",
-            progress_detail=f"Importando 0/{len(urls)} productos…",
-            discovered=len(urls),
+            progress_detail=import_progress_detail(len(urls), len(skipped_urls)),
+            discovered=len(skipped_urls) + len(urls),
         )
 
         existing_codes = {
@@ -93,6 +108,7 @@ def run_laslocas_bulk_import(
             try:
                 imported = fetch_laslocas_product(url)
                 if imported.cod_product in existing_codes:
+                    remember_source_url(db, imported.cod_product, url)
                     _log_item(
                         db,
                         run,

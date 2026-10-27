@@ -59,9 +59,8 @@ Los campos exactos están en `database/models/`. **Cambios de esquema:** usar Al
 
 **Operación:**
 
-- CLI: `python -m provider_importers.bulk.runner` (ver [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md)).
-- Las Locas: categorías en `provider_importers/bulk/laslocas_categories.json`.
-- Nissie: stub en `provider_importers/bulk/nissie_catalog.py` (pendiente selectores de listado).
+- CLI en el notebook (no Cloud Scheduler ni Cloud Run Job): `python -m provider_importers.bulk.runner`. Política y comandos: [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md), [23-bulk-import-notebook.md](./23-bulk-import-notebook.md).
+- Las Locas: categorías en `provider_importers/bulk/laslocas_categories.json`. Nissie, HOLIC y So Chic tienen descubrimiento de listado en `provider_importers/*_catalog.py`.
 
 **Legacy:** el scraper Selenium en `scraper_locas/` queda **deprecated**; no usar para nuevas ingestas.
 

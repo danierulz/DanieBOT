@@ -12,6 +12,12 @@ from database.models.ProviderImportRun import ProviderImportRun
 from database.models.ProviderImportRunItem import ProviderImportRunItem
 from database.models.Products import Products
 from provider_importers.bulk.delays import REQUEST_DELAY_SECONDS
+from provider_importers.bulk.existing import (
+    import_progress_detail,
+    record_preskipped,
+    remember_source_url,
+    split_existing_urls,
+)
 from provider_importers.holic import fetch_holic_product
 from provider_importers.holic_catalog import discover_holic_product_urls
 from provider_importers.types import ProviderImportError
@@ -55,6 +61,8 @@ def run_holic_bulk_import(
     *,
     sync_variants_fn: Callable,
     match_color_ids_fn: Callable,
+    limit: int = 0,
+    skip_existing: bool = True,
 ) -> None:
     run = db.query(ProviderImportRun).filter(ProviderImportRun.run_id == run_id).one()
     session = requests.Session()
@@ -72,12 +80,19 @@ def run_holic_bulk_import(
         set_run_phase(db, run, phase="discovering", progress_detail="Explorando catálogo HOLIC…")
         on_progress = make_progress_callback(db, run_id)
         urls = discover_holic_product_urls(session, on_progress=on_progress)
+        skipped_urls, urls = split_existing_urls(
+            db,
+            urls,
+            skip_existing=skip_existing,
+            limit=limit,
+        )
+        record_preskipped(db, run, skipped_urls, _log_item)
         set_run_phase(
             db,
             run,
             phase="importing",
-            progress_detail=f"Importando 0/{len(urls)} productos…",
-            discovered=len(urls),
+            progress_detail=import_progress_detail(len(urls), len(skipped_urls)),
+            discovered=len(skipped_urls) + len(urls),
         )
 
         existing_codes = {
@@ -93,6 +108,7 @@ def run_holic_bulk_import(
             try:
                 imported = fetch_holic_product(url)
                 if imported.cod_product in existing_codes:
+                    remember_source_url(db, imported.cod_product, url)
                     _log_item(
                         db,
                         run,

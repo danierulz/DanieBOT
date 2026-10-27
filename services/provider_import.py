@@ -36,6 +36,13 @@ class ProviderImportPayload:
 ProviderImportOptions = ProviderImportPayload
 
 
+def _stored_source_url(url: Optional[str]) -> Optional[str]:
+    raw = str(url or "").strip()
+    if not raw:
+        return None
+    return raw[:512]
+
+
 def truncate(value: Optional[str], max_len: int) -> str:
     clean = " ".join(str(value or "").split())
     return clean[:max_len].rstrip()
@@ -119,6 +126,10 @@ def persist_imported_product(
 ) -> dict:
     existing = db.query(Products).filter(Products.cod_product == imported.cod_product).first()
     if existing:
+        stored_url = _stored_source_url(imported.source_url)
+        if stored_url and not existing.provider_source_url:
+            existing.provider_source_url = stored_url
+            db.commit()
         return {
             "ok": True,
             "created": False,
@@ -147,6 +158,7 @@ def persist_imported_product(
         is_sale=is_sale,
         discount_percent=imported.discount_percent if is_sale else None,
         provider=imported.provider,
+        provider_source_url=_stored_source_url(imported.source_url),
     )
     db.add(nuevo)
     db.flush()
