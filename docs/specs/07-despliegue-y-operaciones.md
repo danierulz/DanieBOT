@@ -21,6 +21,8 @@
 
 ### Cloud Run
 
+La alta masiva de catálogos **no** se despliega como job ni como Cloud Scheduler. Corre en el notebook: [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md).
+
 - Puerto del contenedor: **8080** (variable `PORT` estándar también soportada por Cloud Run).
 - Comando: `uvicorn main:app --host 0.0.0.0 --port 8080`
 - Logs: Cloud Logging (opción `CLOUD_LOGGING_ONLY` en build).

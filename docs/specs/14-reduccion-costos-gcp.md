@@ -77,6 +77,7 @@ El costo de Postgres migró a Neon. Revisá en [console.neon.tech](https://conso
 
 ## Qué NO hacer sin migrar de nuevo
 
+- Agendar la alta masiva de catálogos (Las Locas, Nissie, HOLIC, So Chic) en Cloud Scheduler o un Cloud Run Job. Ese barrido va en el notebook: [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md).
 - Volver a encender Cloud SQL 24/7 “por las dudas” — era el mayor costo fijo.
 - Recrear el VPC connector sin necesidad — ~USD 3–7/mes mínimo aunque no lo uses mucho.
 

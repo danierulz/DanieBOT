@@ -19,6 +19,8 @@ class BulkImportOptions:
     import_category_id: int | None = None
     size_code: str = "UNICO"
     urls: list[str] = field(default_factory=list)
+    limit: int = 0
+    skip_existing: bool = True
 
 
 @dataclass
@@ -28,6 +30,7 @@ class BulkImportSummary:
     created: int = 0
     skipped: int = 0
     failed: int = 0
+    skipped_existing: int = 0
     errors: list[dict[str, str]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -36,6 +39,7 @@ class BulkImportSummary:
             "discovered": self.discovered,
             "created": self.created,
             "skipped": self.skipped,
+            "skipped_existing": self.skipped_existing,
             "failed": self.failed,
             "processed": self.created + self.skipped + self.failed,
             "errors": self.errors,

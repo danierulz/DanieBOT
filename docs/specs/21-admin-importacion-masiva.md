@@ -66,12 +66,10 @@ Cada bloque incluye «Ver pendientes de revisión» → abre **Mis productos** f
 | `services/*_bulk_import.py` | Orquestación por proveedor |
 | `provider_importers/*_catalog.py` | Discovery con callback de progreso |
 
-## CLI alternativa
+## CLI en el notebook
 
-Para ejecución fuera del admin:
+Los catálogos largos se corren en la PC, no como job de Cloud Run ni Cloud Scheduler. La pestaña admin sigue usando `BackgroundTasks` en el request: en Cloud Run esa corrida puede morir a mitad. Para un barrido completo usá el CLI y leé la política en [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md). Comandos: [23-bulk-import-notebook.md](./23-bulk-import-notebook.md). Patrones de `cod_product`: [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md).
 
 ```bash
-python -m provider_importers.bulk.runner --provider laslocas
+python -m provider_importers.bulk.runner --provider laslocas --category denim --max-pages 1 --limit 5 --dry-run
 ```
-
-Ver [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md).

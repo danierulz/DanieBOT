@@ -12,7 +12,7 @@ Reemplazar [`scraper_locas/`](../../scraper_locas/) (Selenium + proxy Ford + cor
 2. Importe cada ficha con `fetch_product()` del registry.
 3. Persista con la misma lógica que el admin (`services/provider_import.py`).
 
-Proveedores objetivo: **Las Locas** (todas las categorías) y **Nissie Denim** (bulk pendiente de selectores de listado).
+Proveedores en el runner: **Las Locas**, **Nissie Denim**, **HOLIC** y **So Chic**. El registro operativo está en [`provider_importers/bulk/brands.json`](../../provider_importers/bulk/brands.json) (`python -m provider_importers.bulk.runner --list-brands`).
 
 ## Estado legacy (`scraper_locas/`)
 
@@ -29,27 +29,28 @@ Proveedores objetivo: **Las Locas** (todas las categorías) y **Nissie Denim** (
 
 ## Estado moderno (`provider_importers/`)
 
-| Proveedor | Módulo | Login | Imágenes |
-|-----------|--------|-------|----------|
-| So Chic | `sochic.py` | No | URL remota |
-| Las Locas | `laslocas.py` | Sí (`LOGIN_EMAIL`, `LOGIN_PASS`) | Descarga + GCS |
-| Nissie | `nissie.py` | No | URL remota |
+| Proveedor | Módulo | Login | Imágenes | Descubrimiento bulk |
+|-----------|--------|-------|----------|----------------------|
+| So Chic | `sochic.py` + `sochic_catalog.py` | No | URL remota | `/shop/` y `--category` → `/product-category/<slug>/` |
+| Las Locas | `laslocas.py` | Sí (`LOGIN_EMAIL`, `LOGIN_PASS`) | Descarga + storage | Categorías en `laslocas_categories.json` |
+| Nissie | `nissie.py` | No | URL remota | Listado `/productos/` |
+| HOLIC | `holic.py` | No | URL remota | Listado `/tienda/` |
 
 Import unitario (admin): `POST /api/proveedores/importar` — pestaña **Nuevo producto**.
 
 Import masivo (admin): pestaña **Importación masiva** — ver [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md).
 
-Import masivo (CLI): `python -m provider_importers.bulk.runner`.
+Import masivo (CLI, notebook): `python -m provider_importers.bulk.runner`. Cheatsheet de comandos: [23-bulk-import-notebook.md](./23-bulk-import-notebook.md).
 
-Patrones de identidad, deduplicación e inserción: [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md).
+Patrones de identidad, deduplicación e inserción: [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md). La pestaña admin sigue en [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md); no reemplaza esta política.
 
 ## Variables de entorno
 
 | Variable | Uso |
 |----------|-----|
-| `LOGIN_EMAIL` / `LOGIN_PASS` | Sesión Las Locas |
-| `DATABASE_URL` o `DB_*` | Persistencia PostgreSQL |
-| Credenciales GCS / `STORAGE_MODE` | Subida de imágenes Las Locas |
+| `LOGIN_EMAIL` / `LOGIN_PASS` | Sesión Las Locas (solo en el `.env` local; el CLI no imprime los valores) |
+| `DATABASE_URL` o `DB_*` | Postgres del notebook: Neon o Postgres local. El dry-run con `--skip-existing` (default) **lee** la base para contar URLs ya guardadas y no escribe |
+| `STORAGE_BACKEND` | `local` guarda bytes en `static/uploads/` (Las Locas). `gcs` sube al bucket. Nissie, HOLIC y So Chic guardan la URL remota de la imagen y no necesitan storage para la ficha |
 
 ## Flujo objetivo
 
@@ -105,30 +106,55 @@ Actualizar columna **Verificado** en el cuaderno MD al probar cada categoría co
 | Patrón `cod_product` | `nissie-{productGroupID}` — ver [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md) |
 | Re-export CLI | [`provider_importers/bulk/nissie_catalog.py`](../../provider_importers/bulk/nissie_catalog.py) |
 
-## Política operativa
+## Política operativa — solo notebook
 
-- **Productos existentes:** skip por `cod_product` (no sobrescribe).
-- **Rate limit:** `--delay-ms` entre fichas (default 500 ms).
-- **Dry-run:** `--dry-run` solo lista URLs descubiertas.
-- **Cron / Cloud Run:** decisión pendiente; hoy ejecución manual local.
+La alta masiva de catálogo corre en la **PC del desarrollador** (`python -m provider_importers.bulk.runner`).
+
+**No** crear Cloud Scheduler, Cloud Run Jobs ni un cron de GitHub Actions para este scrape. Un barrido de fichas mantiene el proceso despierto el tiempo del catálogo: en Cloud Run se paga CPU/egress y, si se dispara desde la pestaña admin, el `BackgroundTasks` de esa instancia puede morir a mitad de corrida (el run queda colgado). El servicio de la tienda en Cloud Run no es el lugar de estos imports.
+
+- **Dry-run primero.** `--dry-run` no fetchea fichas ni inserta. Imprime `discovered`, `would_skip_existing`, `would_fetch` y las URLs que sí se bajarían.
+- **Ya importados, antes del fetch.** `--skip-existing` es el default. Si la URL ya está en `products.provider_source_url`, o en un ítem `created`/`skipped` de `provider_import_run_items` cuyo `cod_product` sigue existiendo, no se llama a `fetch_*`. `--no-skip-existing` vuelve a scrapear (refresh de red). Igual **no pisa** la fila: el `cod_product` existente se salta después del fetch y no actualiza precio ni `status`.
+- **Hueco de URLs viejas.** Un producto cargado por URL unitaria antes de que se guardara `provider_source_url`, y sin ítem de corrida, no se puede reconocer por URL. Esa ficha se descarga una vez; si el `cod_product` ya está, no se duplica y se completa `provider_source_url` para la próxima corrida.
+- **Reanudar.** Volvé a lanzar el mismo comando. Lo ya mapeado no se scrapea. Lo que falló (sin fila) se reintenta.
+- **Tope.** `--limit N` cuenta solo fichas nuevas, después del filtro. `--max-pages` acota el listado de Las Locas y de So Chic. Nissie y HOLIC ignoran `--category` y `--max-pages` (el descubrimiento recorre el catálogo; el tope de fichas es `--limit`).
+- **Pausa.** `--delay-ms` entre fichas del CLI sin `--tracked-run`. Si se omite, sale de `default_delay_ms` en `brands.json` (So Chic: 2000 ms; el sitio responde 429). Las páginas de listado usan `LISTING_PAGE_DELAY_SECONDS` (1 s). `--tracked-run` (Las Locas, Nissie, HOLIC) usa `REQUEST_DELAY_SECONDS` de `provider_importers/bulk/delays.py`.
+- **Alta inactiva.** Sin `--status-active` los productos nuevos quedan con `status=false`.
+
+## So Chic — listado
+
+[`provider_importers/sochic_catalog.py`](../../provider_importers/sochic_catalog.py). WooCommerce:
+
+| Qué | URL |
+|-----|-----|
+| Shop | `https://sochic.com.ar/shop/` y `/shop/page/N/` |
+| Una categoría | `https://sochic.com.ar/product-category/<slug>/` (`--category camperas`) |
+| Ficha | path `/product/<slug>/` |
+
+No hay `--all-categories` (una categoría o el shop). No hay `--tracked-run`: el CLI igual persiste con `persist_imported_product` y salta URLs ya guardadas. El admin sigue siendo import **unitario** por URL.
 
 ## CLI
 
+Siempre `--dry-run` antes de una corrida que escribe. Comandos cortos: [23-bulk-import-notebook.md](./23-bulk-import-notebook.md).
+
 ```bash
-# Smoke test una ficha
-python -m provider_importers.bulk.runner --provider laslocas --url https://laslocas.com/ficha-3214-semi-oxford-amber
+python -m provider_importers.bulk.runner --list-brands
 
-# Denim completo (dry-run)
-python -m provider_importers.bulk.runner --provider laslocas --category denim --dry-run
+# Las Locas: una página de listado, como máximo 5 fichas nuevas
+python -m provider_importers.bulk.runner --provider laslocas --category denim --max-pages 1 --limit 5 --dry-run
 
-# Todas las categorías Las Locas
-python -m provider_importers.bulk.runner --provider laslocas --all-categories --dry-run
+# Las Locas tracked: escribe en la base. Mismo proceso en el notebook, no un job de Cloud Run.
+python -m provider_importers.bulk.runner --provider laslocas --category denim --max-pages 1 --limit 5 --tracked-run
 
-# Import real (desactivados)
-python -m provider_importers.bulk.runner --provider laslocas --category denim --delay-ms 800
+# Nissie / HOLIC: el listado se recorre entero; --limit acota las fichas nuevas
+python -m provider_importers.bulk.runner --provider nissie --limit 10 --dry-run
+python -m provider_importers.bulk.runner --provider holic --limit 10 --dry-run
 
-# Nissie (stub / cuando esté listo)
-python -m provider_importers.bulk.runner --provider nissie --category women-jeans --dry-run
+# So Chic: shop o una categoría
+python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --dry-run
+python -m provider_importers.bulk.runner --provider sochic --category camperas --max-pages 1 --limit 5 --dry-run
+
+# Refresh de red (vuelve a scrapear; no actualiza filas existentes)
+python -m provider_importers.bulk.runner --provider sochic --limit 5 --no-skip-existing --dry-run
 ```
 
 ## Criterios de done
@@ -137,4 +163,4 @@ python -m provider_importers.bulk.runner --provider nissie --category women-jean
 - [ ] Todas las categorías verificadas con dry-run.
 - [ ] Nissie bulk operativo (otro chat).
 - [ ] `scraper_locas/` marcado deprecated y sin uso en prod.
-- [ ] Decisión documentada sobre cron vs manual.
+- [x] Decisión: alta masiva solo en el notebook. No Cloud Scheduler, no Cloud Run Job, no cron de GitHub Actions (costo y corridas que mueren a mitad).

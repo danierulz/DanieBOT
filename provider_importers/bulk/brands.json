@@ -1,0 +1,42 @@
+{
+  "notebook_only": true,
+  "do_not_schedule": ["cloud_run", "cloud_scheduler", "github_actions"],
+  "brands": [
+    {
+      "id": "laslocas",
+      "display_name": "Las Locas",
+      "mode": "categories",
+      "requires_login": true,
+      "login_env": ["LOGIN_EMAIL", "LOGIN_PASS"],
+      "default_delay_ms": 1500,
+      "notes": "Descubre fichas por categoría (laslocas_categories.json). Exige LOGIN_EMAIL y LOGIN_PASS en el .env local. Corrida en el notebook; no agendar en Cloud Scheduler ni Cloud Run."
+    },
+    {
+      "id": "nissie",
+      "display_name": "Nissie Denim",
+      "mode": "catalog",
+      "requires_login": false,
+      "login_env": [],
+      "default_delay_ms": 1500,
+      "notes": "Recorre el listado /productos/. --category y --max-pages no aplican; acotá fichas nuevas con --limit."
+    },
+    {
+      "id": "holic",
+      "display_name": "HOLIC",
+      "mode": "catalog",
+      "requires_login": false,
+      "login_env": [],
+      "default_delay_ms": 1500,
+      "notes": "Recorre la tienda WooCommerce /tienda/. --category y --max-pages no aplican; acotá fichas nuevas con --limit."
+    },
+    {
+      "id": "sochic",
+      "display_name": "So Chic",
+      "mode": "catalog",
+      "requires_login": false,
+      "login_env": [],
+      "default_delay_ms": 2000,
+      "notes": "WooCommerce: /shop/ y, con --category, /product-category/<slug>/. El sitio responde 429 si se apura; subí --delay-ms. Sin --tracked-run."
+    }
+  ]
+}

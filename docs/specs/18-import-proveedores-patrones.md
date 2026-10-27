@@ -80,7 +80,7 @@ Implementación: [`provider_importers/nissie.py`](../../provider_importers/nissi
 |---------|---------------------|------------|
 | `cod_product` | `nissie-282540155` | Único |
 | `provider` | `nissie` | Filtro admin “Origen” |
-| `provider_source_url` | *(columna en esquema)* | Reservada para URL original en producto; hoy la trazabilidad de URL masiva está en `provider_import_run_items` |
+| `provider_source_url` | URL de la ficha (`ImportedProduct.source_url`, máx. 512) | Se escribe al crear. Si la fila ya existía y el campo estaba vacío, el próximo `persist` lo completa. El CLI masivo la usa para **no scrapear** esa URL (`--skip-existing`, default) |
 | `sku` | `282540155` | Numérico, mismo group ID |
 | `item_title` / `name` | Título scrapeado | |
 | `description` | Descripción + colores proveedor | Max 1024 chars |
@@ -144,7 +144,7 @@ flowchart TD
 | Situación | Acción del sistema |
 |-----------|---------------------|
 | Producto nuevo en Nissie | INSERT inactivo |
-| Ya importado (activo o inactivo) | **Skip** — no pisa precio ni visibilidad |
+| Ya importado (activo o inactivo) | **Skip** — no pisa precio ni visibilidad. El CLI masivo, con `--skip-existing`, ni siquiera fetchea la URL si ya está en `provider_source_url` o en un ítem de corrida `created`/`skipped` |
 | URL falló antes | Queda en log de corrida; reintentar unitario o nueva corrida masiva |
 | Producto ya no está en Nissie | **No se borra** del catálogo local (decisión manual) |
 
@@ -234,7 +234,7 @@ Usar Nissie como referencia cuando el sitio sea TiendaNube (JSON-LD `ProductGrou
 | Login | No | No | Sí (`LOGIN_EMAIL` / `LOGIN_PASS`) |
 | Imágenes | URL remota | URL remota | Descarga + GCS |
 | `cod_product` | `nissie-{groupId}` | `sochic-{sku}-{slug}` | `#codProd` del HTML |
-| Masivo admin | Sí | No (solo unitario) | Ver [17](./17-scraping-masivo-proveedores.md) / CLI |
+| Masivo admin | Sí | No (unitario en admin; catálogo por CLI notebook) | Ver [17](./17-scraping-masivo-proveedores.md) / CLI |
 | Colores en import | Sí (variantes) | Sí (tabla/grid) | No automático |
 | Categoría | Breadcrumb → slug | `product-category` URL | No automático |
 
@@ -256,7 +256,7 @@ Usar Nissie como referencia cuando el sitio sea TiendaNube (JSON-LD `ProductGrou
 
 ## Decisiones pendientes / mejoras
 
-- Poblar `products.provider_source_url` desde `ImportedProduct.source_url` en cada persist (hoy la URL vive en items de corrida masiva).
+- `products.provider_source_url` ya se llena en `persist_imported_product`. El skip previo al fetch está en [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md).
 - Unificar patrones `cod_product` de So Chic hacia un ID más estable (similar a Nissie).
 - Sync de precio/stock en re-import (hoy explícitamente **fuera de alcance** — solo novedades).
 - Generalizar `nissie_bulk_import` → `services/provider_bulk_import` parametrizado por proveedor.
