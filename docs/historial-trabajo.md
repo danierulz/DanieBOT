@@ -23,6 +23,16 @@ No poner teléfonos, tokens ni secretos.
 
 ---
 
+## 2026-10-27 — Manifiesto JSON para robotRZ
+
+- **Problema / pedido:** armar a mano el JSON que consumen `meta_page_garments.py` y `meta_ig_garments.py`.
+- **Qué se hizo:** `python -m services.meta_manifest` lee Products + ProductImages (inactivos incluidos), arma slug, título, caption con precio `$28.500` y URLs https, y escribe UTF-8 sin BOM. `--dry-run` solo imprime el resumen. No llama a Graph ni agenda nada.
+- **Archivos clave:** `services/meta_manifest.py`, `tests/test_meta_manifest.py`, `docs/ops/meta-garments-manifest.md`
+- **Cómo verificar:** `python -m unittest tests.test_meta_manifest` y un `--dry-run` contra la base local.
+- **Pendiente / no desplegado:** no hay job que desplegar. Publicar en Meta sigue siendo manual en robotRZ.
+
+---
+
 ## 2026-10-27 — Alta masiva solo en el notebook
 
 - **Problema / pedido:** parametrizar Las Locas y el resto de marcas para correr el catálogo en la PC. Cloud Run / Scheduler salen caros y el `BackgroundTasks` del admin puede morir a mitad. So Chic no tenía descubrimiento masivo. El skip de `cod_product` ocurría después del fetch (So Chic responde 429).
