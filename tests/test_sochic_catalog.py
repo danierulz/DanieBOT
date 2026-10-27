@@ -1,6 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import requests
+
+from provider_importers.bulk.delays import LISTING_PAGE_DELAY_SECONDS
+from provider_importers.bulk.rate_limit import RateLimitExceeded, RateLimitPolicy
 from provider_importers.sochic_catalog import (
     discover_sochic_product_urls,
     extract_product_urls_from_listing,
@@ -110,6 +114,104 @@ class SochicCatalogTest(unittest.TestCase):
     def test_invalid_category_slug(self):
         with self.assertRaises(ProviderImportError):
             discover_sochic_product_urls(MagicMock(), category_slug="../shop")
+
+
+def _http_response(status: int, body: str, url: str) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status
+    response.text = body
+    response.url = url
+    response.headers = {}
+    if status >= 400 and status != 429:
+        response.raise_for_status.side_effect = requests.HTTPError(f"{status}", response=response)
+    else:
+        response.raise_for_status = MagicMock()
+    return response
+
+
+class SochicListingRateLimitTest(unittest.TestCase):
+    def test_429_backs_off_then_reads_the_page(self):
+        session = MagicMock()
+        session.headers = {}
+        limited = _http_response(429, "Too Many Requests", "https://sochic.com.ar/shop/")
+        ok = _http_response(200, CATALOG_HTML, "https://sochic.com.ar/shop/")
+        session.get.side_effect = [limited, limited, ok]
+        sleeps: list[float] = []
+        policy = RateLimitPolicy(
+            max_retries=2,
+            initial_backoff_seconds=10,
+            multiplier=2,
+            max_backoff_seconds=120,
+            cooldown_hint_seconds=600,
+        )
+
+        urls = discover_sochic_product_urls(
+            session,
+            max_pages=1,
+            rate_limit_policy=policy,
+            sleep=sleeps.append,
+        )
+
+        self.assertEqual(sleeps, [10, 20])
+        self.assertTrue(all(delay > 0 for delay in sleeps))
+        self.assertEqual(session.get.call_count, 3)
+        self.assertEqual(len(urls), 2)
+
+    def test_exhausted_listing_stops_with_partial_urls_and_no_tight_loop(self):
+        session = MagicMock()
+        session.headers = {}
+        page1 = _http_response(200, CATALOG_HTML, "https://sochic.com.ar/shop/")
+        limited = _http_response(429, "limitó las consultas", "https://sochic.com.ar/shop/page/2/")
+        session.get.side_effect = [page1, limited, limited, limited]
+        sleeps: list[float] = []
+        policy = RateLimitPolicy(
+            max_retries=1,
+            initial_backoff_seconds=8,
+            multiplier=2,
+            max_backoff_seconds=120,
+            cooldown_hint_seconds=600,
+        )
+
+        with self.assertRaises(RateLimitExceeded) as ctx:
+            discover_sochic_product_urls(
+                session,
+                max_pages=5,
+                rate_limit_policy=policy,
+                sleep=sleeps.append,
+            )
+
+        self.assertEqual(session.get.call_count, 3)
+        self.assertEqual(sleeps, [LISTING_PAGE_DELAY_SECONDS, 8])
+        self.assertTrue(all(delay > 0 for delay in sleeps))
+        self.assertEqual(ctx.exception.where, "listing")
+        self.assertEqual(ctx.exception.attempts, 2)
+        self.assertEqual(len(ctx.exception.partial_urls), 2)
+        self.assertIn("limitó las consultas", str(ctx.exception))
+
+    def test_rate_limit_body_without_429_hard_stops(self):
+        session = MagicMock()
+        session.headers = {}
+        challenge = _http_response(
+            200,
+            "<html>So Chic limitó las consultas</html>",
+            "https://sochic.com.ar/shop/",
+        )
+        session.get.return_value = challenge
+        sleeps: list[float] = []
+        policy = RateLimitPolicy(max_retries=4, hard_stop=True, initial_backoff_seconds=15)
+
+        with self.assertRaises(RateLimitExceeded) as ctx:
+            discover_sochic_product_urls(
+                session,
+                max_pages=3,
+                rate_limit_policy=policy,
+                sleep=sleeps.append,
+            )
+
+        self.assertEqual(session.get.call_count, 1)
+        self.assertEqual(sleeps, [])
+        self.assertEqual(ctx.exception.attempts, 1)
+        self.assertEqual(ctx.exception.partial_urls, [])
 
 
 if __name__ == "__main__":

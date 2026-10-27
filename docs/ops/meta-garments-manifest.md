@@ -32,7 +32,42 @@ python -m services.meta_manifest --product-id 300 --product-id 292 --output expo
 python -m services.meta_manifest --provider sochic --limit 20 --exclude-id sochic-300 --exclude-file exports/ya-publicados.txt --output exports/sochic-meta.json --dry-run
 ```
 
-`--exclude-id` se puede repetir (o separar por comas). Acepta el slug del manifiesto (`sochic-300`, `denim-292`), el `product_id` o el `cod_product`. `--exclude-file` es la misma lista en un archivo: un id por línea (`#` comenta), comas, o un array JSON.
+`--exclude-id` se puede repetir (o separar por comas). Acepta el slug del manifiesto (`sochic-300`, `denim-292`), el `product_id` o el `cod_product`. `--exclude-file` es la misma lista en un archivo: un id por línea (`#` comenta), comas, o un array JSON (un manifiesto anterior también sirve: lee el campo `id` de cada objeto).
+
+## Saltar lo ya publicado
+
+Después de una publicación en Graph, armá un txt con un id por línea (slug del manifiesto o `product_id`) y pasalo en la próxima exportación. El archivo no se commitea.
+
+`exports/ya-publicados.txt`:
+
+```text
+# publicados en la página / el feed
+sochic-300
+sochic-292
+denim-288
+3515
+```
+
+Sacar esa lista de un manifiesto que ya se publicó:
+
+```bash
+python - <<'PY'
+import json
+from pathlib import Path
+src = Path("exports/sochic-meta.json")
+items = json.loads(src.read_text(encoding="utf-8"))
+ids = [str(item["id"]) for item in items if item.get("id")]
+Path("exports/ya-publicados.txt").write_text("\n".join(ids) + "\n", encoding="utf-8")
+PY
+
+python -m services.meta_manifest --provider sochic --exclude-file exports/ya-publicados.txt --output exports/sochic-meta-nuevos.json --dry-run
+```
+
+El mismo corte se puede hacer pasando el JSON anterior directo, sin el txt:
+
+```bash
+python -m services.meta_manifest --provider sochic --exclude-file exports/sochic-meta.json --output exports/sochic-meta-nuevos.json --dry-run
+```
 
 Cuando el resumen cierra, sacar `--dry-run` para escribir el JSON (UTF-8, sin BOM). El archivo lleva títulos, precios y URLs del catálogo: no hace falta commitearlo.
 

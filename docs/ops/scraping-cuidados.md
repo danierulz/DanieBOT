@@ -27,13 +27,49 @@ El CLI no imprime secretos. Nombres de variables (sin valores): spec 23.
 
 ## Rate limit y 429
 
-So Chic (WooCommerce) responde 429 si las fichas salen rápido. El síntoma en el JSON es `failed` con un error que menciona 429 o "too many".
+So Chic (WooCommerce) responde HTTP 429, o una página que dice «limitó las consultas» / too many requests, si el listado o las fichas salen rápido. El CLI **no** reintenta en un loop cerrado.
 
-Qué hacer:
+Esto corre en `python -m provider_importers.bulk.runner` **sin** `--tracked-run` (So Chic no tiene tracked). No crea Cloud Scheduler, Cloud Run Job ni un cron: el cooldown es un aviso para relanzar a mano.
 
-1. Parar. No relanzar el catálogo entero enseguida.
-2. Subir `--delay-ms`.
-3. Volver a lanzar el mismo comando. Lo ya guardado no se vuelve a scrapear (`--skip-existing`, spec 17). Lo que falló no tiene fila y se reintenta.
+Qué hace el runner:
+
+1. Frena esa URL. No manda otro pedido enseguida.
+2. Espera con backoff escalonado y vuelve a intentar **la misma** URL. La primera espera es `--rate-limit-backoff-seconds` (default 15). Después se duplica (30, 60, …) hasta `--rate-limit-max-backoff-seconds` (default 120). Si la respuesta trae `Retry-After` en segundos y pide más, se usa esa espera, con tope en el mayor entre el tope de backoff y el cooldown.
+3. `--rate-limit-retries` (default 3) es cuántas veces reintenta después del primer 429. `--rate-limit-retries 0` y `--rate-limit-hard-stop` cortan en el primer 429, sin espera.
+4. Si se agotan los reintentos (o hay hard stop), **no sigue con el resto de la corrida**. Lo ya persistido queda en la base (cada alta hace commit). El proceso imprime el JSON y sale con código 1.
+
+El listado de So Chic usa la misma política. Si el listado queda limitado, esa corrida **no** pide fichas (ni las que ya había descubierto). `stopped_during` sale `listing`.
+
+Campos del JSON cuando corta:
+
+| Campo | Significado |
+|-------|-------------|
+| `rate_limited` | `true` |
+| `cooldown_hint_seconds` | Segundos a esperar antes de relanzar. Default 600 (`--rate-limit-cooldown-seconds`). No los duerme el proceso. |
+| `stopped_during` | `listing` o `product` |
+| `aborted_remaining` | Fichas que no se pidieron después del corte |
+| `rate_limit_attempts` | Intentos de la URL (o página) que cortó la corrida |
+| `created` | Altas que ya quedaron guardadas |
+
+```json
+{
+  "rate_limited": true,
+  "cooldown_hint_seconds": 600,
+  "stopped_during": "product",
+  "aborted_remaining": 3,
+  "rate_limit_attempts": 4,
+  "created": 2,
+  "failed": 1
+}
+```
+
+Qué hacer después:
+
+1. No relanzar el catálogo enseguida. Esperar al menos `cooldown_hint_seconds`.
+2. Si el 429 fue con la pausa default, subir `--delay-ms`.
+3. Volver a lanzar el mismo comando. Lo ya guardado no se vuelve a scrapear (`--skip-existing`, spec 17). Lo que no llegó a persistirse se reintenta.
+
+`--delay-ms` sigue siendo la pausa entre fichas que respondieron. El backoff es aparte y solo corre después de un 429.
 
 Pausas sugeridas entre fichas (`--delay-ms`; si se omite, sale de `brands.json`):
 
@@ -71,7 +107,9 @@ python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit
 
 python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --price-markup-percent 30 --dry-run
 
-python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --delay-ms 8000 --price-markup-percent 30
+python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --delay-ms 8000 --rate-limit-retries 3 --price-markup-percent 30
+
+python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --rate-limit-hard-stop --dry-run
 
 python -m provider_importers.bulk.runner --provider laslocas --category denim --max-pages 1 --limit 5 --price-markup-percent 15 --dry-run
 ```
