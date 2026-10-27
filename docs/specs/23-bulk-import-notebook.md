@@ -41,3 +41,11 @@ python -m provider_importers.bulk.runner --provider sochic --limit 5 --no-skip-e
 ```
 
 El JSON de dry-run trae `discovered`, `would_skip_existing`, `would_fetch` y `price_markup_percent`.
+
+## Manifiesto para robotRZ
+
+Para armar el JSON que leen `meta_page_garments.py` / `meta_ig_garments.py`, sin publicar en Meta: [meta-garments-manifest.md](../ops/meta-garments-manifest.md).
+
+```bash
+python -m services.meta_manifest --provider sochic --limit 5 --output exports/sochic-meta.json --dry-run
+```
