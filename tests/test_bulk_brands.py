@@ -56,7 +56,7 @@ class BrandRegistryTest(unittest.TestCase):
         sochic = registry.get("sochic")
         self.assertEqual(sochic.mode, "catalog")
         self.assertFalse(sochic.requires_login)
-        self.assertEqual(sochic.default_delay_ms, 2000)
+        self.assertEqual(sochic.default_delay_ms, 5000)
         text = format_brand_list()
         self.assertIn("notebook", text)
         self.assertIn("Cloud Scheduler", text)
@@ -277,7 +277,8 @@ class BulkCliTest(unittest.TestCase):
         self.assertEqual(payload["would_skip_existing"], 1)
         self.assertEqual(payload["would_fetch"], 1)
         self.assertEqual(payload["urls"], ["https://sochic.com.ar/product/b/"])
-        self.assertEqual(payload["delay_ms"], 2000)
+        self.assertEqual(payload["delay_ms"], 5000)
+        self.assertEqual(payload["price_markup_percent"], 0)
         self.assertTrue(payload["skip_existing"])
         self.assertEqual(payload["skipped"], 0)
 

@@ -35,8 +35,8 @@
       "mode": "catalog",
       "requires_login": false,
       "login_env": [],
-      "default_delay_ms": 2000,
-      "notes": "WooCommerce: /shop/ y, con --category, /product-category/<slug>/. El sitio responde 429 si se apura; subí --delay-ms. Sin --tracked-run."
+      "default_delay_ms": 5000,
+      "notes": "WooCommerce: /shop/ y, con --category, /product-category/<slug>/. El sitio responde 429 si se apura; el default es 5000 ms (subí --delay-ms si sigue). Sin --tracked-run."
     }
   ]
 }

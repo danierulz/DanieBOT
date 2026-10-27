@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 
@@ -31,6 +32,7 @@ from provider_importers.bulk.existing import (
 )
 from provider_importers.bulk.holic_catalog import discover_holic_product_urls
 from provider_importers.bulk.laslocas_catalog import discover_laslocas_product_urls
+from provider_importers.bulk.markup import apply_price_markup
 from provider_importers.bulk.nissie_catalog import discover_nissie_product_urls
 from provider_importers.bulk.sochic_catalog import discover_sochic_product_urls
 from provider_importers.bulk.types import BulkImportOptions, BulkImportSummary
@@ -112,6 +114,7 @@ def run_bulk_import_cli(options: BulkImportOptions) -> BulkImportSummary:
             "would_fetch": len(selection.to_fetch),
             "limit": options.limit,
             "delay_ms": options.delay_ms,
+            "price_markup_percent": options.price_markup_percent,
             "urls": list(selection.to_fetch),
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -143,6 +146,7 @@ def run_bulk_import_cli(options: BulkImportOptions) -> BulkImportSummary:
                     summary.skipped += 1
                     continue
 
+                apply_price_markup(imported, options.price_markup_percent)
                 result = persist_imported_product(
                     db,
                     imported,
@@ -170,6 +174,7 @@ def run_bulk_import_cli(options: BulkImportOptions) -> BulkImportSummary:
     printed["skip_existing"] = options.skip_existing
     printed["limit"] = options.limit
     printed["delay_ms"] = options.delay_ms
+    printed["price_markup_percent"] = options.price_markup_percent
     print(json.dumps(printed, ensure_ascii=False, indent=2))
     return summary
 
@@ -248,7 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
             "--category denim --max-pages 1 --limit 5 --dry-run\n"
             "  python -m provider_importers.bulk.runner --provider sochic "
             "--max-pages 1 --limit 5 --dry-run\n"
-            "Siempre --dry-run antes de escribir. Guía: docs/specs/17-scraping-masivo-proveedores.md"
+            "  python -m provider_importers.bulk.runner --provider sochic "
+            "--max-pages 1 --limit 5 --price-markup-percent 30 --dry-run\n"
+            "Siempre --dry-run antes de escribir. "
+            "Guía: docs/specs/17-scraping-masivo-proveedores.md y "
+            "docs/ops/scraping-cuidados.md"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -278,6 +287,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Pausa entre fichas. Si se omite, usa default_delay_ms de la marca.",
+    )
+    parser.add_argument(
+        "--price-markup-percent",
+        type=float,
+        default=0.0,
+        help=(
+            "Recargo sobre price y original_price después del fetch y antes de persistir. "
+            "0 = precio del proveedor. 10 = +10%%. Redondea al entero (empate hacia arriba)."
+        ),
     )
     parser.add_argument(
         "--skip-existing",
@@ -345,6 +363,7 @@ def _options_from_args(args, brand) -> BulkImportOptions:
         urls=list(args.urls or []),
         limit=args.limit,
         skip_existing=args.skip_existing,
+        price_markup_percent=args.price_markup_percent,
     )
 
 
@@ -360,6 +379,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--limit no puede ser negativo")
     if args.max_pages < 0:
         parser.error("--max-pages no puede ser negativo")
+    if not math.isfinite(args.price_markup_percent):
+        parser.error("--price-markup-percent debe ser un número finito")
 
     brand = get_brand(args.provider)
     print(NOTEBOOK_BANNER, file=sys.stderr)
@@ -384,6 +405,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.tracked_run:
+        if not args.dry_run and args.price_markup_percent:
+            raise SystemExit(
+                "--price-markup-percent no aplica con --tracked-run: "
+                "esa corrida no recarga el precio. "
+                "Corré el alta sin --tracked-run para marcarlo antes de persistir."
+            )
         if args.dry_run:
             run_bulk_import_cli(_options_from_args(args, brand))
             return 0

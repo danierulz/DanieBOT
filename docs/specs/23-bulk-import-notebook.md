@@ -1,6 +1,6 @@
 # Alta masiva en el notebook
 
-Comandos para correr el runner en la PC. La política (no agendar en Cloud Scheduler / Cloud Run / GitHub Actions) está en [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md). Identidad y `cod_product`: [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md). Pestaña admin: [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md).
+Comandos para correr el runner en la PC. La política (no agendar en Cloud Scheduler / Cloud Run / GitHub Actions) está en [17-scraping-masivo-proveedores.md](./17-scraping-masivo-proveedores.md). Identidad y `cod_product`: [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md). Pestaña admin: [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md). Cuidados de una corrida larga (429, pausas, recargo): [scraping-cuidados.md](../ops/scraping-cuidados.md).
 
 ## Antes de correr
 
@@ -33,9 +33,11 @@ python -m provider_importers.bulk.runner --provider holic --limit 10 --dry-run
 
 python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --dry-run
 
+python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit 5 --price-markup-percent 30 --dry-run
+
 python -m provider_importers.bulk.runner --provider sochic --category camperas --max-pages 1 --limit 5 --dry-run
 
 python -m provider_importers.bulk.runner --provider sochic --limit 5 --no-skip-existing --dry-run
 ```
 
-El JSON de dry-run trae `discovered`, `would_skip_existing` y `would_fetch`.
+El JSON de dry-run trae `discovered`, `would_skip_existing`, `would_fetch` y `price_markup_percent`.
