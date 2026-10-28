@@ -30,11 +30,14 @@ from database.models.Size import Size
 from services.meta_manifest import (
     build_caption,
     build_manifest_item,
+    channel_gap_ids,
     format_ar_price,
+    ids_published_on,
     load_products,
     main,
     manifest_id,
     parse_exclude_tokens,
+    published_index,
     read_exclude_file,
     render_manifest,
     select_products,
@@ -179,6 +182,14 @@ class CaptionAndImagesTest(unittest.TestCase):
             ["sochic-300", "denin-292", "301"],
         )
         self.assertEqual(parse_exclude_tokens('[{"id": "sochic-300"}, 292]'), ["sochic-300", "292"])
+        self.assertEqual(
+            parse_exclude_tokens("# ledger\nsochic-300:page\nsochic-292:ig, 3515:page\n"),
+            ["sochic-300:page", "sochic-292:ig", "3515:page"],
+        )
+        self.assertEqual(
+            parse_exclude_tokens('[{"id": "sochic-300:page"}, {"id": "denim-292:ig"}]'),
+            ["sochic-300:page", "denim-292:ig"],
+        )
 
     def test_read_exclude_file_one_id_per_line(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -191,6 +202,95 @@ class CaptionAndImagesTest(unittest.TestCase):
                 read_exclude_file(str(path)),
                 ["sochic-300", "denim-292", "3515"],
             )
+
+
+class ChannelLedgerTest(unittest.TestCase):
+    def test_bare_id_is_both_channels_and_suffixes_merge(self):
+        index = published_index(
+            ["Sochic-300:PAGE", "sochic-300:ig", "denim-292", "3515:ig", "  "]
+        )
+        self.assertEqual(
+            index,
+            {
+                "sochic-300": frozenset({"page", "ig"}),
+                "denim-292": frozenset({"page", "ig"}),
+                "3515": frozenset({"ig"}),
+            },
+        )
+        self.assertEqual(
+            ids_published_on(["sochic-300:page", "denim-292", "3515:ig"], "ig"),
+            ["3515", "denim-292"],
+        )
+        self.assertEqual(
+            ids_published_on(["sochic-300:page", "denim-292", "3515:ig"], "PAGE"),
+            ["denim-292", "sochic-300"],
+        )
+
+    def test_page_ok_ig_pending_exports_only_on_ig_wave(self):
+        page_done = _product()
+        ig_done = _product(product_id=292, provider=None, category=SimpleNamespace(slug="denim"), item_title="Jean")
+        fresh = _product(product_id=301, provider="nissie", item_title="Wide")
+        rows = [page_done, ig_done, fresh]
+        ledger = {"sochic-300:page", "denim-292:ig", "JEAN292"}
+        self.assertEqual(
+            [row.product_id for row in select_products(rows, exclude=ledger)],
+            [301],
+        )
+        self.assertEqual(
+            [row.product_id for row in select_products(rows, exclude=ledger, channel="ig")],
+            [300, 301],
+        )
+        self.assertEqual(
+            [row.product_id for row in select_products(rows, exclude=ledger, channel="page")],
+            [292, 301],
+        )
+        self.assertEqual(select_products([page_done], exclude={"sochic-300"}, channel="ig"), [])
+        self.assertEqual(select_products([page_done], exclude={"sochic-300"}, channel="page"), [])
+        self.assertEqual(
+            select_products([page_done], exclude={"Sochic-300:Page"}, channel="IG"),
+            [page_done],
+        )
+        self.assertEqual(select_products([page_done], exclude={"Sochic-300:Page"}, channel="page"), [])
+        self.assertEqual(
+            [row.product_id for row in select_products(rows, exclude={"300:page", "nissie-301:ig"}, channel="ig")],
+            [300, 292],
+        )
+        both = {"sochic-300:page", "sochic-300:ig"}
+        self.assertEqual(select_products([page_done], exclude=both, channel="ig"), [])
+        self.assertEqual(select_products([page_done], exclude=both, channel="page"), [])
+        gaps = channel_gap_ids([page_done, fresh], {"sochic-300:page", "999:ig"}, "ig")
+        self.assertEqual(gaps, ["sochic-300"])
+        self.assertEqual(channel_gap_ids([ig_done], {"denim-292:ig"}, "page"), ["denim-292"])
+
+    def test_same_garment_marked_on_different_keys_counts_as_both(self):
+        product = _product()
+        ledger = {"sochic-300:page", "300:ig"}
+        self.assertEqual(select_products([product], exclude=ledger, channel="ig"), [])
+        self.assertEqual(select_products([product], exclude=ledger, channel="page"), [])
+        cod_only = {"sochic-3515-campera-friza:ig"}
+        self.assertEqual(select_products([product], exclude=cod_only, channel="page"), [product])
+        self.assertEqual(select_products([product], exclude=cod_only, channel="ig"), [])
+
+    def test_unknown_channel_suffix_is_rejected(self):
+        with self.assertRaises(ValueError):
+            published_index(["sochic-300:both"])
+        with self.assertRaises(ValueError):
+            published_index([":page"])
+        with self.assertRaises(ValueError):
+            select_products([_product()], channel="feed")
+
+    def test_ops_doc_describes_the_shared_ledger(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "docs/ops/meta-garments-manifest.md").read_text(encoding="utf-8")
+        self.assertIn("ya-publicados.txt", text)
+        self.assertIn("un id por línea", text)
+        self.assertIn("sochic-300", text)
+        self.assertIn("id:page", text)
+        self.assertIn("id:ig", text)
+        self.assertIn("--channel ig", text)
+        self.assertIn("MARKET_OPS_EXCLUDE_FILE", text)
+        self.assertIn("sin sidecar", text)
+        self.assertNotIn("graph.facebook.com", text)
 
 
 class ManifestBytesTest(unittest.TestCase):
@@ -316,6 +416,65 @@ class CliDryRunTest(unittest.TestCase):
                 fetch.call_args.kwargs["exclude"],
                 {"sochic-300", "denim-292", "3515"},
             )
+            self.assertIsNone(fetch.call_args.kwargs["channel"])
+
+    def test_ig_channel_keeps_page_only_marks_and_names_them(self):
+        product = _product()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "lote.json"
+            published = Path(tmp) / "ya-publicados.txt"
+            published.write_text(
+                "# robotRZ ledger\nsochic-300:page\ndenim-292\n3515:ig\n",
+                encoding="utf-8",
+            )
+            buf = io.StringIO()
+            with patch("services.meta_manifest.fetch_products", return_value=[product]) as fetch:
+                with redirect_stdout(buf):
+                    code = main(
+                        [
+                            "--provider",
+                            "sochic",
+                            "--channel",
+                            "IG",
+                            "--exclude-file",
+                            str(published),
+                            "--output",
+                            str(output),
+                            "--dry-run",
+                        ]
+                    )
+            self.assertEqual(code, 0)
+            self.assertEqual(output.exists(), False)
+            self.assertEqual(
+                fetch.call_args.kwargs["exclude"],
+                {"sochic-300:page", "denim-292", "3515:ig"},
+            )
+            self.assertEqual(fetch.call_args.kwargs["channel"], "ig")
+            summary = buf.getvalue()
+            self.assertIn("canal=ig", summary)
+            self.assertIn("ya en page, pendientes de ig: 1", summary)
+            self.assertIn("sochic-300", summary)
+            self.assertNotIn("graph.facebook", summary)
+
+    def test_bad_channel_suffix_does_not_fetch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            published = Path(tmp) / "ya-publicados.txt"
+            published.write_text("sochic-300:facebook\n", encoding="utf-8")
+            with patch(
+                "services.meta_manifest.fetch_products",
+                side_effect=AssertionError("no debería leer la base"),
+            ):
+                with self.assertRaises(SystemExit) as caught:
+                    main(
+                        [
+                            "--channel",
+                            "ig",
+                            "--exclude-file",
+                            str(published),
+                            "--dry-run",
+                        ]
+                    )
+            self.assertIn("Canal desconocido", str(caught.exception))
 
 
 class SqliteLoadTest(unittest.TestCase):
@@ -404,6 +563,12 @@ class SqliteLoadTest(unittest.TestCase):
         self.assertEqual(manifest_id(only_denim[0]), "denim-292")
         limited = load_products(session, provider="sochic", limit=1)
         self.assertEqual([row.product_id for row in limited], [300])
+        page_only = load_products(session, exclude={"sochic-300:page", "denim-292"}, channel="ig")
+        self.assertEqual([row.product_id for row in page_only], [300])
+        ig_only = load_products(session, exclude={"sochic-300:page", "JEAN292:ig"}, channel="page")
+        self.assertEqual([row.product_id for row in ig_only], [292])
+        no_target = load_products(session, exclude={"sochic-300:page"})
+        self.assertEqual([row.product_id for row in no_target], [292])
         session.close()
 
 
