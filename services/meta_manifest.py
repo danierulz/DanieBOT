@@ -6,6 +6,10 @@ print connection strings.
 
 The operator feeds the file to ``meta_page_garments.py`` / ``meta_ig_garments.py``.
 Pacing between Graph calls stays with the operator or robotRZ.
+
+``exports/ya-publicados.txt`` uses the same ledger lines as robotRZ
+(``id``, ``id:page``, ``id:ig``). A bare id means both channels. This module
+only reads that file; it does not call Graph to discover what was published.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ _PROVIDER_SUFFIX_RE = re.compile(
 _BOILERPLATE_RE = re.compile(r"^Producto importado desde [^|.]+(?:\.\s*|\s*$)")
 _SKIP_SIZE_LABELS = {"unico", "único", "unica", "única"}
 _SLUG_CLEAN_RE = re.compile(r"[^a-z0-9]+")
+_PUBLISH_CHANNELS = frozenset({"page", "ig"})
 
 
 def format_ar_price(amount: int) -> str:
@@ -189,17 +194,113 @@ def _exclude_keys(product) -> set[str]:
     return keys
 
 
+def normalize_channel(channel: Optional[str]) -> Optional[str]:
+    """``page``, ``ig``, or None. Empty means this export has no channel target."""
+    target = str(channel or "").strip().casefold()
+    if not target:
+        return None
+    if target not in _PUBLISH_CHANNELS:
+        raise ValueError("El canal tiene que ser page o ig.")
+    return target
+
+
+def split_published_token(token: str) -> tuple[str, frozenset[str]]:
+    """Split a ledger token into ``(id, channels)``.
+
+    A bare id is both channels (robotRZ: ``id`` = Page and IG). ``id:page`` and
+    ``id:ig`` mark one channel. The id is casefolded.
+    """
+    text = str(token).strip()
+    if not text:
+        raise ValueError("Hay un id de exclusión vacío.")
+    folded = text.casefold()
+    if folded.endswith(":page") or folded.endswith(":ig"):
+        ident, _, channel = folded.rpartition(":")
+        ident = ident.strip()
+        if not ident or ":" in ident:
+            raise ValueError(f"No entiendo {token!r}. Usá id, id:page o id:ig.")
+        return ident, frozenset({channel})
+    if ":" in folded:
+        raise ValueError(
+            f"Canal desconocido en {token!r}. Usá id, id:page o id:ig "
+            "(un id pelado significa Page e IG)."
+        )
+    return folded, frozenset(_PUBLISH_CHANNELS)
+
+
+def published_index(tokens: Iterable[str]) -> dict[str, frozenset[str]]:
+    """Merge ledger tokens. Two suffixes on the same id become both channels."""
+    index: dict[str, set[str]] = {}
+    for token in tokens:
+        if not str(token).strip():
+            continue
+        ident, channels = split_published_token(str(token))
+        index.setdefault(ident, set()).update(channels)
+    return {key: frozenset(value) for key, value in index.items()}
+
+
+def _channels_for_keys(keys: set[str], index: dict[str, frozenset[str]]) -> frozenset[str]:
+    found: set[str] = set()
+    for key in keys:
+        found.update(index.get(key, ()))
+    return frozenset(found)
+
+
+def publication_blocks(channels: frozenset[str], target: Optional[str]) -> bool:
+    """Whether this published set should drop the product.
+
+    With a target channel, only that channel blocks. Without one, any mark
+    blocks (bare, ``:page``, or ``:ig``): pass ``--channel`` to keep the other.
+    """
+    if not channels:
+        return False
+    if target is None:
+        return True
+    return target in channels
+
+
+def ids_published_on(tokens: Iterable[str], channel: str) -> list[str]:
+    """Sorted ids already done on ``channel``. A bare id counts as both."""
+    target = normalize_channel(channel)
+    if target is None:
+        raise ValueError("El canal tiene que ser page o ig.")
+    index = published_index(tokens)
+    return sorted(ident for ident, channels in index.items() if target in channels)
+
+
+def channel_gap_ids(products: Iterable, tokens: Iterable[str], channel: str) -> list[str]:
+    """Manifest ids done on the other channel only (Page-ok / IG-pending, or the reverse)."""
+    target = normalize_channel(channel)
+    if target is None:
+        raise ValueError("El canal tiene que ser page o ig.")
+    other = "page" if target == "ig" else "ig"
+    index = published_index(tokens)
+    gaps: list[str] = []
+    for product in products:
+        channels = _channels_for_keys(_exclude_keys(product), index)
+        if other in channels and target not in channels:
+            gaps.append(manifest_id(product))
+    return gaps
+
+
 def select_products(
     products: Iterable,
     *,
     product_ids: Optional[set[int]] = None,
     provider: Optional[str] = None,
     exclude: Optional[Iterable[str]] = None,
+    channel: Optional[str] = None,
     limit: int = 0,
 ) -> list:
-    """Keep caller order. ``limit`` 0 means no cap. Inactive rows stay."""
+    """Keep caller order. ``limit`` 0 means no cap. Inactive rows stay.
+
+    ``channel`` is ``page`` or ``ig``. A bare exclude id skips both. ``id:page``
+    skips only a Page wave; ``id:ig`` skips only an IG wave. With no channel,
+    every listed id is skipped.
+    """
     provider_norm = (provider or "").strip().lower() or None
-    excluded = {str(token).strip().casefold() for token in (exclude or []) if str(token).strip()}
+    target = normalize_channel(channel)
+    index = published_index(exclude or [])
     chosen = []
     for product in products:
         if product_ids is not None and int(product.product_id) not in product_ids:
@@ -207,7 +308,7 @@ def select_products(
         row_provider = str(getattr(product, "provider", "") or "").strip().lower()
         if provider_norm and row_provider != provider_norm:
             continue
-        if excluded and (_exclude_keys(product) & excluded):
+        if index and publication_blocks(_channels_for_keys(_exclude_keys(product), index), target):
             continue
         chosen.append(product)
         if limit and len(chosen) >= limit:
@@ -251,7 +352,9 @@ def read_exclude_file(path: str) -> list[str]:
     except OSError as exc:
         raise SystemExit(f"No se pudo leer --exclude-file ({file}): {exc.strerror or exc}") from exc
     try:
-        return parse_exclude_tokens(text)
+        tokens = parse_exclude_tokens(text)
+        published_index(tokens)
+        return tokens
     except json.JSONDecodeError as exc:
         raise SystemExit(f"No se pudo leer --exclude-file ({file}): JSON inválido.") from exc
     except ValueError as exc:
@@ -274,11 +377,24 @@ def write_manifest(path: Path, items: Sequence[dict]) -> None:
     path.write_bytes(render_manifest(items))
 
 
-def format_summary(items: Sequence[dict], output: Optional[str], *, dry_run: bool) -> str:
+def format_summary(
+    items: Sequence[dict],
+    output: Optional[str],
+    *,
+    dry_run: bool,
+    channel: Optional[str] = None,
+    gap_ids: Optional[Sequence[str]] = None,
+) -> str:
     destination = output or "(sin --output)"
     action = "dry-run (no se escribió el archivo)" if dry_run else "escrito"
     noun = "producto" if len(items) == 1 else "productos"
-    lines = [f"{action}: {len(items)} {noun} → {destination}"]
+    canal = f" canal={channel}" if channel else ""
+    lines = [f"{action}: {len(items)} {noun}{canal} → {destination}"]
+    if channel and gap_ids:
+        other = "page" if channel == "ig" else "ig"
+        lines.append(f"ya en {other}, pendientes de {channel}: {len(gap_ids)}")
+        for ident in gap_ids:
+            lines.append(f"  {ident}")
     for item in items:
         lines.append(f"{item['id']}\t{item['title']}\timágenes={len(item['images'])}")
     return "\n".join(lines) + "\n"
@@ -290,6 +406,7 @@ def load_products(
     product_ids: Optional[set[int]] = None,
     provider: Optional[str] = None,
     exclude: Optional[Iterable[str]] = None,
+    channel: Optional[str] = None,
     limit: int = 0,
 ) -> list:
     """Newest ``product_id`` first. Includes inactive products."""
@@ -322,6 +439,7 @@ def load_products(
         product_ids=product_ids,
         provider=provider_norm or None,
         exclude=exclude,
+        channel=channel,
         limit=limit,
     )
 
@@ -331,6 +449,7 @@ def fetch_products(
     product_ids: Optional[set[int]] = None,
     provider: Optional[str] = None,
     exclude: Optional[Iterable[str]] = None,
+    channel: Optional[str] = None,
     limit: int = 0,
 ) -> list:
     from database.init_db import SessionLocal
@@ -342,6 +461,7 @@ def fetch_products(
             product_ids=product_ids,
             provider=provider,
             exclude=exclude,
+            channel=channel,
             limit=limit,
         )
     finally:
@@ -364,6 +484,9 @@ def build_parser() -> argparse.ArgumentParser:
             "--exclude-id sochic-300 --output exports/lote.json --dry-run\n"
             "  python -m services.meta_manifest --provider sochic --limit 20 "
             "--exclude-file exports/ya-publicados.txt --output exports/sochic-meta.json\n"
+            "  python -m services.meta_manifest --provider sochic --channel ig "
+            "--exclude-file exports/ya-publicados.txt "
+            "--output exports/sochic-meta-ig.json --dry-run\n"
             "Siempre --dry-run antes de escribir. "
             "Guía: docs/ops/meta-garments-manifest.md"
         ),
@@ -393,12 +516,29 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         dest="exclude_ids",
         default=[],
-        help="Slug (sochic-300), product_id o cod_product a omitir. Repetible o separado por comas.",
+        help=(
+            "Slug (sochic-300), product_id o cod_product a omitir. "
+            "Repetible o separado por comas. "
+            "id:page / id:ig marcan un solo canal; un id pelado marca Page e IG."
+        ),
     )
     parser.add_argument(
         "--exclude-file",
         default="",
-        help="Lista de ids ya publicados: un id por línea, comas, o un array JSON. # comenta.",
+        help=(
+            "Ledger ya publicado (exports/ya-publicados.txt): un id por línea, comas, "
+            "o un array JSON. # comenta. id pelado = Page e IG; id:page e id:ig = un canal. "
+            "El mismo archivo puede ser MARKET_OPS_EXCLUDE_FILE en robotRZ."
+        ),
+    )
+    parser.add_argument(
+        "--channel",
+        default="",
+        help=(
+            "Canal de esta ola: page o ig. Omite solo lo ya publicado en ese canal "
+            "(id pelado cuenta para los dos). Sin --channel, cualquier id listado se omite; "
+            "para reexportar Page-ok / IG-pendiente usá --channel ig."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -417,6 +557,10 @@ def _collect_exclude(args) -> set[str]:
     tokens: list[str] = []
     for raw in args.exclude_ids or []:
         tokens.extend(parse_exclude_tokens(raw))
+    try:
+        published_index(tokens)
+    except ValueError as exc:
+        raise SystemExit(f"No se pudo leer --exclude-id: {exc}") from exc
     if args.exclude_file:
         tokens.extend(read_exclude_file(args.exclude_file))
     return {token.casefold() for token in tokens}
@@ -430,6 +574,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for product_id in args.product_ids or []:
         if product_id <= 0:
             parser.error("--product-id tiene que ser un entero positivo")
+    channel = str(args.channel or "").strip().casefold()
+    if channel and channel not in _PUBLISH_CHANNELS:
+        parser.error("--channel tiene que ser page o ig")
     if not args.dry_run and not args.output:
         parser.error("--output es obligatorio (o usá --dry-run)")
     try:
@@ -444,6 +591,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             product_ids=set(args.product_ids or []) or None,
             provider=args.provider,
             exclude=exclude,
+            channel=channel or None,
             limit=args.limit,
         )
     except Exception:
@@ -454,13 +602,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
     items = [build_manifest_item(product) for product in products]
     output = args.output or None
+    gap_ids = channel_gap_ids(products, exclude, channel) if channel else []
     if not args.dry_run:
         try:
             write_manifest(Path(args.output), items)
         except Exception:
             print(f"No se pudo escribir {args.output}.", file=sys.stderr)
             return 1
-    sys.stdout.write(format_summary(items, output, dry_run=args.dry_run))
+    sys.stdout.write(
+        format_summary(
+            items,
+            output,
+            dry_run=args.dry_run,
+            channel=channel or None,
+            gap_ids=gap_ids,
+        )
+    )
     return 0
 
 

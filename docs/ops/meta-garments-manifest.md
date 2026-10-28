@@ -30,25 +30,69 @@ Otros filtros, los más nuevos primero (`product_id` descendente):
 python -m services.meta_manifest --product-id 300 --product-id 292 --output exports/lote.json --dry-run
 
 python -m services.meta_manifest --provider sochic --limit 20 --exclude-id sochic-300 --exclude-file exports/ya-publicados.txt --output exports/sochic-meta.json --dry-run
+
+python -m services.meta_manifest --provider sochic --channel ig --exclude-file exports/ya-publicados.txt --output exports/sochic-meta-ig.json --dry-run
 ```
 
-`--exclude-id` se puede repetir (o separar por comas). Acepta el slug del manifiesto (`sochic-300`, `denim-292`), el `product_id` o el `cod_product`. `--exclude-file` es la misma lista en un archivo: un id por línea (`#` comenta), comas, o un array JSON (un manifiesto anterior también sirve: lee el campo `id` de cada objeto).
+`--exclude-id` se puede repetir (o separar por comas). Acepta el slug del manifiesto (`sochic-300`, `denim-292`), el `product_id` o el `cod_product`, con o sin canal (`sochic-292:page`). `--exclude-file` es la misma lista en un archivo: un id por línea (`#` comenta), comas, o un array JSON (un manifiesto anterior también sirve: lee el campo `id` de cada objeto).
 
-## Saltar lo ya publicado
+## Saltar lo ya publicado (Page e IG por separado)
 
-Después de una publicación en Graph, armá un txt con un id por línea (slug del manifiesto o `product_id`) y pasalo en la próxima exportación. El archivo no se commitea.
+Después de publicar en Graph, el ledger anota cada id con el canal que ya salió. El archivo no se commitea. **Un solo archivo, sin sidecar:** se evoluciona `exports/ya-publicados.txt`, el mismo path que robotRZ puede usar en `MARKET_OPS_EXCLUDE_FILE`. El exclude de DanieBOT y el de robotRZ leen esas mismas líneas.
+
+El formato es el de `tmp/ops-console/publicados.txt` en robotRZ (ledger `#21`):
+
+| Línea | Significado |
+|-------|-------------|
+| `sochic-300` | Publicado en Page **y** en IG. Un id pelado = los dos canales. |
+| `sochic-292:page` | Page ok. IG pendiente. |
+| `denim-288:ig` | IG ok. Page pendiente. |
+| `sochic-280:page` y `sochic-280:ig` | Las dos líneas juntas equivalen a un id pelado. |
+
+El id puede ser el slug del manifiesto (`sochic-300`), el `product_id` (`3515:page`) o el `cod_product`. Mayúsculas no importan. Un sufijo que no sea `page` o `ig` corta el comando con error, sin leer la base y sin llamar a Graph. Este export **no** consulta Graph ni reescribe el ledger: robotRZ anota `:page` / `:ig` después de publicar, y ese txt (o una copia) es `exports/ya-publicados.txt`.
 
 `exports/ya-publicados.txt`:
 
 ```text
-# publicados en la página / el feed
+# mismo formato que robotRZ tmp/ops-console/publicados.txt
+# id pelado = Page e IG
 sochic-300
-sochic-292
-denim-288
-3515
+# Page ok, IG pendiente
+sochic-292:page
+denim-288:ig
+3515:page
 ```
 
-Sacar esa lista de un manifiesto que ya se publicó:
+### Ola solo de IG (Page ok, IG pendiente)
+
+`--channel ig` omite los ids pelados y los `id:ig`. Los `id:page` entran al JSON. El resumen lista esos ids como `ya en page, pendientes de ig`.
+
+```bash
+python -m services.meta_manifest --provider sochic --channel ig --exclude-file exports/ya-publicados.txt --output exports/sochic-meta-ig.json --dry-run
+```
+
+Ola solo de Page: `--channel page` (omite pelados y `:page`; deja pasar `:ig`).
+
+Sin `--channel`, cualquier id que aparezca en el archivo se omite, tenga o no sufijo. Una línea `id:page` **no** vuelve a salir hasta que pases el canal. Para filtrar a mano una lista pelada (herramientas que no leen `:page` / `:ig`), dejá solo lo ya hecho en el canal destino. Un id pelado cuenta para los dos:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from services.meta_manifest import ids_published_on, parse_exclude_tokens
+
+text = Path("exports/ya-publicados.txt").read_text(encoding="utf-8")
+done = ids_published_on(parse_exclude_tokens(text), "ig")
+Path("exports/ya-publicados-ig.txt").write_text("\n".join(done) + ("\n" if done else ""), encoding="utf-8")
+PY
+
+python -m services.meta_manifest --provider sochic --exclude-file exports/ya-publicados-ig.txt --output exports/sochic-meta-ig.json --dry-run
+```
+
+Esa lista plana es solo para esta ola. No la pongas en `MARKET_OPS_EXCLUDE_FILE`: ahí un id pelado vuelve a significar los dos canales. El archivo compartido sigue siendo `exports/ya-publicados.txt` con los sufijos.
+
+Si una prenda quedó anotada como id pelado pero en realidad solo está en la página, cambiala a `id:page` antes de la ola de IG. Si no, `--channel ig` la sigue omitiendo (id pelado = los dos canales, igual que robotRZ).
+
+Sacar una lista pelada de un manifiesto que ya se publicó en los dos canales:
 
 ```bash
 python - <<'PY'
@@ -63,13 +107,13 @@ PY
 python -m services.meta_manifest --provider sochic --exclude-file exports/ya-publicados.txt --output exports/sochic-meta-nuevos.json --dry-run
 ```
 
-El mismo corte se puede hacer pasando el JSON anterior directo, sin el txt:
+Esas líneas peladas significan Page e IG. Si el JSON se publicó solo en la página, escribí `id:page` en cada línea (o pasá el JSON solo en una ola con `--channel page`). El mismo corte se puede hacer pasando el JSON anterior directo, sin el txt: cada `id` del array se lee como los dos canales.
 
 ```bash
 python -m services.meta_manifest --provider sochic --exclude-file exports/sochic-meta.json --output exports/sochic-meta-nuevos.json --dry-run
 ```
 
-Cuando el resumen cierra, sacar `--dry-run` para escribir el JSON (UTF-8, sin BOM). El archivo lleva títulos, precios y URLs del catálogo: no hace falta commitearlo.
+Cuando el resumen cierra, sacar `--dry-run` para escribir el JSON (UTF-8, sin BOM). El archivo lleva títulos, precios y URLs del catálogo: no hace falta commitearlo. El comando no llama a Graph.
 
 ## Qué lleva cada ítem
 
@@ -103,3 +147,5 @@ Ejemplo:
 ## Después del archivo
 
 Pasar ese JSON a robotRZ (`meta_page_garments.py` / `meta_ig_garments.py`) como el manifiesto que esos scripts ya leen. El ritmo de Graph (esperas, reintentos, topes) no lo define este export.
+
+Cuando robotRZ publica, anota `id:page` o `id:ig` en `tmp/ops-console/publicados.txt` (un id pelado si salieron los dos). Copiá esas líneas a `exports/ya-publicados.txt`, o apuntá `MARKET_OPS_EXCLUDE_FILE` a ese archivo. La próxima ola de DanieBOT con `--channel` salta solo el canal que ya está hecho.
