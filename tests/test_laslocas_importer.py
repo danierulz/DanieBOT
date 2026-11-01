@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from provider_importers.laslocas import (
     ProviderImportError,
     _build_login_payload,
+    find_login_form,
     parse_laslocas_product,
     fetch_laslocas_product,
 )
@@ -74,6 +75,22 @@ LOGIN_FORM_HTML = """
 """
 
 
+# The live storefront puts a search form first. Login fields are email/password.
+STOREFRONT_LOGIN_HTML = """
+<form class="js-search-form" method="get" action="/search/">
+  <input type="search" name="q" placeholder="¿Qué estás buscando?">
+</form>
+<form id="login-form" class="js-form form" data-store="account-login" method="post" action="">
+  <input type="email" class="js-account-input" name="email" required>
+  <input type="password" class="js-password-input" name="password" required>
+  <button type="submit">Iniciar sesión</button>
+</form>
+<form method="post" action="/winnie-pooh">
+  <input type="email" id="email" name="email" placeholder="Email">
+</form>
+"""
+
+
 class LasLocasImporterTest(unittest.TestCase):
     def test_build_login_payload_uses_form_field_names(self):
         form = BeautifulSoup(LOGIN_FORM_HTML, "html.parser").find("form")
@@ -82,6 +99,17 @@ class LasLocasImporterTest(unittest.TestCase):
         self.assertEqual(payload["_password"], "secret")
         self.assertEqual(payload["_csrf_token"], "token123")
         self.assertEqual(payload["tipoPrecio"], "MIN")
+
+    def test_storefront_login_ignores_the_search_form(self):
+        soup = BeautifulSoup(STOREFRONT_LOGIN_HTML, "html.parser")
+        form = find_login_form(soup)
+        self.assertEqual(form.get("id"), "login-form")
+        payload = _build_login_payload(form, "a@b.com", "secret")
+        self.assertEqual(payload["email"], "a@b.com")
+        self.assertEqual(payload["password"], "secret")
+        self.assertNotIn("_username", payload)
+        self.assertNotIn("_csrf_token", payload)
+        self.assertNotIn("q", payload)
 
     def test_parse_product_extracts_catalog_fields(self):
         product = parse_laslocas_product(

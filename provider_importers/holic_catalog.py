@@ -30,8 +30,9 @@ def discover_holic_product_urls(
     on_progress: Callable[[str, int], None] | None = None,
 ) -> list[str]:
     http = session or requests.Session()
-    http.headers.setdefault("User-Agent", USER_AGENT)
-    http.headers.setdefault("Accept-Language", "es-AR,es;q=0.9")
+    http.headers["User-Agent"] = USER_AGENT
+    http.headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    http.headers["Accept-Language"] = "es-AR,es;q=0.9"
 
     discovered: list[str] = []
     base = catalog_url.rstrip("/")

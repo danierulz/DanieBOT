@@ -23,6 +23,16 @@ No poner teléfonos, tokens ni secretos.
 
 ---
 
+## 2026-11-01 — Novedades: login Las Locas, listado Nissie y 429 de So Chic
+
+- **Problema / pedido:** en la PC, la pestaña fallaba las tres marcas. Las Locas no veía `_username` porque el primer `<form>` es el buscador y el login actual manda `email` / `password`. Nissie respondía 403: la sesión dejaba el User-Agent `python-requests`. So Chic cortaba a mitad de una ficha (`baggy-cargo-gabardina`) cuando la corrida pedía cada producto.
+- **Qué se hizo:** el login elige `#login-form` y completa el campo por tipo, id o nombre (sigue aceptando `_username` / `_password` / `_csrf_token`). El listado de la pestaña manda un User-Agent de navegador. Las Locas también lee las tarjetas `/productos/<slug>/` de la vidriera, no solo las fichas viejas. So Chic, en la búsqueda, pide una sola página de listado y ante un 429 frena sin fichas; al importar lo marcado espera la pausa de la marca y no sigue después del 429.
+- **Archivos clave:** `provider_importers/laslocas.py`, `provider_importers/bulk/watch_listings.py`, `provider_importers/nissie_catalog.py`, `static/js/adminProviderWatch.js`
+- **Cómo verificar:** `python -m unittest tests.test_laslocas_importer tests.test_provider_watch tests.test_nissie_catalog tests.test_sochic_catalog`
+- **Pendiente / no desplegado:** no hay job que desplegar. Sigue siendo solo la PC.
+
+---
+
 ## 2026-11-01 — Pestaña local de novedades de proveedores
 
 - **Problema / pedido:** el alta masiva ya existía en el notebook, pero no había un lugar en el admin para ver, en el día a día, qué fichas nuevas aparecieron y cuáles ya están en la base, sin disparar un barrido.

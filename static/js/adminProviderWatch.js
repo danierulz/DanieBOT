@@ -188,6 +188,15 @@
     return Math.max(ms, 1500);
   }
 
+  function waitBeforeImport(index, indexes) {
+    var item = lastItems[indexes[index]];
+    if (!item) return 0;
+    if (index === 0) return item.provider === "sochic" ? delayFor("sochic") : 0;
+    var previous = lastItems[indexes[index - 1]];
+    var previousId = previous && previous.provider ? previous.provider : "";
+    return Math.max(delayFor(previousId), delayFor(item.provider));
+  }
+
   function wait(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
@@ -209,6 +218,8 @@
     try {
       for (var i = 0; i < indexes.length; i += 1) {
         var item = lastItems[indexes[i]];
+        var pauseMs = waitBeforeImport(i, indexes);
+        if (pauseMs) await wait(pauseMs);
         setStatus("Importando " + (i + 1) + "/" + indexes.length + " (queda inactiva)…");
         var response = await authFetch("/api/proveedores/importar", {
           method: "POST",
@@ -218,7 +229,16 @@
         var data = await response.json().catch(function () { return {}; });
         if (!response.ok || data.ok === false) {
           var detail = data.error || data.detail || response.statusText;
-          setStatus("Se frenó en " + item.url + ". " + (typeof detail === "string" ? detail : ""));
+          var limited = data.error_code === "rate_limit" ||
+            (typeof detail === "string" && /limit|429/i.test(detail));
+          if (limited) {
+            setStatus(
+              "So Chic limitó las consultas. Se frenó en " + item.url +
+              ". No se pidieron las fichas que seguían. Esperá y volvé a importar las que faltan."
+            );
+          } else {
+            setStatus("Se frenó en " + item.url + ". " + (typeof detail === "string" ? detail : ""));
+          }
           return;
         }
         done += 1;
@@ -229,7 +249,6 @@
             cell.textContent = data.created === false ? "ya estaba" : "importado, inactivo";
           }
         }
-        if (i < indexes.length - 1) await wait(delayFor(item.provider));
       }
       setStatus(done + " ficha(s) procesadas. Quedan inactivas. No se publicó a Meta.");
     } catch (err) {
