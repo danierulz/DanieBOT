@@ -16,11 +16,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, Tag
 
-from provider_importers.bulk.laslocas_catalog import (
-    extract_ficha_urls,
-    get_laslocas_category,
-    listing_url_for_category,
-)
+from provider_importers.bulk.laslocas_catalog import extract_ficha_urls
 from provider_importers.bulk.rate_limit import (
     RateLimitExceeded,
     RateLimitPolicy,
@@ -29,7 +25,7 @@ from provider_importers.bulk.rate_limit import (
 )
 from provider_importers.holic import _build_cod_product as build_holic_cod
 from provider_importers.holic_catalog import (
-    HOLIC_CATALOG_URL,
+    HOLIC_NEW_IN_URL,
     normalize_holic_product_url,
 )
 from provider_importers.laslocas import DEFAULT_TIMEOUT_SECONDS, _authenticated_session
@@ -50,6 +46,8 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 # One listing request. A 429 stops that provider; it does not retry in a loop.
+LASLOCAS_NUEVOS_INGRESOS_URL = "https://laslocas.com/nuevos-ingresos/"
+
 WATCH_LISTING_POLICY = RateLimitPolicy(max_retries=0, hard_stop=True, initial_backoff_seconds=5)
 
 _SKIP_TITLES = {
@@ -136,7 +134,7 @@ def fetch_provider_listing(
     if provider == "holic":
         return _fetch_html_listing(
             session,
-            HOLIC_CATALOG_URL,
+            HOLIC_NEW_IN_URL,
             lambda html, page_url: extract_holic_listing_hits(html, page_url),
             limit=limit,
             rate_limit=False,
@@ -246,12 +244,10 @@ def _fetch_laslocas(
     category_id: str,
     limit: int,
 ) -> ListingPage:
-    try:
-        category = get_laslocas_category(category_id)
-    except ProviderImportError as exc:
-        raise WatchListingError(str(exc)) from exc
+    # category_id kept for API/CLI compat; novedades always use nuevos-ingresos.
+    _ = category_id
     http = session or _authenticated_session()
-    listing_url = listing_url_for_category(category, page=1, ajax=True)
+    listing_url = f"{LASLOCAS_NUEVOS_INGRESOS_URL.rstrip('/')}?page=1&ajax=1"
     try:
         response = http.get(
             listing_url,

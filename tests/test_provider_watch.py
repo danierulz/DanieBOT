@@ -223,13 +223,25 @@ class FirstPageFetchTest(unittest.TestCase):
         self.assertEqual(session.get.call_args[0][0], NISSIE_CATALOG_URL)
         self.assertEqual(len(page.hits), 1)
 
+    def test_holic_uses_new_in_listing(self):
+        session = MagicMock()
+        session.headers = {}
+        html = '<ul class="products"><li class="product"><a href="/product/demo-new/">Demo</a></li></ul>'
+        ok = MagicMock(status_code=200, text=html, url="https://holiclothing.com.ar/product-category/new-in/")
+        ok.raise_for_status = MagicMock()
+        session.get.return_value = ok
+        page = fetch_provider_listing("holic", limit=5, laslocas_category="denim", session=session)
+        self.assertEqual(session.get.call_count, 1)
+        self.assertIn("/product-category/new-in", session.get.call_args[0][0])
+        self.assertEqual(page.hits[0].url, "https://holiclothing.com.ar/product/demo-new/")
+
     def test_laslocas_ajax_first_page_does_not_login_when_session_is_given(self):
         session = MagicMock()
         session.headers = {}
         ok = MagicMock(
             status_code=200,
             text=LASLOCAS_LISTING,
-            url="https://laslocas.com/productos/jean?page=1&ajax=1",
+            url="https://laslocas.com/nuevos-ingresos/?page=1&ajax=1",
         )
         ok.raise_for_status = MagicMock()
         session.get.return_value = ok
@@ -244,6 +256,7 @@ class FirstPageFetchTest(unittest.TestCase):
                 session=session,
             )
         self.assertEqual(session.get.call_count, 1)
+        self.assertIn("nuevos-ingresos", session.get.call_args[0][0])
         self.assertIn("ajax=1", session.get.call_args[0][0])
         self.assertEqual(page.hits[0].cod_product, "BSPOR")
 

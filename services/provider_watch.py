@@ -8,7 +8,6 @@ from typing import Callable
 from sqlalchemy.orm import Session
 
 from provider_importers.bulk.existing import load_dedup_index
-from provider_importers.bulk.laslocas_catalog import get_laslocas_category
 from provider_importers.bulk.watch import (
     WatchNotLocalError,
     WatchRequestError,
@@ -43,12 +42,8 @@ def run_provider_watch(
 
     chosen = normalize_watch_providers(providers)
     capped = normalize_watch_limit(limit)
+    # Kept for API/CLI compat; listing URLs no longer depend on category.
     category = (laslocas_category or "denim").strip() or "denim"
-    if "laslocas" in chosen:
-        try:
-            get_laslocas_category(category)
-        except ProviderImportError as exc:
-            raise WatchRequestError(str(exc)) from exc
 
     report = scan_watch(
         providers=chosen,
