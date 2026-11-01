@@ -14,13 +14,23 @@ Con la app corriendo en la laptop (por ejemplo `http://localhost:5000`):
 
 No hace falta Cloud Scheduler, Cloud Run Job ni un cron. Si el admin está servido por Cloud Run, la consulta responde que solo corre en la PC.
 
+
+## Las Locas: de dónde salen
+
+Las Locas **no** se priorizan por categoría denim suelta para novedades. La fuente a usar es el listado **Nuevos ingresos**:
+
+- URL: https://laslocas.com/nuevos-ingresos/
+- Detalle operativo: [laslocas-nuevos-ingresos.md](./laslocas-nuevos-ingresos.md)
+
+Ahí aparecen las fichas que el proveedor marca como ingreso reciente. Nissie y So Chic siguen con su listado de tienda (/productos/, /shop/).
+
 ## Qué muestra
 
 | Control | Efecto |
 |---------|--------|
 | Proveedores | Las Locas, Nissie y So Chic vienen marcados. HOLIC es opcional. |
 | Máximo | 5 (default) o 10 fichas de la **primera** página. No sigue paginando. |
-| Las Locas | Una categoría (default denim / jean). No recorre todas. |
+| Las Locas | Listado [nuevos-ingresos](https://laslocas.com/nuevos-ingresos/) (ver [laslocas-nuevos-ingresos.md](./laslocas-nuevos-ingresos.md)). No recorre todas las categorías. |
 
 Cada fila trae proveedor, título, URL, precio si el listado lo trae, y estado:
 
