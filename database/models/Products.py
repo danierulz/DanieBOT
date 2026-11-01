@@ -1,7 +1,13 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, event, func
 from sqlalchemy import String
 from sqlalchemy.orm import relationship
 from database.init_db import Base
+from services.product_lifecycle import (
+    LIFECYCLE_ACTIVE,
+    LIFECYCLE_DRAFT,
+    LIFECYCLE_RETIRED,
+    normalize_lifecycle,
+)
 
 
 class Products(Base):
@@ -13,6 +19,7 @@ class Products(Base):
     description = Column(String(1024))
     price = Column(Integer)
     status = Column(Boolean, default=False)
+    lifecycle = Column(String(16), nullable=False, default="draft", server_default="draft", index=True)
 #    gallery_photos = Column(ARRAY(String(512)), nullable=True)
     cod_product = Column(String(50))
     item_title = Column(String(255))
@@ -50,3 +57,18 @@ class Products(Base):
         return f"User(product_id={self.product_id!r}, description={self.description!r}, unit_price={self.price!r})"
 
 
+@event.listens_for(Products, "before_insert")
+@event.listens_for(Products, "before_update")
+def _sync_product_lifecycle(mapper, connection, target) -> None:
+    """Keep lifecycle and status aligned (incl. legacy fixtures that only set status)."""
+    lc = normalize_lifecycle(getattr(target, "lifecycle", None))
+    if lc == LIFECYCLE_RETIRED:
+        target.lifecycle = LIFECYCLE_RETIRED
+        target.status = False
+        return
+    if bool(getattr(target, "status", False)) or lc == LIFECYCLE_ACTIVE:
+        target.lifecycle = LIFECYCLE_ACTIVE
+        target.status = True
+        return
+    target.lifecycle = lc or LIFECYCLE_DRAFT
+    target.status = False
