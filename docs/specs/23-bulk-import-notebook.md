@@ -44,6 +44,10 @@ python -m provider_importers.bulk.runner --provider sochic --max-pages 1 --limit
 
 El JSON de dry-run trae `discovered`, `would_skip_existing`, `would_fetch` y `price_markup_percent`. Si una corrida que escribe corta por 429, el JSON trae `rate_limited: true` y `cooldown_hint_seconds` ([scraping-cuidados.md](../ops/scraping-cuidados.md)).
 
+## Novedades en el admin local
+
+`/admin-panel?tab=watch` hace el mismo recorte (primera página, tope 5 o 10, pausa de So Chic) y **no importa**. Cómo usarlo cada día: [novedades-proveedores.md](../ops/novedades-proveedores.md).
+
 ## Manifiesto para robotRZ
 
 Para armar el JSON que leen `meta_page_garments.py` / `meta_ig_garments.py`, sin publicar en Meta: [meta-garments-manifest.md](../ops/meta-garments-manifest.md).

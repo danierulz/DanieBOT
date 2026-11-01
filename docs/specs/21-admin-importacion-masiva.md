@@ -73,3 +73,7 @@ Los catálogos largos se corren en la PC, no como job de Cloud Run ni Cloud Sche
 ```bash
 python -m provider_importers.bulk.runner --provider laslocas --category denim --max-pages 1 --limit 5 --dry-run
 ```
+
+## Novedades (solo la PC)
+
+Pestaña **Novedades proveedores** (`/admin-panel?tab=watch`). Al abrirla lee **una** página de listado por proveedor (Las Locas, Nissie, So Chic; HOLIC opcional) y muestra hasta 5 o 10 fichas con estado **nuevo** o **posible duplicado**. No inserta, no publica a Meta y no agenda Cloud Run ni Cloud Scheduler. El detalle de uso diario está en [novedades-proveedores.md](../ops/novedades-proveedores.md).

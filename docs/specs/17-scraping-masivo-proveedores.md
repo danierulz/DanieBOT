@@ -110,7 +110,7 @@ Actualizar columna **Verificado** en el cuaderno MD al probar cada categoría co
 
 La alta masiva de catálogo corre en la **PC del desarrollador** (`python -m provider_importers.bulk.runner`).
 
-**No** crear Cloud Scheduler, Cloud Run Jobs ni un cron de GitHub Actions para este scrape. Un barrido de fichas mantiene el proceso despierto el tiempo del catálogo: en Cloud Run se paga CPU/egress y, si se dispara desde la pestaña admin, el `BackgroundTasks` de esa instancia puede morir a mitad de corrida (el run queda colgado). El servicio de la tienda en Cloud Run no es el lugar de estos imports.
+**No** crear Cloud Scheduler, Cloud Run Jobs ni un cron de GitHub Actions para este scrape. La pestaña **Novedades proveedores** tampoco los crea: solo lee la primera página del listado en la PC ([novedades-proveedores.md](../ops/novedades-proveedores.md)). Un barrido de fichas mantiene el proceso despierto el tiempo del catálogo: en Cloud Run se paga CPU/egress y, si se dispara desde la pestaña admin, el `BackgroundTasks` de esa instancia puede morir a mitad de corrida (el run queda colgado). El servicio de la tienda en Cloud Run no es el lugar de estos imports.
 
 - **Dry-run primero.** `--dry-run` no fetchea fichas ni inserta. Imprime `discovered`, `would_skip_existing`, `would_fetch`, `price_markup_percent` y las URLs que sí se bajarían.
 - **Ya importados, antes del fetch.** `--skip-existing` es el default. Si la URL ya está en `products.provider_source_url`, o en un ítem `created`/`skipped` de `provider_import_run_items` cuyo `cod_product` sigue existiendo, no se llama a `fetch_*`. `--no-skip-existing` vuelve a scrapear (refresh de red). Igual **no pisa** la fila: el `cod_product` existente se salta después del fetch y no actualiza precio ni `status`.

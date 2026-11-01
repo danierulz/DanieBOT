@@ -40,6 +40,11 @@ class AdminPanelTemplateTest(unittest.TestCase):
         response = self.client.get("/admin-panel")
         self.assertEqual(response.status_code, 200, response.text[:500])
         self.assertIn("admin-panel", response.text)
+        self.assertIn("Novedades proveedores", response.text)
+        self.assertIn("No publica a Meta", response.text)
+        self.assertIn("No importa todo solo", response.text)
+        self.assertIn('id="panel-watch"', response.text)
+        self.assertIn("adminProviderWatch.js", response.text)
 
     def test_admin_panel_tojson_vars_in_config(self):
         with open("templates/admin-panel.html", encoding="utf-8") as f:
@@ -63,6 +68,8 @@ class AdminPanelTemplateTest(unittest.TestCase):
         self.assertIn("no se avisa otra vez", response.text)
         self.assertIn("franja negra", response.text)
         self.assertIn("/admin-panel", response.text)
+        self.assertIn("Novedades proveedores", response.text)
+        self.assertIn("tab=watch", response.text)
 
     def test_product_detail_selects_color_before_sizes(self):
         with open("templates/tiredimages.html", encoding="utf-8") as f:
