@@ -13,6 +13,7 @@ from provider_importers.types import ProviderImportError
 from provider_importers.bulk.delays import LISTING_PAGE_DELAY_SECONDS
 
 HOLIC_CATALOG_URL = "https://holiclothing.com.ar/tienda/"
+HOLIC_NEW_IN_URL = "https://holiclothing.com.ar/product-category/new-in/"
 DEFAULT_TIMEOUT_SECONDS = 30
 MAX_PAGES = 200
 USER_AGENT = (

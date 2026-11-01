@@ -46,12 +46,13 @@
         </select>
       </div>
       <div>
-        <label for="watch-laslocas-category" class="block text-sm font-medium text-gray-700">{{ admin_watch_laslocas_category }}</label>
-        <select id="watch-laslocas-category" class="mt-1 w-full px-3 py-2 border rounded-md bg-white text-sm">
-          {% for cat in laslocas_bulk_categories %}
-          <option value="{{ cat.id }}" {% if cat.id == 'denim' %}selected{% endif %}>{{ cat.name }}</option>
-          {% endfor %}
-        </select>
+        <p class="block text-sm font-medium text-gray-700">{{ admin_watch_laslocas_category }}</p>
+        <p class="mt-1 text-sm text-gray-600">
+          <a class="underline" href="https://laslocas.com/nuevos-ingresos/" target="_blank" rel="noopener">laslocas.com/nuevos-ingresos</a>
+          · HOLIC:
+          <a class="underline" href="https://holiclothing.com.ar/product-category/new-in/" target="_blank" rel="noopener">new-in</a>
+        </p>
+        <input type="hidden" id="watch-laslocas-category" value="nuevos-ingresos">
       </div>
     </div>
 

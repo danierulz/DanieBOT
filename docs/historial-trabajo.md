@@ -1,4 +1,9 @@
 
+## 2026-11-01 — Watch Locas nuevos-ingresos + HOLIC new-in
+
+- `watch_listings` lee Locas desde `/nuevos-ingresos/?page=1&ajax=1` y HOLIC desde `/product-category/new-in/`.
+- UI sin selector de categoría Locas; links a esas URLs.
+
 ## 2026-11-01 — HOLIC New In (docs)
 
 - Doc docs/ops/holic-new-in.md: URL canónica https://holiclothing.com.ar/product-category/new-in/.
