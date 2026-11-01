@@ -55,8 +55,9 @@ def discover_sochic_product_urls(
     collected. Those URLs are not fetched in the same wave.
     """
     http = session or requests.Session()
-    http.headers.setdefault("User-Agent", USER_AGENT)
-    http.headers.setdefault("Accept-Language", "es-AR,es;q=0.9")
+    http.headers["User-Agent"] = USER_AGENT
+    http.headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    http.headers["Accept-Language"] = "es-AR,es;q=0.9"
     policy = rate_limit_policy or DEFAULT_RATE_LIMIT_POLICY
     pause = sleep or time.sleep
 

@@ -184,17 +184,37 @@ def extract_nissie_listing_hits(html: str, source_url: str) -> list[ListingHit]:
     return _apply_nissie_jsonld(soup, hits)
 
 
+_LASLOCAS_PRODUCT_RE = re.compile(r"^/productos/[^/]+/?$")
+_LASLOCAS_HOSTS = {"laslocas.com", "www.laslocas.com"}
+
+
+def normalize_laslocas_listing_url(raw_url: str, base_url: str) -> str | None:
+    """A ficha (legacy) or a storefront product (``/productos/<slug>/``)."""
+    absolute = urljoin(base_url, (raw_url or "").strip())
+    parsed = urlparse(absolute)
+    if parsed.netloc.lower() not in _LASLOCAS_HOSTS:
+        return None
+    if "/ficha" in parsed.path:
+        return absolute.split("#")[0].split("?")[0]
+    if not _LASLOCAS_PRODUCT_RE.match(parsed.path):
+        return None
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) != 2:
+        return None
+    path = "/" + "/".join(parts) + "/"
+    return f"https://laslocas.com{path}"
+
+
 def extract_laslocas_listing_hits(html: str, source_url: str) -> list[ListingHit]:
-    """Titles and prices from the card. URLs stay on the ficha extractor."""
-    known = set(extract_ficha_urls(html, source_url))
+    """Titles and prices from the card. One row per ficha or storefront product."""
     soup = BeautifulSoup(html, "html.parser")
     hits: dict[str, ListingHit] = {}
     order: list[str] = []
-    for anchor in soup.select("a[href]"):
+    anchors = _listing_anchors(soup)
+    for anchor in anchors:
         href = anchor.get("href") or ""
-        candidate = href if href.startswith("http") else urljoin(source_url, href)
-        clean = candidate.split("#")[0].split("?")[0]
-        if clean not in known:
+        clean = normalize_laslocas_listing_url(href, source_url)
+        if not clean:
             continue
         card = _card_container(anchor)
         title = _title_from(anchor, card)
@@ -205,9 +225,20 @@ def extract_laslocas_listing_hits(html: str, source_url: str) -> list[ListingHit
             hits[clean] = ListingHit(url=clean, title=title, price=price, cod_product=code)
         else:
             hits[clean] = _fill(hits[clean], title=title, price=price, cod_product=code)
-    if not order and known:
-        return [ListingHit(url=url) for url in extract_ficha_urls(html, source_url)]
-    return [hits[url] for url in order]
+    if order:
+        return [hits[url] for url in order]
+    return [ListingHit(url=url) for url in extract_ficha_urls(html, source_url)]
+
+
+def _listing_anchors(soup: BeautifulSoup) -> list[Tag]:
+    """Prefer product cards so the nav and the footer do not lead the list."""
+    cards = soup.select(".js-item-product, .item-product, li.product, article.product")
+    anchors: list[Tag] = []
+    for card in cards:
+        anchors.extend(card.select("a[href]"))
+    if anchors:
+        return anchors
+    return list(soup.select("a[href]"))
 
 
 def _fetch_laslocas(
@@ -247,9 +278,7 @@ def _fetch_html_listing(
     rate_limit: bool,
 ) -> ListingPage:
     http = session or requests.Session()
-    if hasattr(http, "headers") and hasattr(http.headers, "setdefault"):
-        http.headers.setdefault("User-Agent", USER_AGENT)
-        http.headers.setdefault("Accept-Language", "es-AR,es;q=0.9")
+    _assign_listing_headers(http)
 
     def once():
         response = http.get(listing_url, timeout=DEFAULT_TIMEOUT_SECONDS)
@@ -269,9 +298,11 @@ def _fetch_html_listing(
         else:
             response = once()
     except RateLimitExceeded as exc:
+        minutes = max(int(WATCH_LISTING_POLICY.cooldown_hint_seconds // 60), 1)
         raise WatchListingError(
             "So Chic limitó las consultas en el listado. "
-            "Esperá y volvé a buscar. No se pidieron fichas."
+            "Se frenó esta marca: no se pidieron fichas de producto. "
+            f"Esperá unos {minutes} minutos y volvé a buscar."
         ) from exc
     except requests.RequestException as exc:
         raise WatchListingError(f"No se pudo leer el listado ({listing_url}).") from exc
@@ -525,6 +556,26 @@ def _walk_json(value: object, nodes: list[dict]) -> None:
     elif isinstance(value, list):
         for child in value:
             _walk_json(child, nodes)
+
+
+def _assign_listing_headers(http) -> None:
+    """Overwrite the Session default ``python-requests`` agent.
+
+    ``setdefault`` leaves that agent in place, and Nissie (Tienda Nube)
+    answers 403. Product pages are not requested from here.
+    """
+    headers = getattr(http, "headers", None)
+    if headers is None or not hasattr(headers, "__setitem__"):
+        return
+    headers["User-Agent"] = USER_AGENT
+    accept = ""
+    getter = getattr(headers, "get", None)
+    if callable(getter):
+        accept = str(getter("Accept") or "")
+    if not accept or accept == "*/*":
+        headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    if callable(getter) and not getter("Accept-Language"):
+        headers["Accept-Language"] = "es-AR,es;q=0.9"
 
 
 def _squash(value: str) -> str:

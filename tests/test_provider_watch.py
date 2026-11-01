@@ -37,7 +37,10 @@ from provider_importers.bulk.watch import (
     redact_secrets,
     scan_watch,
 )
+import requests
+
 from provider_importers.bulk.watch_listings import (
+    USER_AGENT,
     ListingHit,
     ListingPage,
     WatchListingError,
@@ -96,6 +99,17 @@ LASLOCAS_LISTING = """
 </div>
 """
 
+LASLOCAS_STOREFRONT_LISTING = """
+<nav><a href="/productos/desde-el-menu/">Menu</a></nav>
+<div class="js-item-product item-product" data-product-id="368135223">
+  <a href="/productos/clasico-black/?variant=1">
+    <div class="js-item-name">CLASICO BLACK</div>
+  </a>
+  <span class="js-price-display">$24.500,00</span>
+</div>
+<a href="/jeans/?page=2">2</a>
+"""
+
 
 class ParseListingTest(unittest.TestCase):
     def test_ars_amounts(self):
@@ -138,6 +152,16 @@ class ParseListingTest(unittest.TestCase):
         self.assertEqual(hits[0].price, 15000)
         self.assertEqual(hits[0].cod_product, "BSPOR")
 
+    def test_laslocas_storefront_card_skips_the_menu(self):
+        hits = extract_laslocas_listing_hits(
+            LASLOCAS_STOREFRONT_LISTING,
+            "https://laslocas.com/jeans/?page=1&ajax=1",
+        )
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0].url, "https://laslocas.com/productos/clasico-black/")
+        self.assertEqual(hits[0].title, "CLASICO BLACK")
+        self.assertEqual(hits[0].price, 24500)
+
 
 class FirstPageFetchTest(unittest.TestCase):
     def test_sochic_reads_one_shop_page_and_stops_on_429(self):
@@ -152,13 +176,41 @@ class FirstPageFetchTest(unittest.TestCase):
         self.assertEqual(page.discovered, 2)
         self.assertEqual(len(page.hits), 2)
 
-        limited = MagicMock(status_code=429, text="too many requests", url=SOCHIC_SHOP_URL)
+        limited = MagicMock(
+            status_code=429,
+            text="too many requests https://sochic.com.ar/product/baggy-cargo-gabardina/",
+            url="https://sochic.com.ar/product/baggy-cargo-gabardina/",
+        )
         session.get.reset_mock()
         session.get.return_value = limited
         with self.assertRaises(WatchListingError) as caught:
             fetch_provider_listing("sochic", limit=5, laslocas_category="denim", session=session)
-        self.assertIn("limitó", str(caught.exception).lower())
+        message = str(caught.exception)
+        self.assertIn("limitó", message.lower())
+        self.assertIn("no se pidieron fichas", message.lower())
         self.assertEqual(session.get.call_count, 1)
+        requested = session.get.call_args[0][0]
+        self.assertEqual(requested, SOCHIC_SHOP_URL)
+        self.assertNotIn("/product/", requested)
+
+    def test_listing_replaces_the_python_requests_user_agent(self):
+        session = requests.Session()
+        self.assertIn("python-requests", session.headers["User-Agent"])
+        seen = {}
+
+        def fake_get(url, timeout=None, headers=None):
+            seen["ua"] = session.headers.get("User-Agent")
+            seen["accept"] = session.headers.get("Accept")
+            ok = MagicMock(status_code=200, text=NISSIE_LISTING, url=url)
+            ok.raise_for_status = MagicMock()
+            return ok
+
+        session.get = fake_get
+        page = fetch_provider_listing("nissie", limit=5, laslocas_category="denim", session=session)
+        self.assertEqual(seen["ua"], USER_AGENT)
+        self.assertNotIn("python-requests", seen["ua"])
+        self.assertIn("text/html", seen["accept"])
+        self.assertEqual(len(page.hits), 1)
 
     def test_nissie_does_not_follow_page_two(self):
         session = MagicMock()

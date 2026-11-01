@@ -29,7 +29,7 @@ Cada fila trae proveedor, título, URL, precio si el listado lo trae, y estado:
 
 Las Locas necesita `LOGIN_EMAIL` y `LOGIN_PASS` en el `.env` local. La pantalla lista los nombres de las variables si faltan y **no muestra los valores**.
 
-So Chic espera al menos 5 segundos entre proveedores (`default_delay_ms` de `brands.json`). Un 429 en el listado frena esa marca y no pide fichas.
+So Chic espera al menos 5 segundos entre proveedores (`default_delay_ms` de `brands.json`). La búsqueda lee solo el listado: no pide la ficha de cada producto. Un 429 en ese listado frena esa marca, avisa cuántos minutos esperar y no sigue con fichas. Si igual importás filas marcadas y So Chic responde 429, se corta ahí: las que faltaban no se piden.
 
 ## Qué no hace
 

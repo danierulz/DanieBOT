@@ -79,36 +79,96 @@ def parse_laslocas_product(html: str, source_url: str) -> ImportedProduct:
     )
 
 
+def find_login_form(soup: BeautifulSoup):
+    """The login form, not the search or newsletter form that appears first.
+
+    Legacy pages use ``#inputEmail``. The storefront uses ``#login-form``.
+    """
+    if soup is None:
+        return None
+    form = soup.select_one("#login-form")
+    if form is not None:
+        return form
+    form = soup.select_one("form[data-store='account-login']")
+    if form is not None:
+        return form
+    for candidate in soup.find_all("form"):
+        if candidate.select_one("#inputPassword, #inputEmail, input[type='password']"):
+            return candidate
+    return soup.find("form")
+
+
+def _input_name(inp) -> str:
+    return str(inp.get("name") or "").strip()
+
+
+def _is_username_input(inp) -> bool:
+    field_type = (inp.get("type") or "").lower()
+    field_id = (inp.get("id") or "").lower()
+    name = _input_name(inp).lower()
+    if field_type == "hidden" or field_type in {"submit", "button", "checkbox", "radio"}:
+        return False
+    if field_type == "email" or field_id in {"inputemail", "email"}:
+        return True
+    return name in {"_username", "username", "email"} and field_type in {"text", ""}
+
+
+def _is_password_input(inp) -> bool:
+    field_type = (inp.get("type") or "").lower()
+    field_id = (inp.get("id") or "").lower()
+    name = _input_name(inp).lower()
+    if field_type == "password" or field_id == "inputpassword":
+        return True
+    return name in {"_password", "password"} and field_type in {"text", ""}
+
+
 def _build_login_payload(form, email: str, password: str) -> dict[str, str]:
-    """El formulario usa name=_username/_password (ids inputEmail/inputPassword)."""
+    """Fill the username and password inputs by type, id, or name.
+
+    Legacy Symfony posts ``_username`` / ``_password`` / ``_csrf_token``.
+    The current storefront posts ``email`` / ``password`` and has no CSRF input.
+    """
     payload: dict[str, str] = {}
     if not form:
         raise ProviderImportError("No se encontro el formulario de login en Las Locas.")
 
+    saw_username = False
+    saw_password = False
+    requires_csrf = False
     for inp in form.find_all("input"):
-        name = inp.get("name")
+        name = _input_name(inp)
         if not name:
             continue
         field_type = (inp.get("type") or "").lower()
-        field_id = inp.get("id") or ""
-
-        if field_type == "email" or field_id == "inputEmail":
+        if name == "_csrf_token" or name == "_username":
+            requires_csrf = True
+        if _is_username_input(inp):
             payload[name] = email
-        elif field_type == "password" or field_id == "inputPassword":
+            saw_username = True
+        elif _is_password_input(inp):
             payload[name] = password
+            saw_password = True
         elif field_type == "hidden":
             payload[name] = inp.get("value") or ""
-        elif field_type in ("text", ""):
+        elif field_type in ("text", "") and name not in payload:
             payload[name] = inp.get("value") or ""
 
-    if "_username" not in payload:
+    if not saw_username:
         raise ProviderImportError("No se detecto el campo _username en el login Las Locas.")
-    if "_password" not in payload:
+    if not saw_password:
         raise ProviderImportError("No se detecto el campo _password en el login Las Locas.")
-    if "_csrf_token" not in payload:
+    if requires_csrf and "_csrf_token" not in payload:
         raise ProviderImportError("No se detecto token CSRF en el login Las Locas.")
 
     return payload
+
+
+def _login_was_rejected(post: requests.Response) -> bool:
+    path = urlparse(post.url).path.rstrip("/").lower()
+    if path in {"/login", "/account/login"}:
+        return True
+    post_soup = BeautifulSoup(post.text or "", "html.parser")
+    return post_soup.select_one("form #inputEmail, #login-form") is not None
 
 
 def _authenticated_session() -> requests.Session:
@@ -134,8 +194,9 @@ def _authenticated_session() -> requests.Session:
         raise ProviderImportError(f"No se pudo abrir el login de Las Locas: {exc}") from exc
 
     soup = BeautifulSoup(login_page.text, "html.parser")
-    form = soup.find("form")
-    action = urljoin(LOGIN_URL, form.get("action") if form and form.get("action") else LOGIN_URL)
+    form = find_login_form(soup)
+    action_attr = form.get("action") if form is not None else None
+    action = urljoin(login_page.url or LOGIN_URL, action_attr or "")
     payload = _build_login_payload(form, email, password)
 
     try:
@@ -144,15 +205,13 @@ def _authenticated_session() -> requests.Session:
             data=payload,
             timeout=DEFAULT_TIMEOUT_SECONDS,
             allow_redirects=True,
-            headers={"Referer": LOGIN_URL, "Origin": "https://laslocas.com"},
+            headers={"Referer": login_page.url or LOGIN_URL, "Origin": "https://laslocas.com"},
         )
         post.raise_for_status()
     except requests.RequestException as exc:
         raise ProviderImportError(f"No se pudo iniciar sesion en Las Locas: {exc}") from exc
 
-    post_soup = BeautifulSoup(post.text, "html.parser")
-    post_path = urlparse(post.url).path.rstrip("/")
-    if post_path == "/login" or post_soup.select_one("form #inputEmail"):
+    if _login_was_rejected(post):
         raise ProviderImportError("Credenciales de Las Locas invalidas o login rechazado.")
     return session
 
