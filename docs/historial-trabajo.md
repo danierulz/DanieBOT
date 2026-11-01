@@ -1,3 +1,13 @@
+
+## 2026-11-01 — HOLIC New In (docs)
+
+- Doc docs/ops/holic-new-in.md: URL canónica https://holiclothing.com.ar/product-category/new-in/.
+- docs/ops/novedades-proveedores.md aclara que HOLIC se trae de ahí.
+
+## 2026-11-01 — Las Locas nuevos ingresos (docs)
+
+- Doc docs/ops/laslocas-nuevos-ingresos.md: URL canónica https://laslocas.com/nuevos-ingresos/.
+- docs/ops/novedades-proveedores.md aclara que Las Locas se trae de ahí.
 # Historial de trabajo — Outfit Jazmines / DanieBOT
 
 Cuaderno cronológico de lo que se implementó, corrigió y por qué.  
