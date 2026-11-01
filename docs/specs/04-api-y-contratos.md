@@ -39,6 +39,7 @@ Convención base: JSON salvo donde se indique `multipart/form-data` o HTML.
 | POST | `/api/productos` | Alta producto: `Form` (título, precio, descripción) + `File` imágenes opcionales; sube a GCS y crea filas `ProductImages`. |
 | PUT | `/api/productos/{id}` | Actualiza producto; `Form` incluye `status` (`1`/`0`) para activar/desactivar en tienda. Requiere JWT admin. |
 | POST | `/api/proveedores/importar` | Body JSON `{ "url": "...", "status": false }` (`status` opcional, default `false`). Auto-detecta proveedor. Respuesta incluye `activo`. Requiere JWT admin. |
+| POST | `/api/proveedores/novedades` | Solo PC (403 si `K_SERVICE`). Body `{ "providers": ["laslocas","nissie","sochic"], "limit": 5, "laslocas_category": "denim" }`. Lee la primera página y clasifica `nuevo` / `posible_duplicado`. No inserta ni agenda un cron. Requiere JWT admin. |
 | POST | `/api/proveedores/sochic/importar` | Alias de `/api/proveedores/importar` (compatibilidad). |
 | POST | `/upload-photos` | Sube fotos y devuelve URLs (`uploaded_urls`). |
 

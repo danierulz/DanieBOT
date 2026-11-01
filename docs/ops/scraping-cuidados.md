@@ -13,6 +13,8 @@ El comando es `python -m provider_importers.bulk.runner`, en la PC del desarroll
 
 No crear Cloud Scheduler, Cloud Run Jobs ni un cron de GitHub Actions. El motivo (costo y corridas que mueren a mitad) está en el spec 17.
 
+Para mirar solo si hay fichas nuevas, sin bajar el catálogo: pestaña **Novedades proveedores** en la PC ([novedades-proveedores.md](./novedades-proveedores.md)).
+
 El CLI no imprime secretos. Nombres de variables (sin valores): spec 23.
 
 ## Checklist

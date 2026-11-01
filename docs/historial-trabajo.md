@@ -23,6 +23,16 @@ No poner teléfonos, tokens ni secretos.
 
 ---
 
+## 2026-11-01 — Pestaña local de novedades de proveedores
+
+- **Problema / pedido:** el alta masiva ya existía en el notebook, pero no había un lugar en el admin para ver, en el día a día, qué fichas nuevas aparecieron y cuáles ya están en la base, sin disparar un barrido.
+- **Qué se hizo:** pestaña **Novedades proveedores** (`/admin-panel?tab=watch`). Lee la primera página de Las Locas, Nissie y So Chic (HOLIC opcional), muestra hasta 5 o 10 filas y marca **nuevo** o **posible duplicado** con las mismas claves que `--skip-existing` (`provider_source_url`, ítems `created`/`skipped` y `cod_product`). No inserta sola, no publica a Meta y no crea Cloud Scheduler, Cloud Run Job ni cron. En Cloud Run (`K_SERVICE`) el endpoint responde 403. Importar lo marcado es opcional y deja la prenda inactiva.
+- **Archivos clave:** `provider_importers/bulk/watch.py`, `provider_importers/bulk/watch_listings.py`, `services/provider_watch.py`, `templates/partials/admin_watch_tab.html`, `docs/ops/novedades-proveedores.md`
+- **Cómo verificar:** `python -m unittest tests.test_provider_watch tests.test_admin_panel tests.test_bulk_brands`
+- **Pendiente / no desplegado:** no hay job que desplegar. La pestaña se usa en la PC.
+
+---
+
 ## 2026-10-27 — Backoff ante HTTP 429 en el alta masiva
 
 - **Problema / pedido:** So Chic responde 429 (o «limitó las consultas») y el runner seguía pidiendo fichas. Hacía falta frenar, esperar con backoff y cortar la corrida, sin Cloud Scheduler.

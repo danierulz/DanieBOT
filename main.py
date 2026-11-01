@@ -76,6 +76,7 @@ from database.init_db import get_db_session, get_db_fastApi
 from config import get_template_context, PRODUCT_DESCRIPTION_MAX_LEN, PRODUCT_ITEM_TITLE_MAX_LEN, APP_DEBUG, build_nav_links
 from services.site_settings import get_promo_banner, set_promo_banner
 from provider_importers.bulk.laslocas_catalog import load_laslocas_categories
+from services.provider_watch import WatchNotLocalError, WatchRequestError, run_provider_watch
 from services.colors import (
     color_to_public,
     create_color,
@@ -1118,6 +1119,14 @@ class LasLocasBulkImportRequest(BaseModel):
     max_pages: int = 0
 
 
+class ProviderWatchRequest(BaseModel):
+    """First-page listing check. Does not import and is not a scheduled job."""
+
+    providers: Optional[List[str]] = None
+    limit: int = 5
+    laslocas_category: Optional[str] = None
+
+
 
 def _validate_product_form_fields(*, item_title: str, description: str) -> None:
     title = item_title or ""
@@ -1261,6 +1270,26 @@ def _import_product_from_url(
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail="Error al importar producto desde proveedor")
+
+
+@app.post("/api/proveedores/novedades")
+def novedades_proveedores_local(
+    payload: ProviderWatchRequest,
+    db: Session = Depends(get_db_fastApi),
+    _: dict = Depends(get_current_user),
+):
+    """Listado corto en la PC: informa nuevo vs posible duplicado. No importa."""
+    try:
+        return run_provider_watch(
+            db,
+            providers=payload.providers,
+            limit=payload.limit,
+            laslocas_category=payload.laslocas_category,
+        )
+    except WatchNotLocalError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except WatchRequestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/proveedores/importar")

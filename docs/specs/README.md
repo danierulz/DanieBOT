@@ -15,6 +15,7 @@ Documentación viva del producto y del sistema. **Versión inicial** generada a 
 | [23-bulk-import-notebook.md](./23-bulk-import-notebook.md) | **Comandos** de alta masiva en la PC (política en el 17) |
 | [../ops/meta-garments-manifest.md](../ops/meta-garments-manifest.md) | **Manifiesto JSON** para robotRZ (no publica en Meta; dry-run en el notebook) |
 | [21-admin-importacion-masiva.md](./21-admin-importacion-masiva.md) | **Pestaña admin** importación masiva (separada de Nuevo producto), progreso y API |
+| [../ops/novedades-proveedores.md](../ops/novedades-proveedores.md) | **Pestaña local** de novedades (primera página, nuevo vs duplicado; sin cron) |
 | [22-admin-auth-config.md](./22-admin-auth-config.md) | **Credenciales admin** (JWT, bcrypt, Secret Manager) |
 | [18-import-proveedores-patrones.md](./18-import-proveedores-patrones.md) | **Patrones de identidad e inserción** por proveedor (referencia Nissie) |
 | [06-frontend-y-checkout-whatsapp.md](./06-frontend-y-checkout-whatsapp.md) | Tailwind, carrito, mensaje `wa.me`, formato del pedido |

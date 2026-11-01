@@ -19,6 +19,26 @@ class ImportUrlSelection:
     to_fetch: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class DedupIndex:
+    """Keys the notebook already knows, using the same rules as ``--skip-existing``.
+
+    ``product_urls`` come from ``products.provider_source_url``.
+    ``run_urls`` come from created/skipped import-run items whose ``cod_product``
+    still exists. Failed items and rows whose product was deleted stay out.
+    ``cod_products`` are the business keys on ``products`` (Nissie group id,
+    So Chic SKU+slug, Las Locas code, and the rest).
+    """
+
+    product_urls: frozenset[str]
+    run_urls: frozenset[str]
+    cod_products: frozenset[str]
+
+    @property
+    def known_urls(self) -> set[str]:
+        return set(self.product_urls) | set(self.run_urls)
+
+
 def canonical_source_url(url: str | None) -> str:
     """Compare product URLs ignoring scheme, www, query and trailing slash."""
     raw = str(url or "").strip()
@@ -73,24 +93,18 @@ def select_import_urls(
     )
 
 
-def load_known_source_urls(db: Session) -> set[str]:
-    """Canonical URLs already tied to a product row.
-
-    Sources:
-    - ``products.provider_source_url`` (written on each new import)
-    - ``provider_import_run_items.source_url`` for created/skipped items whose
-      ``cod_product`` still exists (bulk runs from before that column was filled)
-
-    Failed items are ignored so a later run can retry them.
-    """
-    known: set[str] = set()
+def load_dedup_index(db: Session) -> DedupIndex:
+    """Load URL and ``cod_product`` keys. See ``DedupIndex``."""
+    product_urls: set[str] = set()
     for (value,) in db.query(Products.provider_source_url).filter(
         Products.provider_source_url.isnot(None),
         Products.provider_source_url != "",
     ):
         key = canonical_source_url(value)
         if key:
-            known.add(key)
+            product_urls.add(key)
+
+    run_urls: set[str] = set()
     rows = (
         db.query(ProviderImportRunItem.source_url)
         .join(Products, Products.cod_product == ProviderImportRunItem.cod_product)
@@ -101,8 +115,35 @@ def load_known_source_urls(db: Session) -> set[str]:
     for (value,) in rows:
         key = canonical_source_url(value)
         if key:
-            known.add(key)
-    return known
+            run_urls.add(key)
+
+    codes: set[str] = set()
+    for (value,) in db.query(Products.cod_product).filter(
+        Products.cod_product.isnot(None),
+        Products.cod_product != "",
+    ):
+        code = str(value).strip()
+        if code:
+            codes.add(code)
+
+    return DedupIndex(
+        product_urls=frozenset(product_urls),
+        run_urls=frozenset(run_urls),
+        cod_products=frozenset(codes),
+    )
+
+
+def load_known_source_urls(db: Session) -> set[str]:
+    """Canonical URLs already tied to a product row.
+
+    Sources:
+    - ``products.provider_source_url`` (written on each new import)
+    - ``provider_import_run_items.source_url`` for created/skipped items whose
+      ``cod_product`` still exists (bulk runs from before that column was filled)
+
+    Failed items are ignored so a later run can retry them.
+    """
+    return load_dedup_index(db).known_urls
 
 
 def read_known_source_urls() -> set[str]:
