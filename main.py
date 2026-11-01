@@ -30,6 +30,16 @@ from gcs.storage_factory import create_uploader
 from provider_importers.registry import detect_provider, fetch_product
 from provider_importers.types import ImportedProduct, ProviderImportError
 from services.product_activation import activation_blockers, format_activation_error
+from services.product_lifecycle import (
+    LIFECYCLE_ACTIVE,
+    LIFECYCLE_DRAFT,
+    LIFECYCLE_RETIRED,
+    apply_lifecycle,
+    apply_status_bool,
+    lifecycle_label,
+    lifecycle_of,
+    normalize_lifecycle,
+)
 from services.product_variants import sync_product_variants
 from services.provider_import import (
     ProviderImportPayload,
@@ -937,6 +947,9 @@ def listar_productos(
     provider: Optional[str] = Query(
         None, pattern="^(nissie|sochic|laslocas|holic)$"
     ),
+    lifecycle: Optional[str] = Query(
+        None, pattern="^(draft|active|retired)$"
+    ),
     sort: Optional[str] = Query(
         None,
         pattern="^(id_desc|create_desc|create_asc|extract_desc|extract_asc)$",
@@ -946,6 +959,13 @@ def listar_productos(
 ):
     consulta = db.query(Products)
     consulta = _apply_products_status_filter(consulta, status_filter, bool(user))
+    if lifecycle and user:
+        consulta = consulta.filter(Products.lifecycle == lifecycle)
+    elif lifecycle and not user:
+        raise HTTPException(
+            status_code=403,
+            detail="Se requiere autenticacion admin para filtrar por lifecycle.",
+        )
     if provider and user:
         consulta = consulta.filter(Products.provider == provider)
     elif provider and not user:
@@ -1031,6 +1051,8 @@ def listar_productos(
                 "categoria": _category_public(p.category),
                 "variantes_resumen": _list_variant_summary(list(p.variants or [])),
                 "activo": _product_is_active(p),
+                "lifecycle": lifecycle_of(p),
+                "lifecycle_label": lifecycle_label(lifecycle_of(p)),
                 "provider": p.provider,
                 "create_date": _dt_iso(getattr(p, "create_date", None)),
                 "extract_date": _dt_iso(getattr(p, "extract_date", None)),
@@ -1215,14 +1237,17 @@ def _apply_products_status_filter(consulta, status_filter: Optional[str], is_adm
         if not is_admin:
             raise HTTPException(
                 status_code=403,
-                detail="Se requiere autenticación admin para filtrar por estado.",
+                detail="Se requiere autenticacion admin para filtrar por estado.",
             )
         if status_filter == "activos":
-            return consulta.filter(Products.status.is_(True))
+            return consulta.filter(Products.lifecycle == LIFECYCLE_ACTIVE)
         if status_filter == "inactivos":
-            return consulta.filter(or_(Products.status.is_(False), Products.status.is_(None)))
+            return consulta.filter(
+                Products.lifecycle.in_((LIFECYCLE_DRAFT, LIFECYCLE_RETIRED))
+            )
         return consulta
-    return consulta.filter(Products.status.is_(True))
+    # Storefront / anonymous: only products on the web.
+    return consulta.filter(Products.lifecycle == LIFECYCLE_ACTIVE)
 
 
 def _persist_imported_product(
@@ -1546,6 +1571,7 @@ def crear_producto(
             is_sale=is_sale_b,
             discount_percent=_normalize_discount(is_sale_b, discount_percent),
         )
+        apply_lifecycle(nuevo, LIFECYCLE_DRAFT)
         db.add(nuevo)
         db.flush()
         nuevo.cod_product = f"P{nuevo.product_id}"
@@ -1604,7 +1630,7 @@ def actualizar_producto(
         producto.is_sale = is_sale_b
         producto.discount_percent = _normalize_discount(is_sale_b, discount_percent)
         if status is not None:
-            producto.status = _parse_form_bool(status)
+            apply_status_bool(producto, _parse_form_bool(status))
 
         has_new_images = bool(
             images and any(getattr(img, "filename", None) for img in images)

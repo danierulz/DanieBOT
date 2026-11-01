@@ -1,4 +1,11 @@
 
+## 2026-11-01 — Lifecycle draft/active/retired
+
+- Columna products.lifecycle (draft pendiente scrape/import, ctive en web, 
+etired baja a proposito).
+- Dual-write con status booleano. Mis productos: filtro Ciclo + badge.
+- Migracion: status true→active, false→draft.
+
 ## 2026-11-01 — Mis productos: fechas y orden
 
 - Columnas Alta (`create_date`) y Actualización (`extract_date`) en Mis productos.

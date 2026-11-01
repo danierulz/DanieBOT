@@ -17,6 +17,12 @@ from database.models.Products import Products
 from provider_importers.types import ImportedProduct
 from services.colors import get_or_create_color, normalize_color_code, sync_product_colors
 from services.sizes import get_or_create_size_code
+from services.product_lifecycle import (
+    LIFECYCLE_ACTIVE,
+    LIFECYCLE_DRAFT,
+    apply_lifecycle,
+    lifecycle_of,
+)
 
 
 class ByteUploader(Protocol):
@@ -77,7 +83,7 @@ def page_ficha_from_url(url: str) -> str:
 
 
 def product_is_active(product: Products) -> bool:
-    return bool(product.status)
+    return lifecycle_of(product) == LIFECYCLE_ACTIVE
 
 
 def resolve_category_id(db: Session, category_id_raw: Optional[int]) -> Optional[int]:
@@ -160,6 +166,7 @@ def persist_imported_product(
         provider=imported.provider,
         provider_source_url=_stored_source_url(imported.source_url),
     )
+    apply_lifecycle(nuevo, LIFECYCLE_ACTIVE if payload.status else LIFECYCLE_DRAFT)
     db.add(nuevo)
     db.flush()
 
