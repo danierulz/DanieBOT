@@ -385,7 +385,19 @@
             <option value="holic">{{ admin_list_provider_holic }}</option>
           </select>
         </div>
+        <div class="sm:w-56">
+          <label for="admin-list-sort" class="block text-sm font-medium text-gray-700 mb-1">{{ admin_list_sort_label }}</label>
+          <select id="admin-list-sort"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring focus:border-gray-900 bg-white">
+            <option value="create_desc" selected>{{ admin_list_sort_create_desc }}</option>
+            <option value="create_asc">{{ admin_list_sort_create_asc }}</option>
+            <option value="extract_desc">{{ admin_list_sort_extract_desc }}</option>
+            <option value="extract_asc">{{ admin_list_sort_extract_asc }}</option>
+            <option value="id_desc">{{ admin_list_sort_id_desc }}</option>
+          </select>
+        </div>
       </div>
+      <p class="text-xs text-gray-500 mb-3">{{ admin_list_dates_hint }}</p>
 
       <p id="list-status" class="text-sm text-gray-500 mb-4"></p>
       <div class="overflow-x-auto rounded-lg border border-gray-200">
@@ -396,6 +408,8 @@
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_title }}</th>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_provider }}</th>
               <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_status }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_created }}</th>
+              <th class="px-3 py-2 text-left font-semibold text-gray-700">{{ admin_col_updated }}</th>
               <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_price }}</th>
               <th class="px-3 py-2 text-right font-semibold text-gray-700">{{ admin_col_actions }}</th>
             </tr>
@@ -920,6 +934,20 @@
     let listPage = 1;
     let listSearch = '';
 
+    function formatAdminDate(value) {
+      if (!value) return '—';
+      try {
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        return d.toLocaleString('es-AR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+      } catch (err) {
+        return String(value);
+      }
+    }
+
     function buildListUrl(page) {
       const u = new URL('/api/productos', window.location.origin);
       u.searchParams.set('page', String(page));
@@ -933,6 +961,10 @@
       const providerFilter = document.getElementById('admin-list-provider-filter');
       if (providerFilter && providerFilter.value) {
         u.searchParams.set('provider', providerFilter.value);
+      }
+      const sortFilter = document.getElementById('admin-list-sort');
+      if (sortFilter && sortFilter.value) {
+        u.searchParams.set('sort', sortFilter.value);
       }
       return u.toString();
     }
@@ -989,6 +1021,8 @@
             <td class="px-3 py-2 align-middle whitespace-nowrap">
               <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${p.activo ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}">${p.activo ? LABELS.statusActive : LABELS.statusInactive}</span>
             </td>
+            <td class="px-3 py-2 align-middle whitespace-nowrap text-xs text-gray-600">${escapeHtml(formatAdminDate(p.create_date))}</td>
+            <td class="px-3 py-2 align-middle whitespace-nowrap text-xs text-gray-600">${escapeHtml(formatAdminDate(p.extract_date))}</td>
             <td class="px-3 py-2 align-middle text-right whitespace-nowrap">$${moneyFmt.format(Number(p.precio) || 0)}</td>
             <td class="px-3 py-2 align-middle text-right whitespace-nowrap space-x-3">
               <a href="/admin-panel/edit/${p.id}" class="text-black font-semibold hover:underline">${LABELS.edit}</a>
@@ -1037,6 +1071,10 @@
       loadList(1);
     });
     document.getElementById('admin-list-provider-filter').addEventListener('change', () => {
+      listPage = 1;
+      loadList(1);
+    });
+    document.getElementById('admin-list-sort').addEventListener('change', () => {
       listPage = 1;
       loadList(1);
     });

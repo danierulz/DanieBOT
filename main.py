@@ -937,6 +937,10 @@ def listar_productos(
     provider: Optional[str] = Query(
         None, pattern="^(nissie|sochic|laslocas|holic)$"
     ),
+    sort: Optional[str] = Query(
+        None,
+        pattern="^(id_desc|create_desc|create_asc|extract_desc|extract_asc)$",
+    ),
     db: Session = Depends(get_db_fastApi),
     user: Optional[dict] = Depends(get_optional_user),
 ):
@@ -993,8 +997,9 @@ def listar_productos(
         consulta = consulta.filter(Products.product_id.in_(ids_match))
 
     total = consulta.count()
+    order_clause = _products_list_order(sort)
     productos = (
-        consulta.order_by(Products.product_id.desc())
+        consulta.order_by(*order_clause)
         .offset((page - 1) * per_page)
         .limit(per_page)
         .options(
@@ -1027,6 +1032,8 @@ def listar_productos(
                 "variantes_resumen": _list_variant_summary(list(p.variants or [])),
                 "activo": _product_is_active(p),
                 "provider": p.provider,
+                "create_date": _dt_iso(getattr(p, "create_date", None)),
+                "extract_date": _dt_iso(getattr(p, "extract_date", None)),
             }
         )
     total_pages = ceil(total / per_page) if total else 0
@@ -1178,6 +1185,29 @@ def _product_is_active(product: Products) -> bool:
 
 def _parse_form_bool(value: Optional[str]) -> bool:
     return str(value or "").lower() in ("1", "true", "on", "yes")
+
+
+
+def _dt_iso(value) -> Optional[str]:
+    if value is None:
+        return None
+    try:
+        return value.isoformat()
+    except Exception:
+        return str(value)
+
+
+def _products_list_order(sort: Optional[str]):
+    key = (sort or "id_desc").strip().lower()
+    if key == "create_asc":
+        return (Products.create_date.asc(), Products.product_id.asc())
+    if key == "create_desc":
+        return (Products.create_date.desc(), Products.product_id.desc())
+    if key == "extract_asc":
+        return (Products.extract_date.asc(), Products.product_id.asc())
+    if key == "extract_desc":
+        return (Products.extract_date.desc(), Products.product_id.desc())
+    return (Products.product_id.desc(),)
 
 
 def _apply_products_status_filter(consulta, status_filter: Optional[str], is_admin: bool):
