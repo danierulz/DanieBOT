@@ -1,4 +1,9 @@
 
+## 2026-11-01 — Mis productos: fechas y orden
+
+- Columnas Alta (`create_date`) y Actualización (`extract_date`) en Mis productos.
+- Filtro Orden: alta/actualización/id. API `/api/productos?sort=`.
+
 ## 2026-11-01 — Import Las Locas /productos/
 
 - parse_laslocas_product / validate aceptan URLs storefront /productos/<slug>/ además de /ficha-....
