@@ -24,11 +24,19 @@ Las Locas **no** se priorizan por categoría denim suelta para novedades. La fue
 
 Ahí aparecen las fichas que el proveedor marca como ingreso reciente. Nissie y So Chic siguen con su listado de tienda (/productos/, /shop/).
 
+
+## HOLIC: de donde salen
+
+HOLIC (cuando esta marcado en la pestana) usa el listado **New In**, no el catalogo completo:
+
+- URL: https://holiclothing.com.ar/product-category/new-in/
+- Detalle operativo: [holic-new-in.md](./holic-new-in.md)
+
 ## Qué muestra
 
 | Control | Efecto |
 |---------|--------|
-| Proveedores | Las Locas, Nissie y So Chic vienen marcados. HOLIC es opcional. |
+| Proveedores | Las Locas, Nissie y So Chic vienen marcados. HOLIC es opcional y, si se marca, sale de [new-in](https://holiclothing.com.ar/product-category/new-in/). |
 | Máximo | 5 (default) o 10 fichas de la **primera** página. No sigue paginando. |
 | Las Locas | Listado [nuevos-ingresos](https://laslocas.com/nuevos-ingresos/) (ver [laslocas-nuevos-ingresos.md](./laslocas-nuevos-ingresos.md)). No recorre todas las categorías. |
 
