@@ -1,4 +1,9 @@
 
+## 2026-11-01 — Import Las Locas /productos/
+
+- parse_laslocas_product / validate aceptan URLs storefront /productos/<slug>/ además de /ficha-....
+- Título, precio, imágenes y código (product_id Tienda Nube) desde la ficha nueva.
+
 ## 2026-11-01 — Watch Locas nuevos-ingresos + HOLIC new-in
 
 - `watch_listings` lee Locas desde `/nuevos-ingresos/?page=1&ajax=1` y HOLIC desde `/product-category/new-in/`.

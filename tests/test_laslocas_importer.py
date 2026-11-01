@@ -64,6 +64,31 @@ LASLOCAS_HTML_PRICE_FALLBACK = """
 """
 
 
+
+STOREFRONT_PRODUCT_HTML = """
+<html>
+  <body>
+    <h1 class="js-product-name h4" data-store="product-name-376876413">MINI TOTE DENIM</h1>
+    <form id="product_form" class="js-product-form" data-store="product-form-376876413" method="post" action="/comprar/">
+      <input type="hidden" name="add_to_cart" value="376876413">
+    </form>
+    <script type="application/ld+json">
+      {
+        "@type": "WebPage",
+        "mainEntity": {
+          "@type": "Product",
+          "name": "MINI TOTE DENIM",
+          "description": "Una mini tote moderna",
+          "image": "https://dcdn-us.mitiendanube.com/stores/008/029/137/products/demo.webp",
+          "offers": {"@type": "Offer", "price": "29800", "priceCurrency": "ARS"}
+        }
+      }
+    </script>
+    <img src="https://dcdn-us.mitiendanube.com/stores/008/029/137/products/demo.webp" alt="MINI TOTE DENIM">
+  </body>
+</html>
+"""
+
 LOGIN_FORM_HTML = """
 <form method="post">
   <input type="email" id="inputEmail" name="_username" value="">
@@ -140,9 +165,23 @@ class LasLocasImporterTest(unittest.TestCase):
         )
         self.assertEqual(product.price, 28400)
 
-    def test_rejects_non_ficha_urls(self):
+
+    def test_parse_storefront_product_url(self):
+        product = parse_laslocas_product(
+            STOREFRONT_PRODUCT_HTML,
+            "https://laslocas.com/productos/mini-tote-denim-1ny4q/",
+        )
+        self.assertEqual(product.cod_product, "376876413")
+        self.assertEqual(product.title, "MINI TOTE DENIM")
+        self.assertEqual(product.price, 29800)
+        self.assertGreaterEqual(len(product.image_urls), 1)
+        self.assertEqual(product.page_ficha, "productosmini-tote-denim-1ny4q")
+
+    def test_rejects_non_product_urls(self):
         with self.assertRaises(ProviderImportError):
             parse_laslocas_product(LASLOCAS_HTML, "https://laslocas.com/login")
+        with self.assertRaises(ProviderImportError):
+            parse_laslocas_product(LASLOCAS_HTML, "https://laslocas.com/nuevos-ingresos/")
 
     def test_detect_provider(self):
         self.assertEqual(

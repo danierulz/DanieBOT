@@ -44,27 +44,50 @@ def parse_laslocas_product(html: str, source_url: str) -> ImportedProduct:
     _validate_laslocas_url(source_url)
     soup = BeautifulSoup(html, "html.parser")
     page_ficha = _page_ficha_from_url(source_url)
-
-    cod_el = soup.select_one("#codProd")
-    cod_product = _squash_ws(cod_el.get_text() if cod_el else "")
-    if not cod_product:
-        raise ProviderImportError("No se pudo detectar el codigo de producto Las Locas (#codProd).")
-
-    title_el = soup.select_one("h1.item-title")
-    item_title = _squash_ws(title_el.get_text() if title_el else "")
-    if not item_title:
-        raise ProviderImportError("No se pudo detectar el titulo del producto Las Locas.")
+    storefront = _is_laslocas_storefront_product_path(urlparse(source_url).path)
 
     json_product = _find_product_jsonld(soup)
-    sku = _parse_int(json_product.get("sku"))
-    description = _squash_ws(str(json_product.get("description") or ""))
-    price = _parse_price_from_offers(json_product.get("offers"))
-    if price is None:
-        price = _extract_price_from_html(soup)
-    if price is None:
-        raise ProviderImportError("No se pudo detectar el precio del producto Las Locas.")
 
-    image_urls = _extract_gallery_urls(soup, source_url)
+    if storefront:
+        title_el = soup.select_one("h1.js-product-name, h1[data-store^='product-name']")
+        item_title = _squash_ws(title_el.get_text() if title_el else "")
+        if not item_title:
+            item_title = _squash_ws(str(json_product.get("name") or ""))
+        if not item_title:
+            raise ProviderImportError("No se pudo detectar el titulo del producto Las Locas.")
+
+        cod_product = _storefront_cod_product(soup, source_url, json_product)
+        sku = _parse_int(json_product.get("sku")) or _parse_int(cod_product)
+        description = _squash_ws(str(json_product.get("description") or ""))
+        price = _parse_price_from_offers(json_product.get("offers"))
+        if price is None:
+            price = _extract_price_from_html(soup)
+        if price is None:
+            raise ProviderImportError("No se pudo detectar el precio del producto Las Locas.")
+        image_urls = _extract_gallery_urls(soup, source_url)
+        if not image_urls:
+            image_urls = _storefront_image_urls(soup, source_url, json_product)
+    else:
+        cod_el = soup.select_one("#codProd")
+        cod_product = _squash_ws(cod_el.get_text() if cod_el else "")
+        if not cod_product:
+            raise ProviderImportError(
+                "No se pudo detectar el codigo de producto Las Locas (#codProd)."
+            )
+
+        title_el = soup.select_one("h1.item-title")
+        item_title = _squash_ws(title_el.get_text() if title_el else "")
+        if not item_title:
+            raise ProviderImportError("No se pudo detectar el titulo del producto Las Locas.")
+
+        sku = _parse_int(json_product.get("sku"))
+        description = _squash_ws(str(json_product.get("description") or ""))
+        price = _parse_price_from_offers(json_product.get("offers"))
+        if price is None:
+            price = _extract_price_from_html(soup)
+        if price is None:
+            raise ProviderImportError("No se pudo detectar el precio del producto Las Locas.")
+        image_urls = _extract_gallery_urls(soup, source_url)
 
     return ImportedProduct(
         provider="laslocas",
@@ -77,6 +100,56 @@ def parse_laslocas_product(html: str, source_url: str) -> ImportedProduct:
         image_urls=image_urls,
         page_ficha=page_ficha,
     )
+
+
+def _storefront_cod_product(soup: BeautifulSoup, source_url: str, json_product: dict[str, Any]) -> str:
+    form = soup.select_one("#product_form")
+    if form is not None:
+        add = form.find("input", attrs={"name": "add_to_cart"})
+        if add and add.get("value"):
+            return _squash_ws(str(add.get("value")))[:50]
+        data_store = str(form.get("data-store") or "")
+        m = re.search(r"product-form-(\d+)", data_store)
+        if m:
+            return m.group(1)[:50]
+    h1 = soup.select_one("h1.js-product-name")
+    if h1 is not None:
+        data_store = str(h1.get("data-store") or "")
+        m = re.search(r"product-name-(\d+)", data_store)
+        if m:
+            return m.group(1)[:50]
+    for key in ("sku", "productID", "mpn"):
+        value = _squash_ws(str(json_product.get(key) or ""))
+        if value:
+            return value[:50]
+    slug = urlparse(source_url).path.strip("/").split("/")[-1]
+    if slug:
+        return slug[:50]
+    raise ProviderImportError("No se pudo detectar el codigo del producto Las Locas.")
+
+
+def _storefront_image_urls(
+    soup: BeautifulSoup, source_url: str, json_product: dict[str, Any]
+) -> list[str]:
+    candidates: list[str] = []
+    image = json_product.get("image")
+    if isinstance(image, str):
+        candidates.append(image)
+    elif isinstance(image, list):
+        for item in image:
+            if isinstance(item, str):
+                candidates.append(item)
+            elif isinstance(item, dict) and isinstance(item.get("url"), str):
+                candidates.append(item["url"])
+    for img in soup.select("img[src], img[data-src]"):
+        src = img.get("src") or img.get("data-src") or ""
+        if "/products/" in src or "mitiendanube.com/stores" in src:
+            if "empty-placeholder" in src or "/themes/" in src:
+                continue
+            candidates.append(src)
+    absolute = [urljoin(source_url, u) if u.startswith("//") or u.startswith("/") else u for u in candidates]
+    absolute = [("https:" + u) if u.startswith("//") else u for u in absolute]
+    return _dedupe_urls(absolute)[:MAX_GALLERY_IMAGES]
 
 
 def find_login_form(soup: BeautifulSoup):
@@ -216,12 +289,27 @@ def _authenticated_session() -> requests.Session:
     return session
 
 
+_LASLOCAS_STOREFRONT_PRODUCT_RE = re.compile(r"^/productos/[^/]+/?$")
+
+
+def _is_laslocas_ficha_path(path: str) -> bool:
+    return "/ficha" in (path or "")
+
+
+def _is_laslocas_storefront_product_path(path: str) -> bool:
+    return bool(_LASLOCAS_STOREFRONT_PRODUCT_RE.match(path or ""))
+
+
 def _validate_laslocas_url(url: str) -> None:
     parsed = urlparse(str(url or "").strip())
     if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() not in LASLOCAS_HOSTS:
         raise ProviderImportError("Solo se aceptan URLs de productos de laslocas.com.")
-    if "/ficha" not in parsed.path:
-        raise ProviderImportError("La URL de Las Locas debe apuntar a una ficha (/ficha-...).")
+    path = parsed.path or ""
+    if not (_is_laslocas_ficha_path(path) or _is_laslocas_storefront_product_path(path)):
+        raise ProviderImportError(
+            "La URL de Las Locas debe apuntar a una ficha (/ficha-...) "
+            "o a un producto de tienda (/productos/<slug>/)."
+        )
 
 
 def _page_ficha_from_url(url: str) -> str:
@@ -248,10 +336,16 @@ def _find_product_jsonld(soup: BeautifulSoup) -> dict[str, Any]:
             continue
         items = parsed if isinstance(parsed, list) else [parsed]
         for item in items:
-            if isinstance(item, dict) and item.get("@type") == "Product":
+            if not isinstance(item, dict):
+                continue
+            if item.get("@type") == "Product":
                 return item
-            if isinstance(item, dict) and item.get("@graph"):
-                for node in item["@graph"]:
+            main_entity = item.get("mainEntity")
+            if isinstance(main_entity, dict) and main_entity.get("@type") == "Product":
+                return main_entity
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                for node in graph:
                     if isinstance(node, dict) and node.get("@type") == "Product":
                         return node
     return {}
