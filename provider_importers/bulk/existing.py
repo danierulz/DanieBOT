@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from sqlalchemy.orm import Session
 
 from database.init_db import SessionLocal
+from database.models.ProductSourceUrl import ProductSourceUrl
 from database.models.Products import Products
 from database.models.ProviderImportRunItem import ProviderImportRunItem
 
@@ -100,6 +101,11 @@ def load_dedup_index(db: Session) -> DedupIndex:
         Products.provider_source_url.isnot(None),
         Products.provider_source_url != "",
     ):
+        key = canonical_source_url(value)
+        if key:
+            product_urls.add(key)
+
+    for (value,) in db.query(ProductSourceUrl.source_url):
         key = canonical_source_url(value)
         if key:
             product_urls.add(key)

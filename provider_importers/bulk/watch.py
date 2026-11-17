@@ -1,7 +1,8 @@
 """Local listing watch: what is new vs already imported.
 
-Notebook / PC only. This module reads the first listing page and classifies
-URLs. It does not insert products, publish to Meta, or schedule a job.
+Notebook / PC only. One click reads one listing page and classifies every
+card. The next page is another click. It does not insert products, publish
+to Meta, or schedule a job.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ DEFAULT_WATCH_PROVIDERS = ("laslocas", "nissie", "sochic")
 ALLOWED_WATCH_PROVIDERS = frozenset((*DEFAULT_WATCH_PROVIDERS, "holic"))
 WATCH_LIMITS = frozenset({5, 10})
 DEFAULT_WATCH_LIMIT = 5
+WATCH_MAX_PAGE = 20
 SOCHIC_MIN_PAUSE_SECONDS = 5.0
 
 STATUS_NEW = "nuevo"
@@ -35,8 +37,8 @@ MATCH_CODE = "cod_product"
 
 WATCH_NOTICE = (
     "Solo laptop. No publica a Meta. No importa todo solo. "
-    "Mira la primera página del listado (5 o 10 fichas por proveedor) "
-    "y marca nuevo o posible duplicado. "
+    "Muestra todas las fichas de una página y marca nuevo o posible duplicado. "
+    "La página siguiente se pide con otro clic. No baja fichas. "
     "No agenda Cloud Run, Cloud Scheduler ni un cron."
 )
 
@@ -112,6 +114,8 @@ class ProviderWatchResult:
 @dataclass
 class WatchReport:
     limit: int
+    page: int
+    has_more: bool
     providers: list[ProviderWatchResult]
     items: list[WatchItem]
 
@@ -122,6 +126,8 @@ class WatchReport:
             "imports": False,
             "publishes_meta": False,
             "limit": self.limit,
+            "page": self.page,
+            "has_more": self.has_more,
             "notice": WATCH_NOTICE,
             "providers": [row.to_dict() for row in self.providers],
             "items": [row.to_dict() for row in self.items],
@@ -136,6 +142,12 @@ def local_watch_block_reason() -> str | None:
             "No corre en Cloud Run, Cloud Scheduler ni un cron."
         )
     return None
+
+
+def normalize_watch_page(page: object) -> int:
+    if isinstance(page, bool) or not isinstance(page, int) or page < 1 or page > WATCH_MAX_PAGE:
+        raise WatchRequestError(f"La página tiene que estar entre 1 y {WATCH_MAX_PAGE}.")
+    return page
 
 
 def normalize_watch_limit(limit: object) -> int:
@@ -228,14 +240,16 @@ def scan_watch(
     limit: int,
     index: DedupIndex,
     laslocas_category: str = "denim",
+    page: int = 1,
     fetch: Callable[..., ListingPage] | None = None,
     sleep: Callable[[float], None] | None = None,
 ) -> WatchReport:
-    """Classify the first listing page of each provider. Does not import."""
+    """Classify every card on one listing page. Does not import or turn the page."""
     fetch_fn = fetch if fetch is not None else fetch_provider_listing
     pause = sleep if sleep is not None else time.sleep
     chosen = normalize_watch_providers(providers)
     capped = normalize_watch_limit(limit)
+    page_n = normalize_watch_page(page)
     category = (laslocas_category or "denim").strip() or "denim"
     results: list[ProviderWatchResult] = []
     items: list[WatchItem] = []
@@ -253,7 +267,7 @@ def scan_watch(
             provider=brand.id,
             display_name=brand.display_name,
             delay_ms=brand.default_delay_ms,
-            listing_pages=1,
+            listing_pages=0,
             discovered_on_page=0,
             shown=0,
             cli_dry_run=cli_dry_run_command(brand.id, capped, category),
@@ -267,11 +281,13 @@ def scan_watch(
             )
             results.append(result)
             continue
+        seen: set[str] = set()
         try:
-            page = fetch_fn(
+            listing = fetch_fn(
                 provider=brand.id,
                 limit=capped,
                 laslocas_category=category,
+                page=page_n,
             )
         except WatchListingError as exc:
             result.error = redact_secrets(str(exc)) or "No se pudo leer el listado."
@@ -284,9 +300,9 @@ def scan_watch(
             logging.warning("provider_watch_listing_failed provider=%s", brand.id)
             continue
 
-        hits = list(page.hits)[:capped]
-        result.discovered_on_page = int(page.discovered)
-        seen: set[str] = set()
+        hits = list(listing.hits)
+        result.listing_pages = 1
+        result.discovered_on_page = int(listing.discovered)
         for hit in hits:
             key = canonical_source_url(hit.url)
             if not key or key in seen:
@@ -310,4 +326,11 @@ def scan_watch(
         result.shown = len(result.items)
         results.append(result)
 
-    return WatchReport(limit=capped, providers=results, items=items)
+    has_more = any(row.shown > 0 and not row.error for row in results)
+    return WatchReport(
+        limit=capped,
+        page=page_n,
+        has_more=has_more,
+        providers=results,
+        items=items,
+    )

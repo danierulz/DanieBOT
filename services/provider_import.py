@@ -13,7 +13,9 @@ from config import PRODUCT_DESCRIPTION_MAX_LEN, PRODUCT_ITEM_TITLE_MAX_LEN
 from database.models.Category import Category
 from database.models.Color import Color
 from database.models.ProductImages import ProductImages
+from database.models.ProductSourceUrl import ProductSourceUrl
 from database.models.Products import Products
+from provider_importers.bulk.existing import canonical_source_url
 from provider_importers.types import ImportedProduct
 from services.colors import get_or_create_color, normalize_color_code, sync_product_colors
 from services.sizes import get_or_create_size_code
@@ -121,6 +123,35 @@ def match_import_color_ids(db: Session, color_names: list[str]) -> list[int]:
     return ids
 
 
+def _remember_extra_source_url(db: Session, existing: Products, source_url: str) -> bool:
+    """Keep another listing URL for a product that already exists.
+
+    The first URL stays on ``provider_source_url``. A different one is stored
+    beside it so the watch does not offer the same garment again.
+    """
+    stored = _stored_source_url(source_url)
+    incoming = canonical_source_url(stored)
+    if not incoming:
+        return False
+    current = canonical_source_url(existing.provider_source_url)
+    if not current:
+        existing.provider_source_url = stored
+        db.commit()
+        return False
+    if current == incoming:
+        return False
+    already = (
+        db.query(ProductSourceUrl.id)
+        .filter(ProductSourceUrl.source_url == incoming)
+        .first()
+    )
+    if already:
+        return False
+    db.add(ProductSourceUrl(product_id=existing.product_id, source_url=incoming))
+    db.commit()
+    return True
+
+
 def persist_imported_product(
     db: Session,
     imported: ImportedProduct,
@@ -132,10 +163,10 @@ def persist_imported_product(
 ) -> dict:
     existing = db.query(Products).filter(Products.cod_product == imported.cod_product).first()
     if existing:
-        stored_url = _stored_source_url(imported.source_url)
-        if stored_url and not existing.provider_source_url:
-            existing.provider_source_url = stored_url
-            db.commit()
+        noted = _remember_extra_source_url(db, existing, imported.source_url)
+        detail = f"Mismo código {existing.cod_product}."
+        if noted:
+            detail += " Esta URL quedó anotada para no ofrecerla de nuevo."
         return {
             "ok": True,
             "created": False,
@@ -143,6 +174,7 @@ def persist_imported_product(
             "provider": imported.provider,
             "cod_product": existing.cod_product,
             "activo": product_is_active(existing),
+            "detail": detail,
         }
 
     is_sale = imported.is_sale or bool(imported.discount_percent and imported.original_price)

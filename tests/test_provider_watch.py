@@ -48,6 +48,7 @@ from provider_importers.bulk.watch_listings import (
     extract_nissie_listing_hits,
     extract_sochic_listing_hits,
     fetch_provider_listing,
+    listing_page_url,
     parse_ars_amount,
 )
 from provider_importers.nissie_catalog import NISSIE_CATALOG_URL
@@ -274,8 +275,9 @@ class FirstPageFetchTest(unittest.TestCase):
         session.get.return_value = ok
         page = fetch_provider_listing("sochic", limit=5, laslocas_category="denim", session=session)
         self.assertEqual(page.discovered, 6)
-        self.assertEqual(len(page.hits), 5)
+        self.assertEqual(len(page.hits), 6)
         self.assertEqual(page.hits[0].url, "https://sochic.com.ar/product/item-0/")
+        self.assertEqual(session.get.call_count, 1)
 
 
 class ClassifyWatchTest(unittest.TestCase):
@@ -447,6 +449,15 @@ class ScanWatchTest(unittest.TestCase):
         )
         with self.assertRaises(WatchRequestError):
             normalize_watch_providers(["otro"])
+        with self.assertRaises(WatchRequestError):
+            scan_watch(
+                providers=["nissie"],
+                limit=5,
+                page=0,
+                index=DedupIndex(frozenset(), frozenset(), frozenset()),
+                fetch=lambda **kwargs: (_ for _ in ()).throw(AssertionError("no listar")),
+                sleep=lambda _seconds: None,
+            )
 
     def test_scan_classifies_without_walking_the_catalog(self):
         index = DedupIndex(
@@ -456,8 +467,10 @@ class ScanWatchTest(unittest.TestCase):
         )
         seen = []
 
-        def fetch(*, provider, limit, laslocas_category, session=None):
-            seen.append((provider, limit, laslocas_category))
+        def fetch(*, provider, limit, laslocas_category, session=None, page=1):
+            seen.append((provider, page, limit, laslocas_category))
+            if page > 1:
+                return ListingPage(hits=(), discovered=0)
             if provider == "nissie":
                 return ListingPage(
                     hits=(
@@ -521,7 +534,11 @@ class ScanWatchTest(unittest.TestCase):
                 os.environ["LOGIN_PASS"] = saved_pass
 
         self.assertEqual(seen[0][0], "laslocas")
-        self.assertEqual(seen[0][1], 5)
+        self.assertEqual(seen[0][1], 1)
+        self.assertEqual(seen[0][2], 5)
+        self.assertNotIn(("laslocas", 2, 5, "denim"), seen)
+        self.assertEqual(report.page, 1)
+        self.assertTrue(report.has_more)
         self.assertEqual([item.status for item in report.items], [
             STATUS_DUPLICATE,
             STATUS_DUPLICATE,
@@ -533,6 +550,7 @@ class ScanWatchTest(unittest.TestCase):
             [item.match for item in report.items],
             ["cod_product", "import_run", None, "provider_source_url", None],
         )
+        self.assertEqual(len(slept), 2)
         self.assertGreaterEqual(slept[0], 1.5)
         self.assertGreaterEqual(slept[1], 5.0)
         self.assertGreaterEqual(slept[1], get_brand("sochic").default_delay_ms / 1000)
@@ -547,6 +565,74 @@ class ScanWatchTest(unittest.TestCase):
         self.assertIn("--dry-run", command)
         self.assertIn("--delay-ms 5000", command)
         self.assertNotIn("--status-active", command)
+
+    def test_known_rows_stay_and_the_next_page_fills_five_new(self):
+        index = DedupIndex(
+            product_urls=frozenset({
+                canonical_source_url(f"https://nissiedenim.com.ar/productos/vieja-{number}/")
+                for number in range(4)
+            }),
+            run_urls=frozenset(),
+            cod_products=frozenset(),
+        )
+        calls = []
+
+        def fetch(*, provider, limit, laslocas_category, session=None, page=1):
+            calls.append((provider, page))
+            if page == 1:
+                hits = tuple(
+                    ListingHit(
+                        url=f"https://nissiedenim.com.ar/productos/vieja-{number}/",
+                        title=f"Vieja {number}",
+                    )
+                    for number in range(4)
+                )
+                return ListingPage(hits=hits, discovered=4)
+            if page == 2:
+                hits = tuple(
+                    ListingHit(
+                        url=f"https://nissiedenim.com.ar/productos/nueva-{number}/",
+                        title=f"Nueva {number}",
+                    )
+                    for number in range(7)
+                )
+                return ListingPage(hits=hits, discovered=7)
+            raise AssertionError(page)
+
+        report = scan_watch(
+            providers=["nissie"],
+            limit=5,
+            index=index,
+            fetch=fetch,
+            sleep=lambda _seconds: None,
+        )
+        self.assertEqual(calls, [("nissie", 1)])
+        self.assertEqual([item.status for item in report.items], [STATUS_DUPLICATE] * 4)
+        self.assertTrue(report.has_more)
+
+        calls.clear()
+        following = scan_watch(
+            providers=["nissie"],
+            limit=5,
+            page=2,
+            index=index,
+            fetch=fetch,
+            sleep=lambda _seconds: None,
+        )
+        self.assertEqual(calls, [("nissie", 2)])
+        self.assertEqual([item.status for item in following.items], [STATUS_NEW] * 7)
+        self.assertEqual(following.page, 2)
+
+    def test_listing_page_urls(self):
+        self.assertEqual(listing_page_url("sochic", 1), SOCHIC_SHOP_URL)
+        self.assertIn("/shop/page/2/", listing_page_url("sochic", 2))
+        self.assertIn("/product-category/new-in/page/2/", listing_page_url("holic", 2))
+        self.assertIn("page=2", listing_page_url("nissie", 2))
+        self.assertTrue(listing_page_url("nissie", 1).rstrip("/").endswith("/productos"))
+        laslocas = listing_page_url("laslocas", 2)
+        self.assertIn("nuevos-ingresos", laslocas)
+        self.assertIn("page=2", laslocas)
+        self.assertIn("ajax=1", laslocas)
 
     def test_missing_login_does_not_fetch_or_print_secrets(self):
         saved_email = os.environ.pop("LOGIN_EMAIL", None)
@@ -577,7 +663,7 @@ class ScanWatchTest(unittest.TestCase):
         os.environ["LOGIN_PASS"] = "s3cret-locas-pass"
         os.environ["LOGIN_EMAIL"] = "ada@example.com"
 
-        def fetch(*, provider, limit, laslocas_category, session=None):
+        def fetch(*, provider, limit, laslocas_category, session=None, page=1):
             raise RuntimeError("falló ada@example.com s3cret-locas-pass")
 
         try:
@@ -680,8 +766,10 @@ class WatchEndpointTest(unittest.TestCase):
             os.environ.pop("K_SERVICE", None)
 
     def test_endpoint_classifies_and_does_not_import(self):
-        def fetch(*, provider, limit, laslocas_category, session=None):
+        def fetch(*, provider, limit, laslocas_category, session=None, page=1):
             self.assertIn(limit, (5, 10))
+            if page > 1:
+                return ListingPage(hits=(), discovered=0)
             if provider == "sochic":
                 return ListingPage(
                     hits=(
@@ -749,7 +837,7 @@ class WatchEndpointTest(unittest.TestCase):
         os.environ["LOGIN_EMAIL"] = "ada@example.com"
         os.environ["LOGIN_PASS"] = "s3cret-locas-pass"
 
-        def fetch(*, provider, limit, laslocas_category, session=None):
+        def fetch(*, provider, limit, laslocas_category, session=None, page=1):
             raise RuntimeError("auth ada@example.com s3cret-locas-pass")
 
         try:

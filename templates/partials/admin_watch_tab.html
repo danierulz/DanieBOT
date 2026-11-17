@@ -37,14 +37,7 @@
       </div>
     </fieldset>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label for="watch-limit" class="block text-sm font-medium text-gray-700">{{ admin_watch_limit_label }}</label>
-        <select id="watch-limit" class="mt-1 w-full px-3 py-2 border rounded-md bg-white text-sm">
-          <option value="5" selected>5</option>
-          <option value="10">10</option>
-        </select>
-      </div>
+    <div class="grid grid-cols-1 gap-4">
       <div>
         <p class="block text-sm font-medium text-gray-700">{{ admin_watch_laslocas_category }}</p>
         <p class="mt-1 text-sm text-gray-600">
@@ -68,6 +61,14 @@
       <button type="button" id="watch-import-btn"
         class="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50">
         {{ admin_watch_import_btn }}
+      </button>
+      <button type="button" id="watch-prev-btn" disabled
+        class="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50 disabled:opacity-40">
+        {{ admin_watch_prev_btn }}
+      </button>
+      <button type="button" id="watch-next-btn" disabled
+        class="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50 disabled:opacity-40">
+        {{ admin_watch_next_btn }}
       </button>
     </div>
   </div>
