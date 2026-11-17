@@ -32,10 +32,11 @@ def run_provider_watch(
     providers: list[str] | None,
     limit: int,
     laslocas_category: str | None,
+    page: int = 1,
     fetch: Callable[..., ListingPage] | None = None,
     sleep: Callable[[float], None] | None = None,
 ) -> dict:
-    """Read dedup keys and the first listing page. No insert, no cron."""
+    """Read one listing page and classify every card. No insert, no cron."""
     blocked = local_watch_block_reason()
     if blocked:
         raise WatchNotLocalError(blocked)
@@ -50,6 +51,7 @@ def run_provider_watch(
         limit=capped,
         index=load_dedup_index(db),
         laslocas_category=category,
+        page=page,
         fetch=fetch,
         sleep=sleep if sleep is not None else time.sleep,
     )

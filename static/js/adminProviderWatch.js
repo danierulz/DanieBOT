@@ -1,10 +1,13 @@
-/* Novedades de proveedores: primera página del listado, solo en la PC.
-   No recorre el catálogo ni publica a Meta. Importar es opcional y deja inactivo. */
+/* Novedades de proveedores: una página del listado por clic.
+   Muestra las que ya están y las que faltan. La página siguiente es otro clic.
+   No baja fichas ni publica a Meta. Importar es opcional y deja inactivo. */
 (function () {
   var started = false;
   var busy = false;
   var lastItems = [];
   var delayByProvider = {};
+  var currentPage = 1;
+  var pageHasMore = false;
 
   function panel() {
     return document.getElementById("panel-watch");
@@ -20,12 +23,6 @@
       document.querySelectorAll(".watch-provider:checked"),
       function (input) { return input.value; }
     );
-  }
-
-  function limitValue() {
-    var select = document.getElementById("watch-limit");
-    var value = select ? parseInt(select.value, 10) : 5;
-    return value === 10 ? 10 : 5;
   }
 
   function categoryValue() {
@@ -106,7 +103,16 @@
     ).filter(function (index) { return !isNaN(index); });
   }
 
-  async function runScan() {
+  function setPager(page, hasMore) {
+    currentPage = page;
+    if (typeof hasMore === "boolean") pageHasMore = hasMore;
+    var prev = document.getElementById("watch-prev-btn");
+    var next = document.getElementById("watch-next-btn");
+    if (prev) prev.disabled = busy || page <= 1;
+    if (next) next.disabled = busy || !pageHasMore;
+  }
+
+  async function runScan(page) {
     if (busy) return;
     var root = panel();
     if (!root) return;
@@ -115,17 +121,20 @@
       setStatus("Elegí al menos un proveedor.");
       return;
     }
+    var requested = page && page > 0 ? page : 1;
     busy = true;
+    setPager(requested, false);
     var button = document.getElementById("watch-scan-btn");
     if (button) button.disabled = true;
-    setStatus(root.dataset.scanning || "Leyendo…");
+    setStatus("Página " + requested + ". " + (root.dataset.scanning || "Leyendo…"));
     try {
       var response = await authFetch("/api/proveedores/novedades", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           providers: providers,
-          limit: limitValue(),
+          limit: 5,
+          page: requested,
           laslocas_category: categoryValue(),
         }),
       });
@@ -136,9 +145,13 @@
         return;
       }
       render(data);
+      var shownPage = data.page || requested;
+      setPager(shownPage, !!data.has_more);
       var nuevos = lastItems.filter(function (item) { return item.status === "nuevo"; }).length;
       var dups = lastItems.length - nuevos;
-      setStatus(nuevos + " nuevo" + (nuevos === 1 ? "" : "s") + " · " + dups + " posible duplicado" + (dups === 1 ? "" : "s") + ". " + (data.notice || root.dataset.notice || ""));
+      var pageLabel = "Página " + shownPage + ". ";
+      var more = data.has_more ? " Podés pasar a la siguiente." : " No hay otra página con fichas.";
+      setStatus(pageLabel + nuevos + " nuevo" + (nuevos === 1 ? "" : "s") + " · " + dups + " posible duplicado" + (dups === 1 ? "" : "s") + "." + more);
     } catch (err) {
       if (typeof isSessionRedirectScheduled !== "function" || !isSessionRedirectScheduled()) {
         setStatus(err && err.message ? err.message : "No se pudo leer el listado.");
@@ -146,6 +159,7 @@
     } finally {
       busy = false;
       if (button) button.disabled = false;
+      setPager(currentPage, pageHasMore);
     }
   }
 
@@ -201,6 +215,43 @@
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
 
+  function garmentLabel(item) {
+    return (item && (item.title || item.url)) || "esta ficha";
+  }
+
+  function setRowOutcome(index, label, tone, detail) {
+    var row = document.querySelectorAll("#watch-table-body tr")[index];
+    if (!row) return;
+    row.setAttribute("data-status", tone);
+    var cell = row.lastElementChild;
+    if (!cell) return;
+    var tones = {
+      espera: "bg-amber-100 text-amber-950",
+      procesando: "bg-sky-100 text-sky-950",
+      ok: "bg-emerald-100 text-emerald-900",
+      error: "bg-red-100 text-red-900"
+    };
+    var hintClass = tone === "error" ? "text-red-800" : "text-gray-600";
+    var hint = detail
+      ? "<span class=\"block text-xs " + hintClass + " mt-1\">" + escapeHtml(detail) + "</span>"
+      : "";
+    cell.innerHTML =
+      "<span class=\"inline-block rounded px-2 py-0.5 text-xs font-semibold " +
+      (tones[tone] || tones.ok) + "\">" + escapeHtml(label) + "</span>" + hint;
+  }
+
+  function failureDetail(data, response) {
+    var detail = data && (data.error || data.detail);
+    if (Array.isArray(detail)) {
+      detail = detail.map(function (item) {
+        return item && item.msg ? item.msg : String(item);
+      }).join(" ");
+    }
+    if (detail && typeof detail !== "string") detail = "";
+    detail = String(detail || (response && response.statusText) || "").trim();
+    return detail || "No se pudo bajar la ficha ni guardarla.";
+  }
+
   async function importSelected() {
     var root = panel();
     var indexes = pickedIndexes().filter(function (index) {
@@ -218,37 +269,51 @@
     try {
       for (var i = 0; i < indexes.length; i += 1) {
         var item = lastItems[indexes[i]];
+        var label = garmentLabel(item);
         var pauseMs = waitBeforeImport(i, indexes);
-        if (pauseMs) await wait(pauseMs);
-        setStatus("Importando " + (i + 1) + "/" + indexes.length + " (queda inactiva)…");
-        var response = await authFetch("/api/proveedores/importar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: item.url, status: false }),
-        });
+        if (pauseMs) {
+          setRowOutcome(indexes[i], "en espera", "espera", "");
+          setStatus("En pausa antes de " + label + " (" + Math.round(pauseMs / 1000) + " s).");
+          await wait(pauseMs);
+        }
+        setRowOutcome(indexes[i], "procesando", "procesando", "");
+        setStatus(
+          "Procesando " + (i + 1) + "/" + indexes.length + ": " + label +
+          ". Bajando la ficha y guardándola inactiva."
+        );
+        var response;
+        try {
+          response = await authFetch("/api/proveedores/importar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: item.url, status: false }),
+          });
+        } catch (err) {
+          if (typeof isSessionRedirectScheduled === "function" && isSessionRedirectScheduled()) return;
+          var network = err && err.message ? err.message : "No se pudo conectar.";
+          setRowOutcome(indexes[i], "algo salió mal", "error", network);
+          setStatus("Algo salió mal en " + label + ". " + network);
+          return;
+        }
         var data = await response.json().catch(function () { return {}; });
         if (!response.ok || data.ok === false) {
-          var detail = data.error || data.detail || response.statusText;
-          var limited = data.error_code === "rate_limit" ||
-            (typeof detail === "string" && /limit|429/i.test(detail));
+          var detail = failureDetail(data, response);
+          var limited = data.error_code === "rate_limit" || /limit|429/i.test(detail);
           if (limited) {
-            setStatus(
-              "So Chic limitó las consultas. Se frenó en " + item.url +
-              ". No se pidieron las fichas que seguían. Esperá y volvé a importar las que faltan."
-            );
-          } else {
-            setStatus("Se frenó en " + item.url + ". " + (typeof detail === "string" ? detail : ""));
+            detail += " No se pidieron las fichas que seguían.";
           }
+          setRowOutcome(indexes[i], "algo salió mal", "error", detail);
+          setStatus("Algo salió mal en " + label + ". " + detail);
           return;
         }
         done += 1;
-        var row = document.querySelectorAll("#watch-table-body tr")[indexes[i]];
-        if (row) {
-          var cell = row.lastElementChild;
-          if (cell) {
-            cell.textContent = data.created === false ? "ya estaba" : "importado, inactivo";
-          }
-        }
+        item.status = "importado";
+        setRowOutcome(
+          indexes[i],
+          data.created === false ? "ya estaba" : "importado, inactivo",
+          "ok",
+          data.created === false ? (data.detail || "") : ""
+        );
       }
       setStatus(done + " ficha(s) procesadas. Quedan inactivas. No se publicó a Meta.");
     } catch (err) {
@@ -265,7 +330,11 @@
     var copy = document.getElementById("watch-copy-btn");
     var importBtn = document.getElementById("watch-import-btn");
     var selectAll = document.getElementById("watch-select-new");
-    if (scan) scan.addEventListener("click", runScan);
+    var prev = document.getElementById("watch-prev-btn");
+    var next = document.getElementById("watch-next-btn");
+    if (scan) scan.addEventListener("click", function () { runScan(1); });
+    if (prev) prev.addEventListener("click", function () { if (currentPage > 1) runScan(currentPage - 1); });
+    if (next) next.addEventListener("click", function () { runScan(currentPage + 1); });
     if (copy) copy.addEventListener("click", copyUrls);
     if (importBtn) importBtn.addEventListener("click", importSelected);
     if (selectAll) {

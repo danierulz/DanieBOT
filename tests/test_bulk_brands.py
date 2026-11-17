@@ -238,6 +238,80 @@ class KnownSourceUrlDbTest(unittest.TestCase):
         self.assertEqual(session.query(Products).count(), 1)
         session.close()
 
+    def test_existing_product_keeps_a_second_listing_url(self):
+        from database.models.ProductSourceUrl import ProductSourceUrl
+        from provider_importers.bulk.existing import load_dedup_index
+        from provider_importers.bulk.watch import STATUS_DUPLICATE, classify_listing_hit
+        from provider_importers.bulk.watch_listings import ListingHit
+
+        session = self.SessionLocal()
+        uploader = MagicMock()
+        original = ImportedProduct(
+            provider="nissie",
+            source_url="https://nissiedenim.com.ar/productos/short-gala/",
+            title="Short Gala",
+            description="d",
+            price=16000,
+            cod_product="nissie-282540155",
+        )
+        created = persist_imported_product(
+            session,
+            original,
+            ProviderImportPayload(status=False),
+            uploader,
+            sync_variants_fn=MagicMock(),
+            match_color_ids_fn=MagicMock(return_value=[]),
+        )
+        self.assertTrue(created["created"])
+
+        copia = ImportedProduct(
+            provider="nissie",
+            source_url="https://www.nissiedenim.com.ar/productos/short-gala-negro-copia-f4ji0/?ref=1",
+            title="Short Gala copia",
+            description="d",
+            price=16000,
+            cod_product="nissie-282540155",
+        )
+        again = persist_imported_product(
+            session,
+            copia,
+            ProviderImportPayload(status=False),
+            uploader,
+            sync_variants_fn=MagicMock(),
+            match_color_ids_fn=MagicMock(return_value=[]),
+        )
+        self.assertFalse(again["created"])
+        self.assertIn("nissie-282540155", again["detail"])
+        self.assertIn("anotada", again["detail"])
+        self.assertEqual(session.query(Products).count(), 1)
+        alias = session.query(ProductSourceUrl).one()
+        self.assertEqual(
+            alias.source_url,
+            "https://nissiedenim.com.ar/productos/short-gala-negro-copia-f4ji0",
+        )
+        row = session.query(Products).one()
+        self.assertEqual(row.provider_source_url, original.source_url)
+
+        index = load_dedup_index(session)
+        status, match = classify_listing_hit(
+            ListingHit(url=copia.source_url, title="Short Gala copia"),
+            index,
+        )
+        self.assertEqual((status, match), (STATUS_DUPLICATE, "provider_source_url"))
+
+        repeat = persist_imported_product(
+            session,
+            copia,
+            ProviderImportPayload(status=False),
+            uploader,
+            sync_variants_fn=MagicMock(),
+            match_color_ids_fn=MagicMock(return_value=[]),
+        )
+        self.assertFalse(repeat["created"])
+        self.assertNotIn("anotada", repeat["detail"])
+        self.assertEqual(session.query(ProductSourceUrl).count(), 1)
+        session.close()
+
 
 class BulkCliTest(unittest.TestCase):
     def test_list_brands_does_not_require_provider(self):

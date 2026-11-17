@@ -185,6 +185,14 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 #templates = Jinja2Templates(directory="/app/templates")
 
 
+def _static_mtime(relative_path: str) -> int:
+    """Changes the script URL when the file changes, so the browser does not keep an old copy."""
+    try:
+        return int(os.path.getmtime(os.path.join(BASE_DIR, relative_path)))
+    except OSError:
+        return 0
+
+
 def page_context(request: Request, **extra: dict) -> dict:
     """request + textos de marca para plantillas Jinja2."""
     ctx = {"request": request, **get_template_context()}
@@ -392,7 +400,11 @@ def admin_panel():
 def admin_panel(request: Request):
     return templates.TemplateResponse(
         "admin-panel.html",
-        page_context(request, laslocas_bulk_categories=load_laslocas_categories()),
+        page_context(
+            request,
+            laslocas_bulk_categories=load_laslocas_categories(),
+            watch_js_v=_static_mtime("static/js/adminProviderWatch.js"),
+        ),
     )
 
 
@@ -1149,10 +1161,11 @@ class LasLocasBulkImportRequest(BaseModel):
 
 
 class ProviderWatchRequest(BaseModel):
-    """First-page listing check. Does not import and is not a scheduled job."""
+    """One listing page. Does not import and is not a scheduled job."""
 
     providers: Optional[List[str]] = None
     limit: int = 5
+    page: int = 1
     laslocas_category: Optional[str] = None
 
 
@@ -1340,6 +1353,7 @@ def novedades_proveedores_local(
             providers=payload.providers,
             limit=payload.limit,
             laslocas_category=payload.laslocas_category,
+            page=payload.page,
         )
     except WatchNotLocalError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc

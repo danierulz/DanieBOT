@@ -1,6 +1,6 @@
-"""First-page listing cards for the local provider watch.
+"""Listing cards for the local provider watch.
 
-One HTTP GET per provider. No product-page fetch and no catalog walk.
+One HTTP GET per listing page. No product-page fetch and no full-catalog walk.
 """
 
 from __future__ import annotations
@@ -115,40 +115,56 @@ def _half_up(number: str) -> int:
     return int(Decimal(number).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
+def listing_page_url(provider: str, page: int) -> str:
+    """Public listing URL for one page. Page 1 keeps the canonical first URL."""
+    page_n = max(int(page or 1), 1)
+    if provider == "sochic":
+        return _shop_page_url(SOCHIC_SHOP_URL, page_n)
+    if provider == "holic":
+        return _shop_page_url(HOLIC_NEW_IN_URL, page_n)
+    if provider == "nissie":
+        if page_n <= 1:
+            return NISSIE_CATALOG_URL
+        return f"{NISSIE_CATALOG_URL.rstrip('/')}/?page={page_n}"
+    if provider == "laslocas":
+        return f"{LASLOCAS_NUEVOS_INGRESOS_URL.rstrip('/')}?page={page_n}&ajax=1"
+    raise WatchListingError(f"Proveedor sin listado de novedades: {provider}")
+
+
+def _shop_page_url(base: str, page_n: int) -> str:
+    root = base if base.endswith("/") else base + "/"
+    if page_n <= 1:
+        return root
+    return f"{root}page/{page_n}/"
+
+
 def fetch_provider_listing(
     provider: str,
     *,
     limit: int,
     laslocas_category: str,
     session: requests.Session | None = None,
+    page: int = 1,
 ) -> ListingPage:
-    """Read the first listing page and keep the first ``limit`` cards."""
-    if provider == "sochic":
-        return _fetch_html_listing(
-            session,
-            SOCHIC_SHOP_URL,
-            lambda html, page_url: extract_sochic_listing_hits(html, page_url),
-            limit=limit,
-            rate_limit=True,
-        )
-    if provider == "holic":
-        return _fetch_html_listing(
-            session,
-            HOLIC_NEW_IN_URL,
-            lambda html, page_url: extract_holic_listing_hits(html, page_url),
-            limit=limit,
-            rate_limit=False,
-        )
-    if provider == "nissie":
-        return _fetch_html_listing(
-            session,
-            NISSIE_CATALOG_URL,
-            lambda html, page_url: extract_nissie_listing_hits(html, page_url),
-            limit=limit,
-            rate_limit=False,
-        )
+    """Read one listing page. ``limit`` is applied by the watch, not here."""
+    _ = limit
+    page_n = max(int(page or 1), 1)
+    listing_url = listing_page_url(provider, page_n)
     if provider == "laslocas":
-        return _fetch_laslocas(session, laslocas_category, limit)
+        return _fetch_laslocas(session, laslocas_category, listing_url, page_n)
+    if provider in {"sochic", "holic", "nissie"}:
+        extract = {
+            "sochic": extract_sochic_listing_hits,
+            "holic": extract_holic_listing_hits,
+            "nissie": extract_nissie_listing_hits,
+        }[provider]
+        return _fetch_html_listing(
+            session,
+            listing_url,
+            lambda html, page_url: extract(html, page_url),
+            page_n=page_n,
+            rate_limit=provider == "sochic",
+        )
     raise WatchListingError(f"Proveedor sin listado de novedades: {provider}")
 
 
@@ -242,18 +258,20 @@ def _listing_anchors(soup: BeautifulSoup) -> list[Tag]:
 def _fetch_laslocas(
     session: requests.Session | None,
     category_id: str,
-    limit: int,
+    listing_url: str,
+    page_n: int,
 ) -> ListingPage:
     # category_id kept for API/CLI compat; novedades always use nuevos-ingresos.
     _ = category_id
     http = session or _authenticated_session()
-    listing_url = f"{LASLOCAS_NUEVOS_INGRESOS_URL.rstrip('/')}?page=1&ajax=1"
     try:
         response = http.get(
             listing_url,
             timeout=DEFAULT_TIMEOUT_SECONDS,
             headers={"X-Requested-With": "XMLHttpRequest", "Accept": "*/*"},
         )
+        if page_n > 1 and getattr(response, "status_code", None) == 404:
+            return ListingPage(hits=(), discovered=0)
         response.raise_for_status()
     except requests.RequestException as exc:
         raise WatchListingError(
@@ -262,7 +280,7 @@ def _fetch_laslocas(
     html = response.text or ""
     page_url = response.url or listing_url
     hits = extract_laslocas_listing_hits(html, page_url)
-    return ListingPage(hits=tuple(hits[:limit]), discovered=len(hits))
+    return ListingPage(hits=tuple(hits), discovered=len(hits))
 
 
 def _fetch_html_listing(
@@ -270,7 +288,7 @@ def _fetch_html_listing(
     listing_url: str,
     extract: Callable[[str, str], list[ListingHit]],
     *,
-    limit: int,
+    page_n: int,
     rate_limit: bool,
 ) -> ListingPage:
     http = session or requests.Session()
@@ -278,6 +296,8 @@ def _fetch_html_listing(
 
     def once():
         response = http.get(listing_url, timeout=DEFAULT_TIMEOUT_SECONDS)
+        if page_n > 1 and getattr(response, "status_code", None) == 404:
+            return response
         if rate_limit and response_is_rate_limited(response):
             status = getattr(response, "status_code", None) or 429
             raise requests.HTTPError(f"HTTP {status} rate limit", response=response)
@@ -303,9 +323,11 @@ def _fetch_html_listing(
     except requests.RequestException as exc:
         raise WatchListingError(f"No se pudo leer el listado ({listing_url}).") from exc
 
+    if page_n > 1 and getattr(response, "status_code", None) == 404:
+        return ListingPage(hits=(), discovered=0)
     page_url = getattr(response, "url", None) or listing_url
     hits = extract(response.text or "", page_url)
-    return ListingPage(hits=tuple(hits[:limit]), discovered=len(hits))
+    return ListingPage(hits=tuple(hits), discovered=len(hits))
 
 
 def _extract_hits(
